@@ -1,10 +1,12 @@
 # Visitas, solicitudes y conversión
 
-La web integra Vercel Web Analytics para visitantes, páginas vistas, procedencia, dispositivos y países. Supabase conserva el recuento de solicitudes realmente guardadas y de correos distintos. No se ha activado ningún proyecto remoto ni contratado un plan.
+La web integra Vercel Web Analytics para visitantes, páginas vistas, procedencia, dispositivos y países, y Speed Insights para medir el rendimiento real de la página. Supabase conserva el recuento de solicitudes realmente guardadas y de correos distintos.
 
 ## Activar y consultar visitas
 
 En el proyecto de Vercel, abrir **Analytics → Enable** y desplegar la versión que contiene esta integración. Después de recibir visitas, consultar las métricas en ese panel. El componente `WebAnalytics` se carga desde el layout y no modifica el formulario ni solicita sus datos.
+
+Para las métricas de rendimiento, activar también **Speed Insights**. El mismo componente incorpora el SDK oficial `@vercel/speed-insights/next`. Ambos colectores miden únicamente la portada pública y eliminan los parámetros y fragmentos de las URLs antes de enviar datos; las rutas del panel y los enlaces de acceso quedan excluidos. Los resultados de rendimiento se consultan en **Speed Insights** del proyecto de Vercel.
 
 Los eventos personalizados, incluido `lead_submitted`, requieren un plan Pro o Enterprise. No se ha cambiado el plan de la cuenta. Si solo se utilizan las visitas disponibles en el plan actual, las solicitudes y correos únicos siguen consultándose en Supabase.
 

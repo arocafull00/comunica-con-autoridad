@@ -1,6 +1,6 @@
-import { track, type BeforeSendEvent } from "@vercel/analytics";
+import { track } from "@vercel/analytics";
 
-export function redactAnalyticsEvent(event: BeforeSendEvent): BeforeSendEvent | null {
+export function redactAnalyticsEvent<T extends { url: string }>(event: T): T | null {
   try {
     const url = new URL(event.url);
     // Only the public landing is measured. Query strings can contain personal data.
