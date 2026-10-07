@@ -1,0 +1,22 @@
+"use client";
+
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
+import { ChartNoAxesCombined, UsersRound, MessageCircle, UserRound } from "lucide-react";
+
+const links = [
+  { href: "/admin", label: "Resumen", icon: ChartNoAxesCombined },
+  { href: "/admin/contacts", label: "Contactos", icon: UsersRound },
+  { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { href: "/admin/account", label: "Mi cuenta", icon: UserRound },
+];
+
+export function AdminNavigation() {
+  const pathname = usePathname();
+  return <nav className="admin-navigation" aria-label="Administración">
+    {links.map(({ href, label, icon: Icon }) => <Button key={href} variant="ghost" asChild><Link href={href} aria-current={pathname === href ? "page" : undefined}>
+      <Icon size={19} aria-hidden="true" /><span>{label}</span>
+    </Link></Button>)}
+  </nav>;
+}

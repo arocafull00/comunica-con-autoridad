@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Comunica con Autoridad
 
-## Getting Started
+Next.js con un formulario de captación, API de leads y bienvenida asíncrona por WhatsApp mediante Supabase Postgres, PGMQ y Edge Functions.
 
-First, run the development server:
+El consentimiento es opcional: todas las solicitudes válidas se guardan; solo las consentidas generan un mensaje. Los envíos reales y su Cron están desactivados por defecto.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+La portada reproduce `reference/template.html`: formulario de seis pasos, selector internacional de móvil, acceso a Wistia y reserva en Cal.com. Las seis respuestas se guardan juntas en Supabase y se consultan en Contactos. El acceso y la finalización del primer vídeo se recuerdan en este navegador, sin guardar datos personales en localStorage. El vídeo libre se desbloquea al finalizar el primero. Como la referencia no solicita consentimiento para mensajes de WhatsApp, este formulario envía `whatsappConsent: false` y no genera bienvenidas.
+
+Antes de desplegar esta versión, aplicar la nueva migración `20261007000700_masterclass_answers.sql` en la base de datos de destino. En local, ejecutar `pnpm exec supabase migration up --local`.
+
+La portada utiliza `/api/leads`: primero guarda en Supabase y después copia las seis respuestas al mismo Apps Script de Google Sheets de `reference/template.html`, con los nombres de campo originales y país/prefijo del teléfono. `GOOGLE_SHEETS_ENDPOINT` permite cambiar el destino desde el servidor; si no se configura, utiliza el original. El acceso solo se confirma cuando Apps Script responde `success: true`, también si reconoce un duplicado. Si Google falla, los datos permanecen en Supabase y el usuario puede reintentar con el mismo `submission_id` sin crear otro contacto. No se utiliza Netlify Forms.
+
+## Empezar
+
+```powershell
+pnpm install
+pnpm exec supabase start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copiar `.env.example` a `.env.local` y configurar las credenciales **locales** de Supabase y el secreto HMAC, siguiendo [la guía de configuración y activación](docs/activacion.md).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+La API local de Supabase usa el puerto `55321` y Postgres `55322`. No hay credenciales en el navegador.
 
-## Learn More
+## Verificar
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+pnpm test
+pnpm test:worker
+pnpm test:db
+pnpm lint
+pnpm typecheck
+pnpm check:worker
+pnpm build
+pnpm exec playwright install chromium
+pnpm test:browser
+pnpm test:browser:local
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Las suites de navegador deben ejecutarse sucesivamente. Las pruebas de base de datos requieren Supabase local; las del worker simulan Meta. La suite de integración local sustituye Apps Script por un servidor de prueba en `3102` para comprobar el envío sin escribir en la hoja real. La guía detalla las diferencias entre pruebas locales, simuladas y reales, el contrato de la API y el procedimiento de despliegue y activación.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Archivos principales
 
-## Deploy on Vercel
+- `app/api/leads/route.ts`: recepción de solicitudes.
+- `lib/leads`: validación, tamaño de cuerpo, HMAC e idempotencia.
+- `supabase/migrations`: tablas, permisos, triggers, cola, worker y Cron.
+- `supabase/functions/process-whatsapp-queue`: envío, clasificación de errores y procesamiento de trabajos.
+- `docs/activacion.md`: configuración, activación, monitorización y revisión manual.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+El estado `sent` significa que Meta aceptó la petición; esta versión no verifica entrega ni lectura. Un resultado incierto queda detenido como `failed / delivery_unknown` para revisión manual.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Analíticas
+
+Vercel Web Analytics mide el tráfico y el evento `lead_submitted` marca solicitudes nuevas guardadas. Supabase ofrece informes privados por período de solicitudes, correos únicos y campañas UTM. Consultar [activación y consultas de analíticas](docs/analiticas.md); la recogida real en Vercel requiere activar Analytics y desplegar. Los eventos personalizados necesitan Pro o Enterprise.
+
+## Administración
+
+Panel privado en `/admin`: resumen, contactos, configuración de la bienvenida de WhatsApp y cambio de contraseña. Acceso con Supabase Auth y cuentas administrativas individuales, sin alta pública. Consultar [creación de cuentas y configuración del panel](docs/administracion.md). La selección de plantilla ahora se guarda en Postgres; sincronizar el catálogo aprobado y actualizar el worker antes de activar envíos.

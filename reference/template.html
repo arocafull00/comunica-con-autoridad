@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comunica con más autoridad e influencia</title>
+<meta name="description" content="Clase privada sobre comunicación, influencia y autoridad.">
+<meta name="theme-color" content="#0b0b0c">
+<style>
+:root{--bg:#0b0b0c;--ink:#f3ede4;--muted:#bdb5aa;--copper:#b86f36;--copper2:#d89455;--line:rgba(255,255,255,.1);--card:rgba(255,255,255,.035)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 15% 10%,rgba(184,111,54,.13),transparent 28%),radial-gradient(circle at 90% 35%,rgba(184,111,54,.08),transparent 24%),linear-gradient(180deg,var(--bg),#09090a 70%);color:var(--ink);min-height:100vh}.wrap{width:min(1120px,calc(100% - 32px));margin:0 auto}header{padding:22px 0 8px}.brand{font-weight:800;letter-spacing:.14em;font-size:13px;text-transform:uppercase}.brand span{color:var(--copper2)}.hero{padding:44px 0 28px;text-align:center}.eyebrow{display:inline-block;padding:8px 12px;border:1px solid rgba(216,148,85,.28);border-radius:999px;color:#d8b18e;background:rgba(184,111,54,.07);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}h1{font-size:clamp(34px,5.6vw,70px);line-height:1.02;letter-spacing:-.04em;max-width:950px;margin:22px auto 18px}.sub{max-width:760px;margin:0 auto;color:var(--muted);font-size:clamp(17px,2vw,21px);line-height:1.55}.stage{margin:34px auto 0;max-width:980px;padding:14px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));box-shadow:0 30px 90px rgba(0,0,0,.45)}.player-shell{overflow:hidden;border-radius:14px;background:#000}#video2-wrap{display:none}.unlock{max-width:880px;margin:26px auto 0;text-align:center;color:#cfc7bd;font-size:14px}.section{padding:36px 0 78px}.after-card{max-width:880px;margin:0 auto;padding:34px;border:1px solid var(--line);border-radius:20px;background:var(--card);text-align:center}.after-card h2{font-size:clamp(28px,3.8vw,46px);margin:0 0 8px;letter-spacing:-.03em;max-width:760px;margin-left:auto;margin-right:auto}.after-card p{display:none}.cta{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 26px;border-radius:12px;background:linear-gradient(180deg,var(--copper2),var(--copper));color:#111;text-decoration:none;font-weight:850;box-shadow:0 12px 34px rgba(184,111,54,.24);transition:.2s ease}.cta:hover{transform:translateY(-2px);filter:brightness(1.04)}.micro{margin-top:14px;color:#9d968d;font-size:15px;font-weight:600}footer{padding:22px 0 30px;border-top:1px solid var(--line);color:#77716a;font-size:12px;text-align:center}
+.access-wrap{max-width:760px;margin:30px auto 0}
+.access-btn{display:inline-flex;align-items:center;justify-content:center;min-height:62px;padding:0 34px;border:0;border-radius:14px;background:linear-gradient(180deg,var(--copper2),var(--copper));color:#111;font-weight:900;font-size:18px;cursor:pointer;box-shadow:0 14px 40px rgba(184,111,54,.28);transition:.2s ease}
+.access-btn:hover{transform:translateY(-2px);filter:brightness(1.04)}
+#lead-form-wrap{display:none;margin-top:22px;padding:26px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035);text-align:left}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+label{display:block;margin:0 0 7px;color:#d8d0c6;font-size:13px;font-weight:700}
+input,select,textarea{width:100%;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#111214;color:var(--ink);padding:0 14px;font:inherit;outline:none}
+input,select{min-height:50px}
+textarea{min-height:92px;padding-top:12px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:rgba(216,148,85,.7);box-shadow:0 0 0 3px rgba(184,111,54,.12)}
+.form-submit{width:100%;min-height:58px;margin-top:4px;border:0;border-radius:12px;background:linear-gradient(180deg,var(--copper2),var(--copper));color:#111;font-weight:900;font-size:17px;cursor:pointer}
+.form-note{margin:10px 0 0;color:#8f887f;font-size:12px;text-align:center}
+#webinar-content{display:none}
+@media(max-width:680px){.hero{padding-top:30px}.stage{padding:8px;border-radius:16px}.player-shell{border-radius:10px}.after-card{padding:26px 18px}.wrap{width:min(100% - 20px,1120px)}.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}}
+
+/* ===== Formulario paso a paso ===== */
+#lead-form-wrap{display:none;margin-top:22px;padding:28px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035);text-align:left}
+.form-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.step-count{white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#d8b18e}
+.progress{height:6px;flex:1;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden}
+.progress span{display:block;height:100%;width:16.666%;background:linear-gradient(90deg,var(--copper),var(--copper2));border-radius:999px;transition:width .25s ease}
+.form-step{display:none}
+.form-step.active{display:block}
+.form-step h3{font-size:clamp(24px,3.5vw,34px);line-height:1.12;letter-spacing:-.025em;margin:0 0 8px}
+.form-step p{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.5}
+.choices{display:grid;gap:10px}
+.choice{width:100%;padding:15px 16px;text-align:left;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:#111214;color:var(--ink);font:inherit;line-height:1.35;cursor:pointer;transition:.18s ease}
+.choice:hover{border-color:rgba(216,148,85,.65);background:rgba(184,111,54,.08)}
+.choice.selected{border-color:var(--copper2);background:rgba(184,111,54,.14)}
+.form-actions{display:flex;gap:10px;margin-top:20px}
+.back-btn,.next-btn,.form-submit{min-height:54px;border-radius:12px;font-weight:850;font-size:15px;cursor:pointer}
+.back-btn{padding:0 18px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#cfc7bd}
+.next-btn,.form-submit{flex:1;border:0;background:linear-gradient(180deg,var(--copper2),var(--copper));color:#111;padding:0 22px}
+.field-error{display:none;color:#e0a07a;font-size:12px;margin-top:8px}
+#webinar-content{display:none}
+#after{display:none}
+@media(max-width:680px){
+  #lead-form-wrap{padding:22px 16px}
+  .form-head{gap:9px}
+  .choice{padding:14px}
+}
+
+</style>
+<script src="https://fast.wistia.com/player.js" async></script>
+<script src="https://fast.wistia.com/embed/it5ema1qqm.js" async type="module"></script>
+<script src="https://fast.wistia.com/embed/uzw5xmj4h0.js" async type="module"></script>
+<style>
+wistia-player[media-id='it5ema1qqm']:not(:defined),wistia-player[media-id='uzw5xmj4h0']:not(:defined){background:center/contain no-repeat #000;display:block;padding-top:56.25%}
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input/build/css/intlTelInput.css">
+<style>
+  .iti{width:100%}
+  .iti__selected-country{background:rgba(255,255,255,.035)!important}
+  .iti__selected-dial-code{color:var(--ink)}
+  .iti__country-list{
+    background:#111214!important;
+    color:var(--ink)!important;
+    border:1px solid rgba(255,255,255,.14)!important;
+    box-shadow:0 18px 55px rgba(0,0,0,.5)!important;
+  }
+  .iti__country.iti__highlight{background:rgba(184,111,54,.18)!important}
+  .iti__search-input{
+    background:#18191b!important;
+    color:var(--ink)!important;
+    border:1px solid rgba(255,255,255,.14)!important;
+    border-radius:8px!important;
+  }
+  .phone-hint{margin:9px 0 0;color:#8f887f;font-size:12px;line-height:1.45}
+</style>
+
+</head>
+<body>
+<header><div class="wrap"><div class="brand">IGNACIO ROA <span>•</span> COMUNICACIÓN E INFLUENCIA</div></div></header>
+<main>
+<section class="hero">
+<div class="wrap">
+<div class="eyebrow">Clase privada</div>
+<h1>Aprende a comunicar con más autoridad, influencia y control.</h1>
+
+<p class="sub">Descubre el sistema que aplicamos con cientos de clientes en situaciones reales.</p>
+
+
+<div class="access-wrap" id="access-area">
+  <button class="access-btn" id="open-form" type="button">ACCEDER GRATIS A LA MASTERCLASS →</button>
+
+  <div id="lead-form-wrap">
+    <div class="form-head">
+      <div class="step-count" id="step-count">Pregunta 1 de 6</div>
+      <div class="progress"><span id="progress-bar"></span></div>
+    </div>
+
+    <form id="lead-form" name="webinar-leads" method="POST" data-netlify="true">
+      <input type="hidden" name="form-name" value="webinar-leads">
+      <input type="hidden" id="submission_id" name="submission_id" value="">
+      <input type="hidden" id="situacion_actual" name="situacion_actual">
+      <input type="hidden" id="que_quiere_mejorar" name="que_quiere_mejorar">
+
+      <div class="form-step active" data-step="1">
+        <h3>¿Cómo te llamas?</h3>
+        <p>Empecemos por lo básico.</p>
+        <label for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" type="text" autocomplete="given-name" placeholder="Tu nombre" required>
+        <div class="field-error">Escribe tu nombre para continuar.</div>
+        <div class="form-actions"><button class="next-btn" type="button">Continuar →</button></div>
+      </div>
+
+      <div class="form-step" data-step="2">
+        <h3>¿A qué te dedicas?</h3>
+        <p>Cuéntanos brevemente cuál es tu actividad profesional.</p>
+        <label for="dedicacion">Profesión / actividad</label>
+        <input id="dedicacion" name="a_que_te_dedicas" type="text" placeholder="Ej. ventas, dirección, emprendimiento..." required>
+        <div class="field-error">Completa este campo para continuar.</div>
+        <div class="form-actions">
+          <button class="back-btn" type="button">← Atrás</button>
+          <button class="next-btn" type="button">Continuar →</button>
+        </div>
+      </div>
+
+      <div class="form-step" data-step="3">
+        <h3>¿Cuál describe mejor tu situación actual?</h3>
+        <p>Elige la opción que más se aproxime a tu caso.</p>
+        <div class="choices" data-target="situacion_actual">
+          <button class="choice" type="button" data-value="Trabajo por cuenta ajena y quiero mejorar cómo comunico en mi entorno profesional.">Trabajo por cuenta ajena y quiero mejorar cómo comunico en mi entorno profesional.</button>
+          <button class="choice" type="button" data-value="Trabajo en ventas o trato directamente con clientes.">Trabajo en ventas o trato directamente con clientes.</button>
+          <button class="choice" type="button" data-value="Lidero un equipo o tengo personas a mi cargo.">Lidero un equipo o tengo personas a mi cargo.</button>
+          <button class="choice" type="button" data-value="Tengo mi propio negocio, proyecto o marca personal.">Tengo mi propio negocio, proyecto o marca personal.</button>
+          <button class="choice" type="button" data-value="Estoy en una etapa de cambio, crecimiento o búsqueda de nuevas oportunidades.">Estoy en una etapa de cambio, crecimiento o búsqueda de nuevas oportunidades.</button>
+        </div>
+        <div class="field-error">Selecciona una opción para continuar.</div>
+        <div class="form-actions"><button class="back-btn" type="button">← Atrás</button></div>
+      </div>
+
+      <div class="form-step" data-step="4">
+        <h3>¿Qué te gustaría mejorar principalmente?</h3>
+        <p>Elige el área que tendría más impacto para ti ahora mismo.</p>
+        <div class="choices" data-target="que_quiere_mejorar">
+          <button class="choice" type="button" data-value="Transmitir más seguridad, autoridad y confianza al comunicar.">Transmitir más seguridad, autoridad y confianza al comunicar.</button>
+          <button class="choice" type="button" data-value="Influir y persuadir mejor sin sonar agresivo ni forzado.">Influir y persuadir mejor sin sonar agresivo ni forzado.</button>
+          <button class="choice" type="button" data-value="Vender mejor, gestionar objeciones y cerrar más.">Vender mejor, gestionar objeciones y cerrar más.</button>
+          <button class="choice" type="button" data-value="Adaptarme mejor a distintos tipos de personas y conversaciones.">Adaptarme mejor a distintos tipos de personas y conversaciones.</button>
+          <button class="choice" type="button" data-value="Expresarme con más claridad y controlar mejor los nervios o la presión.">Expresarme con más claridad y controlar mejor los nervios o la presión.</button>
+        </div>
+        <div class="field-error">Selecciona una opción para continuar.</div>
+        <div class="form-actions"><button class="back-btn" type="button">← Atrás</button></div>
+      </div>
+
+      <div class="form-step" data-step="5">
+        <h3>¿Cuál es tu email?</h3>
+        <p>Lo utilizaremos para identificar tu acceso y poder contactar contigo.</p>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="tu@email.com" required>
+        <div class="field-error">Introduce un email válido.</div>
+        <div class="form-actions">
+          <button class="back-btn" type="button">← Atrás</button>
+          <button class="next-btn" type="button">Continuar →</button>
+        </div>
+      </div>
+
+      <div class="form-step" data-step="6">
+        <h3>¿Cuál es tu número de móvil?</h3>
+        <p>Último paso. Después se desbloquea directamente la masterclass.</p>
+        <label for="telefono_visible">Móvil / WhatsApp</label>
+        <input id="telefono_visible" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="600 000 000" required>
+        <input id="telefono" name="telefono" type="hidden">
+        <input id="telefono_pais" name="telefono_pais" type="hidden">
+        <input id="telefono_prefijo" name="telefono_prefijo" type="hidden">
+        <div class="field-error">Introduce un número de móvil válido. No se admiten teléfonos fijos.</div>
+        <div class="phone-hint">Selecciona tu país y escribe tu móvil. Se guardará con su prefijo internacional.</div>
+        <div class="form-actions">
+          <button class="back-btn" type="button">← Atrás</button>
+          <button class="form-submit" type="submit">DESBLOQUEAR MASTERCLASS →</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="webinar-content">
+
+<div class="stage">
+<div id="video1-wrap" class="player-shell"><wistia-player id="video1" media-id="it5ema1qqm" aspect="1.7777777777777777"></wistia-player></div>
+<div id="video2-wrap" class="player-shell"><wistia-player id="video2" media-id="uzw5xmj4h0" aspect="1.7777777777777777"></wistia-player></div>
+</div>
+<div id="unlock-copy" class="unlock">Ve la clase completa. Al terminar, se desbloqueará la versión que podrás revisar libremente.</div>
+</div>
+
+</div>
+</section>
+<section id="after" class="section">
+<div class="wrap">
+<div class="after-card">
+<h2>¿Quieres que analicemos tu caso?</h2>
+<p>Reserva una sesión gratuita.</p>
+<a class="cta" href="https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion" target="_blank" rel="noopener">RESERVAR SESIÓN GRATUITA →</a>
+<div class="micro">Sesión gratuita · Sin compromiso</div>
+</div>
+</div>
+</section>
+</main>
+<footer>Ignacio Roa · Comunicación e Influencia</footer>
+<script>
+const KEY="webinar_intro_completed_v1";
+const v1=document.getElementById("video1-wrap"),v2=document.getElementById("video2-wrap"),after=document.getElementById("after"),copy=document.getElementById("unlock-copy"),player=document.getElementById("video1");
+function unlock(scroll=true){localStorage.setItem(KEY,"1");v1.style.display="none";v2.style.display="block";after.style.display="block";copy.textContent="Clase desbloqueada. Ahora puedes volver a cualquier parte del vídeo cuando quieras.";if(scroll)setTimeout(()=>v2.scrollIntoView({behavior:"smooth",block:"center"}),250)}
+if(localStorage.getItem(KEY)==="1")unlock(false);
+player.addEventListener("ended",()=>unlock(true));
+</script>
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input/build/js/intlTelInput.min.js"></script>
+<script>
+  const phoneVisible = document.getElementById("telefono_visible");
+  const phoneHidden = document.getElementById("telefono");
+  const phoneCountry = document.getElementById("telefono_pais");
+  const phonePrefix = document.getElementById("telefono_prefijo");
+
+  const iti = window.intlTelInput(phoneVisible, {
+    initialCountry: "es",
+    separateDialCode: true,
+    nationalMode: true,
+    strictMode: true,
+    countrySearch: true,
+    countryOrder: ["es","mx","co","ve","ar","cl","pe","ec","us"],
+
+    // Solo aceptamos móviles. La propia librería incluye automáticamente
+    // FIXED_LINE_OR_MOBILE en países donde no se puede distinguir con certeza.
+    allowedNumberTypes: ["MOBILE"],
+
+    loadUtils: () => import("https://cdn.jsdelivr.net/npm/intl-tel-input/build/js/utils.js")
+  });
+
+  function normalizePhone() {
+    const data = iti.getSelectedCountryData();
+    phoneCountry.value = data.iso2 ? data.iso2.toUpperCase() : "";
+    phonePrefix.value = data.dialCode ? `+${data.dialCode}` : "";
+    const e164 = iti.getNumber();
+    phoneHidden.value = e164 || "";
+    return e164;
+  }
+
+  function phoneIsValid() {
+    normalizePhone();
+
+    try {
+      // allowedNumberTypes:["MOBILE"] ya limita la validación a móviles.
+      // En países donde no se puede distinguir fijo/móvil con certeza,
+      // intl-tel-input acepta FIXED_LINE_OR_MOBILE automáticamente.
+      return iti.isValidNumber();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  phoneVisible.addEventListener("input", () => {
+    normalizePhone();
+    const err = phoneVisible.closest(".form-step").querySelector(".field-error");
+    if (err) err.style.display = "none";
+  });
+  phoneVisible.addEventListener("countrychange", () => {
+    normalizePhone();
+    const err = phoneVisible.closest(".form-step").querySelector(".field-error");
+    if (err) err.style.display = "none";
+  });
+</script>
+
+<script>
+(() => {
+  const GOOGLE_SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzh1bOTGWIBIxu4EeY1kjmBMsvlSLja11cp5WCr0FbW5sP6ivwHlmFs7_AaEVrRarHg/exec";
+  const ACCESS_KEY = "webinar_access_granted_v3";
+
+  const submissionId = document.getElementById("submission_id");
+  if (submissionId && !submissionId.value) {
+    submissionId.value = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  }
+
+  const accessArea = document.getElementById("access-area");
+  const openFormBtn = document.getElementById("open-form");
+  const formWrap = document.getElementById("lead-form-wrap");
+  const form = document.getElementById("lead-form");
+  const webinarContent = document.getElementById("webinar-content");
+  const reserveSection = document.getElementById("after");
+  const steps = [...document.querySelectorAll(".form-step")];
+  const stepCount = document.getElementById("step-count");
+  const progressBar = document.getElementById("progress-bar");
+  let current = 0;
+  let isSubmitting = false;
+
+  function updateStep(i) {
+    current = Math.max(0, Math.min(i, steps.length - 1));
+    steps.forEach((s, idx) => s.classList.toggle("active", idx === current));
+    stepCount.textContent = `Pregunta ${current + 1} de ${steps.length}`;
+    progressBar.style.width = `${((current + 1) / steps.length) * 100}%`;
+  }
+
+  function validInput(step) {
+    const input = step.querySelector("input:not([type=hidden])");
+    const error = step.querySelector(".field-error");
+    if (!input) return true;
+    const ok = input.checkValidity() && input.value.trim() !== "";
+    if (error) error.style.display = ok ? "none" : "block";
+    if (!ok) input.focus();
+    return ok;
+  }
+
+  function showWebinar() {
+    localStorage.setItem(ACCESS_KEY, "1");
+    accessArea.style.display = "none";
+    webinarContent.style.display = "block";
+    if (reserveSection) reserveSection.style.display = "block";
+    setTimeout(() => webinarContent.scrollIntoView({behavior:"smooth", block:"start"}), 120);
+  }
+
+  openFormBtn.addEventListener("click", () => {
+    openFormBtn.style.display = "none";
+    formWrap.style.display = "block";
+    updateStep(0);
+  });
+
+  document.querySelectorAll(".next-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (validInput(btn.closest(".form-step"))) updateStep(current + 1);
+    });
+  });
+
+  document.querySelectorAll(".back-btn").forEach(btn => {
+    btn.addEventListener("click", () => updateStep(current - 1));
+  });
+
+  document.querySelectorAll(".choices").forEach(group => {
+    group.querySelectorAll(".choice").forEach(choice => {
+      choice.addEventListener("click", () => {
+        group.querySelectorAll(".choice").forEach(c => c.classList.remove("selected"));
+        choice.classList.add("selected");
+        document.getElementById(group.dataset.target).value = choice.dataset.value;
+        const err = group.parentElement.querySelector(".field-error");
+        if (err) err.style.display = "none";
+        setTimeout(() => updateStep(current + 1), 160);
+      });
+    });
+  });
+
+  form.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT" && current < steps.length - 1) {
+      e.preventDefault();
+      if (validInput(steps[current])) updateStep(current + 1);
+    }
+  });
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    if (isSubmitting) return;
+
+    const phone = document.getElementById("telefono_visible");
+    const err = steps[5].querySelector(".field-error");
+
+    try { if (iti.promise) await iti.promise; } catch (_) {}
+
+    if (!phone.value.trim() || !phoneIsValid()) {
+      if (err) err.style.display = "block";
+      phone.focus();
+      return;
+    }
+
+    if (err) err.style.display = "none";
+    normalizePhone();
+
+    isSubmitting = true;
+    const submitBtn = form.querySelector(".form-submit");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "DESBLOQUEANDO...";
+    }
+
+    const data = new FormData(form);
+    const encoded = new URLSearchParams(data).toString();
+
+    // 1) Google Sheets (Apps Script)
+    try {
+      await fetch(GOOGLE_SHEETS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {"Content-Type":"application/x-www-form-urlencoded"},
+        body: encoded
+      });
+    } catch (err) {
+      console.warn("Google Sheets submission failed", err);
+    }
+
+    // 2) Netlify Forms como copia de seguridad
+    try {
+      await fetch("/", {
+        method: "POST",
+        headers: {"Content-Type":"application/x-www-form-urlencoded"},
+        body: encoded
+      });
+    } catch (err) {
+      console.warn("Netlify backup submission failed", err);
+    }
+
+    showWebinar();
+  });
+
+  if (localStorage.getItem(ACCESS_KEY) === "1") {
+    showWebinar();
+  } else {
+    if (reserveSection) reserveSection.style.display = "none";
+    updateStep(0);
+  }
+})();
+</script>
+
+</body>
+</html>
