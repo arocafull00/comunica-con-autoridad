@@ -27,4 +27,4 @@ async function Shell({ children }: { children: React.ReactNode }) {
     <div className="admin-workspace"><main id="admin-content" className="admin-content" tabIndex={-1}>{children}</main></div>
   </div>;
 }
-export default function Layout({ children }: { children: React.ReactNode }) { return <Suspense fallback={<div className="admin-loading"><AdminLoading label="Comprobando acceso…" /></div>}><Shell>{children}</Shell></Suspense>; }
+export default function Layout({ children }: { children: React.ReactNode }) { return <Suspense fallback={<div className="admin-loading"><AdminLoading /></div>}><Shell>{children}</Shell></Suspense>; }

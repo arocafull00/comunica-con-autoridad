@@ -12,4 +12,4 @@ async function Account() {
     </div>
   </div>;
 }
-export default function Page() { return <Suspense fallback={<AdminLoading label="Cargando cuenta…" />}><Account /></Suspense>; }
+export default function Page() { return <Suspense fallback={<AdminLoading />}><Account /></Suspense>; }

@@ -69,4 +69,4 @@ async function Summary({ searchParams }: { searchParams: Promise<{ start?: strin
   </div>;
 }
 
-export default function Page({ searchParams }: { searchParams: Promise<{ start?: string; end?: string }> }) { return <Suspense fallback={<AdminLoading label="Cargando estadísticas…" />}><Summary searchParams={searchParams} /></Suspense>; }
+export default function Page({ searchParams }: { searchParams: Promise<{ start?: string; end?: string }> }) { return <Suspense fallback={<AdminLoading />}><Summary searchParams={searchParams} /></Suspense>; }

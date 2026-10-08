@@ -295,6 +295,11 @@
 .admin-page .admin-table th:first-child { width: 38%; }
 .admin-page .admin-table th:nth-child(2) { width: 37%; }
 .admin-page .admin-table th:last-child { width: 25%; }
+.admin-contacts .admin-table th:first-child { width: 18%; }
+.admin-contacts .admin-table th:nth-child(2) { width: 28%; }
+.admin-contacts .admin-table th:nth-child(3) { width: 17%; }
+.admin-contacts .admin-table th:nth-child(4) { width: 22%; }
+.admin-contacts .admin-table th:last-child { width: 15%; }
 .admin-page .admin-table td a:first-child { margin-top: 0; }
 .admin-page .admin-table .admin-muted { margin: 6px 0 0; font-size: 12px; }
 .admin-page .admin-table details { margin-top: 8px; }

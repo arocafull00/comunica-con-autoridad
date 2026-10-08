@@ -30,4 +30,4 @@ async function Calls() {
   </div>;
 }
 
-export default function Page() { return <Suspense fallback={<AdminLoading label="Cargando llamadas…" />}><Calls /></Suspense>; }
+export default function Page() { return <Suspense fallback={<AdminLoading />}><Calls /></Suspense>; }

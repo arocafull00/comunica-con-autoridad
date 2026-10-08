@@ -20,4 +20,4 @@ async function Whatsapp() {
     <section><div className="admin-panel-heading"><h2>Historial de configuración</h2><span>Últimos 10 cambios</span></div>{audit.data?.length ? <ul className="admin-list">{audit.data.map((entry) => <li key={entry.id}><div><strong>{entry.details.enabled ? "Envíos activados" : "Envíos pausados"}</strong><p>Administrador: {entry.actor_email ?? "Cuenta eliminada"}</p></div><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString("es-ES", { timeZone: "Europe/Madrid" })}</time></li>)}</ul> : <p className="admin-context-note">Todavía no hay cambios registrados.</p>}</section></div>
   </div>;
 }
-export default function Page() { return <Suspense fallback={<AdminLoading label="Cargando WhatsApp…" />}><Whatsapp /></Suspense>; }
+export default function Page() { return <Suspense fallback={<AdminLoading />}><Whatsapp /></Suspense>; }
