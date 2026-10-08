@@ -30,6 +30,8 @@
 .webinar-page .cta { display: inline-flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 26px; border-radius: 12px; background: linear-gradient(180deg,var(--copper2),var(--copper)); color: #111; text-decoration: none; font-weight: 850; box-shadow: 0 12px 34px rgba(184,111,54,.24); transition: .2s ease; }
 .webinar-page .cta:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .webinar-page .micro { margin-top: 14px; color: #9d968d; font-size: 15px; font-weight: 600; }
+.webinar-page .another-registration-btn { display: block; width: 100%; margin: 16px 0 0; padding: 0; border: 0; background: transparent; color: #9d968d; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: none; }
+.webinar-page .another-registration-btn:hover { color: #cfc7bd; }
 .webinar-page footer { padding: 22px 0 30px; border-top: 1px solid var(--line); color: #77716a; font-size: 12px; text-align: center; }
 .webinar-page .access-wrap { max-width: 760px; margin: 30px auto 0; }
 .webinar-page button { width: auto; display: inline-block; line-height: normal; font-family: Arial,sans-serif; }

@@ -1,0 +1,28 @@
+{
+  "templates": [
+    {
+      "step": "email_1",
+      "file": "email-1-claridad.html",
+      "id": "42827b24-7187-4518-bc04-41e804a1a357",
+      "alias": "email-1-claridad"
+    },
+    {
+      "step": "email_2",
+      "file": "email-2-casos.html",
+      "id": "63a97b10-d130-4b8e-a614-ac69262b6d55",
+      "alias": "email-2-casos"
+    },
+    {
+      "step": "email_3",
+      "file": "email-3-empezar.html",
+      "id": "8bb6b2b1-154c-4b6a-a102-56e5080fa590",
+      "alias": "email-3-empezar"
+    },
+    {
+      "step": "email_4",
+      "file": "email-4-resultados.html",
+      "id": "9e868249-86bf-4647-a0c1-5fa0a5e6025c",
+      "alias": "email-4-resultados"
+    }
+  ]
+}

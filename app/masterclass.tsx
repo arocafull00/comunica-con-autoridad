@@ -13,6 +13,9 @@ function readFlag(key: string) {
 function writeFlag(key: string) {
   try { localStorage.setItem(key, "1"); } catch { /* Access still works when storage is unavailable. */ }
 }
+function clearFlag(key: string) {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
 
 export function Masterclass() {
   const [access, setAccess] = useState(false);
@@ -22,6 +25,7 @@ export function Masterclass() {
   const intro = useRef<HTMLElement>(null);
   const replay = useRef<HTMLDivElement>(null);
   const webinar = useRef<HTMLDivElement>(null);
+  const accessArea = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Read storage after hydration; do not store any contact details in the browser.
@@ -54,6 +58,17 @@ export function Masterclass() {
     }));
   }
 
+  function startAnotherRegistration() {
+    clearFlag(ACCESS_KEY);
+    clearFlag(COMPLETED_KEY);
+    setAccess(false);
+    setCompleted(false);
+    setFormOpen(true);
+    requestAnimationFrame(() => accessArea.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start",
+    }));
+  }
+
   return (
     <main>
       <section className="hero">
@@ -61,7 +76,7 @@ export function Masterclass() {
           <div className="eyebrow">Clase privada</div>
           <h1>Aprende a comunicar con más autoridad, influencia y control.</h1>
           <p className="sub">Descubre el sistema que aplicamos con cientos de clientes en situaciones reales.</p>
-          {!access ? <div className="access-wrap" id="access-area">
+          {!access ? <div className="access-wrap" id="access-area" ref={accessArea}>
             {!formOpen ? <button className="access-btn" id="open-form" type="button" onClick={() => setFormOpen(true)}>ACCEDER GRATIS A LA MASTERCLASS →</button>
               : <LeadForm onSuccess={grantAccess} />}
           </div> : null}
@@ -92,6 +107,7 @@ export function Masterclass() {
           <p>Reserva una sesión gratuita.</p>
           <a className="cta" href="https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion" target="_blank" rel="noopener noreferrer">RESERVAR SESIÓN GRATUITA →</a>
           <div className="micro">Sesión gratuita · Sin compromiso</div>
+          <button className="another-registration-btn" type="button" onClick={startAnotherRegistration}>Realizar otra inscripción</button>
         </div></div>
       </section>
     </main>
