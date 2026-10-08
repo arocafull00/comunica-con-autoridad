@@ -22,8 +22,8 @@ export function DailyChart({ daily, start, end }: { daily: Day[]; start: string;
     <ChartContainer config={dailyConfig} className="admin-chart" initialDimension={{ width: 0, height: 208 }} aria-label="Gráfica diaria de solicitudes y correos únicos">
       <BarChart accessibilityLayer data={days} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis dataKey="day" tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} tickFormatter={shortDate} tickLine={false} axisLine={false} minTickGap={28} tickMargin={10} />
-        <YAxis allowDecimals={false} tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} tickLine={false} axisLine={false} width={44} domain={[0, (max: number) => Math.max(1, Math.ceil(max))]} />
+        <XAxis dataKey="day" tick={{ fill: "var(--muted-foreground)", fontSize: 14 }} tickFormatter={shortDate} tickLine={false} axisLine={false} minTickGap={32} tickMargin={10} />
+        <YAxis allowDecimals={false} tick={{ fill: "var(--muted-foreground)", fontSize: 14 }} tickLine={false} axisLine={false} width={44} domain={[0, (max: number) => Math.max(1, Math.ceil(max))]} />
         <ChartTooltip content={<ChartTooltipContent className="admin-chart-tooltip" labelFormatter={(_, payload) => shortDate(payload[0].payload.day)} />} />
         <ChartLegend content={<ChartLegendContent />} />
         <Bar dataKey="leads" fill="var(--color-leads)" radius={[3, 3, 0, 0]} maxBarSize={24} isAnimationActive={false} />

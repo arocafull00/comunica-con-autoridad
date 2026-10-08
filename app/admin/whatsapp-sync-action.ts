@@ -24,6 +24,6 @@ export async function syncWhatsappTemplates(_previous: ActionState): Promise<Act
     }
     if (!Number.isInteger(result?.count) || result.count < 0 || result.count > 1000) return { message: "No se pudo confirmar la sincronización. Recarga la página." };
     revalidatePath("/admin/whatsapp");
-    return { message: result.count === 0 ? "Sincronización completada. No hay plantillas aprobadas compatibles en Meta." : `${result.count} ${result.count === 1 ? "plantilla aprobada sincronizada" : "plantillas aprobadas sincronizadas"}.`, success: true };
+    return { message: result.count === 0 ? "Sincronización completada. No hay plantillas en Meta." : `${result.count} ${result.count === 1 ? "plantilla sincronizada" : "plantillas sincronizadas"}.`, success: true };
   } catch { return { message: "No se pudo confirmar la sincronización. Recarga la página antes de volver a intentarlo." }; }
 }

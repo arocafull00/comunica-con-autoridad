@@ -28,7 +28,7 @@ function fixture({ active = true, invalidUser = false, metaFailure = false, save
       if (metaFailure || (failLaterPage && metaCalls === 2)) return Response.json({ error: "private-meta-token" }, { status: 403 });
       if (metaCalls === 1) return Response.json({ data: [], paging: { next: "https://attacker.invalid", cursors: { after: "cursor" } } });
       assert.equal(url.searchParams.get("after"), "cursor");
-      return Response.json({ data: empty ? [] : [template, { ...template, status: "PENDING" }, { ...template, components: [...template.components, { type: "HEADER" }] }] });
+      return Response.json({ data: empty ? [] : [template, { ...template, name: "pending", status: "PENDING" }, { ...template, name: "with_header", components: [...template.components, { type: "HEADER" }] }] });
     }
     assert.equal(url.pathname, "/rest/v1/rpc/sync_whatsapp_templates");
     assert.equal(init?.method, "POST");
@@ -50,12 +50,16 @@ Deno.test("catalog sync rejects anonymous, invalid and revoked users before cont
   }
 });
 
-Deno.test("catalog sync paginates against Meta and atomically stores only compatible templates", async () => {
+Deno.test("catalog sync paginates against Meta and stores every template with status and send eligibility", async () => {
   const test = fixture();
   const response = await test.handler(request());
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { count: 1 });
-  assert.deepEqual(test.writes, [{ p_templates: [{ name: template.name, language: template.language, body: template.components[0].text }] }]);
+  assert.deepEqual(await response.json(), { count: 3 });
+  assert.deepEqual(test.writes, [{ p_templates: [
+    { name: template.name, language: template.language, body: template.components[0].text, meta_status: "APPROVED", approved: true, components: template.components },
+    { name: "pending", language: "es", body: template.components[0].text, meta_status: "PENDING", approved: false, components: template.components },
+    { name: "with_header", language: "es", body: template.components[0].text, meta_status: "APPROVED", approved: false, components: [...template.components, { type: "HEADER" }] },
+  ] }]);
 });
 
 Deno.test("failed initial or later Meta pages leave the catalog intact and do not leak credentials", async () => {

@@ -8,17 +8,25 @@ const help = {
     label: "Contacto",
     descriptions: [
       "Es el email con el que la persona ha reservado en Cal.com.",
+      "Pulsa el email para consultar los datos del contacto y su formulario asociado.",
       "Sin formulario asociado a este email: no encontramos una inscripción a la masterclass con el mismo email. Puede haber reservado directamente desde el enlace de Cal.com sin completar el formulario, o haber usado otro email al completarlo.",
       "Si completa el formulario con ese mismo email, la reserva se vincula automáticamente. Hasta entonces, no se envían los mensajes automáticos de seguimiento de esa llamada.",
     ],
   },
-  session: {
-    label: "Sesión",
+  date: {
+    label: "Fecha",
     descriptions: [
-      "La fecha y la hora corresponden a la zona horaria de la persona que reservó, indicada debajo.",
-      "Abrir enlace de la llamada: Cal.com ha facilitado el enlace para entrar a la sesión. Enlace pendiente: todavía no hemos recibido ese enlace.",
+      "La fecha corresponde a la zona horaria de la persona que reservó. Puedes consultar esa zona horaria al abrir el contacto.",
       "Aquí aparecen las próximas reservas vigentes recibidas de Cal.com. Para cambiar la fecha o cancelar una llamada, usa Gestionar reservas en Cal.com.",
     ],
+  },
+  time: {
+    label: "Hora",
+    descriptions: ["La hora corresponde a la zona horaria de la persona que reservó. Puedes consultar esa zona horaria al abrir el contacto."],
+  },
+  meeting: {
+    label: "Enlace",
+    descriptions: ["Abrir llamada: Cal.com ha facilitado el enlace para entrar a la sesión. Enlace pendiente: todavía no hemos recibido ese enlace."],
   },
   confirmation: {
     label: "Confirmación",

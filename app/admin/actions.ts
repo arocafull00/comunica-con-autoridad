@@ -72,13 +72,20 @@ export async function changePassword(_previous: ActionState, form: FormData): Pr
 }
 export async function saveWhatsappSettings(_previous: ActionState, form: FormData): Promise<ActionState> {
   const { db, user } = await requireAdmin();
-  const input = settingsSchema.safeParse({ revision: form.get("revision"), enabled: form.get("enabled") === "on", templateId: form.get("templateId") || null });
-  if (!input.success) return { message: "La configuración no es válida." };
+  const intent = form.get("intent");
+  if (intent !== "template" && intent !== "delivery") return { message: "La acción no es válida." };
+  if (intent === "delivery" && !["on", "off"].includes(String(form.get("enabled")))) return { message: "El estado no es válido." };
   try {
+    // Change only the setting requested by the form. The RPC checks the posted
+    // revision atomically so simultaneous administrators cannot overwrite changes.
+    const current = await db.from("whatsapp_settings").select("enabled,template_id").single();
+    if (current.error || !current.data) throw new Error("Settings unavailable");
+    const input = settingsSchema.safeParse({ revision: form.get("revision"), enabled: intent === "delivery" ? form.get("enabled") === "on" : current.data.enabled, templateId: intent === "template" ? form.get("templateId") || null : current.data.template_id });
+    if (!input.success || (intent === "template" && !input.data.templateId)) return { message: "Selecciona una plantilla aprobada." };
     const { data, error } = await db.rpc("set_whatsapp_settings", { p_actor: user.id, p_revision: input.data.revision, p_enabled: input.data.enabled, p_template_id: input.data.templateId });
     if (error) return { message: "No se pudo guardar. Comprueba que la plantilla está aprobada y vuelve a intentarlo." };
     if (data.outcome === "conflict") return { message: "Otro administrador cambió la configuración. Recarga la página antes de guardar." };
   } catch { return { message: "No se pudo guardar. Inténtalo de nuevo." }; }
   revalidatePath("/admin/whatsapp");
-  return { message: "Configuración guardada.", success: true };
+  return { message: intent === "template" ? "Plantilla guardada." : form.get("enabled") === "on" ? "Envíos de bienvenida activados." : "Envíos de bienvenida desactivados.", success: true };
 }

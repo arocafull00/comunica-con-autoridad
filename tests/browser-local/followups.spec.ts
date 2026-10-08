@@ -54,7 +54,7 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
   const auth=createClient(status.API_URL,status.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
   const db=new pg.Client({connectionString:"postgresql://postgres:postgres@127.0.0.1:55322/postgres"});await db.connect();
   const email=`calls-admin-${randomUUID()}@example.com`;const contact=`calls-contact-${randomUUID()}@example.com`;const uid=randomUUID();
-  const password=`Local-${randomBytes(18).toString("hex")}`;let adminId:string|undefined;
+  const password=`Local-${randomBytes(18).toString("hex")}`;let adminId:string|undefined;let leadId:string|undefined;
   try{
     const created=await auth.auth.admin.createUser({email,password,email_confirm:true});
     if(created.error)throw new Error("Cannot create local admin");adminId=created.data.user.id;
@@ -67,15 +67,21 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
     await page.getByRole("link",{name:"Llamadas",exact:true}).click();
     await expect(page.getByRole("heading",{name:"Llamadas",exact:true})).toBeVisible();
     const row=page.getByRole("row").filter({hasText:contact});await expect(row).toContainText("Pendiente de revisión");
-    await expect(row).toContainText("Sin formulario asociado a este email.");
+    await expect(row.getByRole("cell")).toHaveCount(5);
+    await expect(row).not.toContainText("Sin formulario asociado a este email.");
+    await expect(row).not.toContainText("Europe/Madrid");
+    await expect(row.getByRole("link", { name: "Abrir llamada", exact: true })).toHaveAttribute("href", "https://meet.google.com/local-test");
+    expect(await row.getByRole("cell").first().evaluate(element => getComputedStyle(element).fontSize)).toBe("15px");
     for(const width of [1280,768,390,320]){
       await page.setViewportSize({width,height:900});
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
       const labels = width > 800 ? page.getByRole("columnheader") : row;
       for (const [column, explanation] of [
         ["contacto", "Puede haber reservado directamente desde el enlace de Cal.com"],
-        ["sesión", "zona horaria de la persona que reservó"],
+        ["fecha", "zona horaria de la persona que reservó"],
+        ["hora", "zona horaria de la persona que reservó"],
         ["confirmación", "La falta de confirmación no cancela la reserva automáticamente"],
+        ["enlace", "Cal.com ha facilitado el enlace para entrar a la sesión"],
       ]) {
         const trigger = labels.getByRole("button", { name: `Información sobre ${column}`, exact: true });
         await trigger.focus();
@@ -97,12 +103,43 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
       await trigger.click();
       await page.getByRole("button", { name: "Cerrar información", exact: true }).click();
       await expect(page.getByRole("dialog")).toBeHidden();
+      const contactTrigger = row.getByRole("button", { name: `Ver contacto: ${contact}`, exact: true });
+      await contactTrigger.focus();
+      await page.keyboard.press("Enter");
+      const contactDialog = page.getByRole("dialog", { name: "Información del contacto", exact: true });
+      await expect(contactDialog).toBeVisible();
+      await expect(contactDialog).toContainText("Sin formulario asociado a este email.");
+      await expect(contactDialog).toContainText("Europe/Madrid");
+      await expect(contactDialog.getByRole("link", { name: contact, exact: true })).toHaveAttribute("href", `mailto:${contact}`);
+      const contactBounds = await contactDialog.boundingBox();
+      expect(contactBounds!.x).toBeGreaterThanOrEqual(0);
+      expect(contactBounds!.x + contactBounds!.width).toBeLessThanOrEqual(width);
+      expect(contactBounds!.y).toBeGreaterThanOrEqual(0);
+      expect(contactBounds!.y + contactBounds!.height).toBeLessThanOrEqual(900);
+      await page.screenshot({ path: `test-results/calls-contact-${width}.png`, fullPage: true });
+      await page.keyboard.press("Escape");
+      await expect(contactDialog).toBeHidden();
+      await expect(contactTrigger).toBeFocused();
+      await contactTrigger.click();
+      await contactDialog.getByRole("button", { name: "Cerrar contacto", exact: true }).click();
+      await expect(contactDialog).toBeHidden();
       await page.screenshot({path:`test-results/calls-${width}.png`,fullPage:true});
     }
     await db.query("update public.call_bookings set confirmed_at=now() where uid=$1",[uid]);await page.reload();
     await expect(page.getByRole("row").filter({hasText:contact})).toContainText("CONFIRMO recibido");
+    const submissionId = randomUUID();
+    leadId = (await db.query("insert into public.leads(name,email,phone,profession,situation,goal,idempotency_key) values('Contacto vinculado',$1,'+34612345678','Docente','Hablar en público','Explicar con claridad',$2) returning id", [contact, submissionId])).rows[0].id;
+    await db.query("select public.register_webinar($1)", [submissionId]);
+    await page.reload();
+    await page.getByRole("button", { name: `Ver contacto: ${contact}`, exact: true }).click();
+    const linkedDialog = page.getByRole("dialog", { name: "Información del contacto", exact: true });
+    for (const value of ["Contacto vinculado", "+34612345678", "Formulario asociado a este email.", "Docente", "Hablar en público", "Explicar con claridad"]) {
+      await expect(linkedDialog).toContainText(value);
+    }
+    await expect(linkedDialog).not.toContainText("Sin formulario asociado");
   }finally{
     await db.query("delete from public.call_bookings where uid=$1",[uid]);
+    if(leadId)await db.query("delete from public.leads where id=$1",[leadId]);
     if(adminId)await auth.auth.admin.deleteUser(adminId);await db.end();
   }
 });

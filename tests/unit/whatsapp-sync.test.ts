@@ -21,7 +21,7 @@ describe("dashboard template sync", () => {
   });
   it("sends the verified user's token to the function and refreshes the catalog", async () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json({ count: 2 })); vi.stubGlobal("fetch", fetcher);
-    expect(await syncWhatsappTemplates({ message: "" })).toEqual({ success: true, message: "2 plantillas aprobadas sincronizadas." });
+    expect(await syncWhatsappTemplates({ message: "" })).toEqual({ success: true, message: "2 plantillas sincronizadas." });
     expect(fetcher).toHaveBeenCalledWith("https://db.example.com/functions/v1/sync-whatsapp-templates", expect.objectContaining({ method: "POST", cache: "no-store", headers: { apikey: "public-key", Authorization: "Bearer user-token" } }));
     expect(revalidatePath).toHaveBeenCalledWith("/admin/whatsapp");
   });

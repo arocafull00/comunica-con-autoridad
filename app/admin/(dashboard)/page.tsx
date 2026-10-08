@@ -7,8 +7,23 @@ import { dateRange } from "@/lib/admin/validation";
 import { DailyChart } from "../charts";
 import { DateRangeFilter } from "../date-range-filter";
 import { AdminLoading } from "../loading-state";
+import { MetricComparison } from "../metric-comparison";
+import { conversionRate } from "@/lib/admin/comparison";
 
 const format = (value: number) => new Intl.NumberFormat("es-ES").format(value);
+
+function Metric({ label, current, previous, days, rate = false }: {
+  label: string; current: number | null; previous: number | null; days: number; rate?: boolean;
+}) {
+  const value = current === null ? "—" : rate
+    ? `${new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(current)} %`
+    : format(current);
+  return <>
+    <dt>{label}</dt>
+    <dd className={current === null ? "admin-metric-unavailable" : undefined} aria-label={current === null ? "No disponible" : undefined}>{value}</dd>
+    <dd className="admin-metric-comparison"><MetricComparison label={label} current={current} previous={previous} days={days} rate={rate} /></dd>
+  </>;
+}
 
 function CampaignRows({ campaigns, max }: { campaigns: LeadMetrics["campaigns"]; max: number }) {
   return <ul className="admin-list admin-campaigns">{campaigns.map((campaign, i) => <li key={i}>
@@ -27,8 +42,9 @@ async function Summary({ searchParams }: { searchParams: Promise<{ start?: strin
   const params = await searchParams;
   const range = dateRange(params.start, params.end);
   const defaultRange = dateRange();
-  const { metrics, traffic } = await getDashboard(range);
-  const conversion = traffic.available && traffic.visitors > 0 ? `${(metrics.leads / traffic.visitors * 100).toFixed(1)} %` : null;
+  const { metrics, traffic, previous, comparison } = await getDashboard(range);
+  const conversion = conversionRate(metrics.leads, traffic.available ? traffic.visitors : null);
+  const previousConversion = previous.metrics ? conversionRate(previous.metrics.leads, previous.traffic.available ? previous.traffic.visitors : null) : null;
   const campaigns = [...metrics.campaigns].sort((a, b) => b.leads - a.leads);
   const campaignMax = campaigns[0]?.leads ?? 0;
   return <div className="admin-summary">
@@ -38,13 +54,22 @@ async function Summary({ searchParams }: { searchParams: Promise<{ start?: strin
     </div>
     {range.error ? <p role="alert" className="admin-error">{range.error} Se muestra el período predeterminado.</p> : null}
 
-    <section className="admin-overview" aria-label="Métricas de captación">
-      <dl className="admin-overview-stats">
-        <div className="admin-metric-primary"><dt>Solicitudes</dt><dd>{format(metrics.leads)}</dd></div>
-        <div><dt>Correos únicos</dt><dd>{format(metrics.unique_emails)}</dd></div>
-        <div><dt>Consentimientos WhatsApp</dt><dd>{format(metrics.whatsapp_consents)}</dd></div>
-        <div><dt>Conversión orientativa</dt><dd className={conversion === null ? "admin-metric-unavailable" : undefined} aria-label={conversion === null ? "No disponible" : undefined}>{conversion ?? "—"}</dd></div>
-      </dl>
+    <section className="admin-overview" aria-label="Métricas del período">
+      <div className="admin-bento" key={`${range.start}-${range.end}`}>
+        <section className="admin-bento-traffic" aria-labelledby="traffic-heading">
+          <div className="admin-traffic-heading"><h2 id="traffic-heading">Tráfico de la web</h2><span>Vercel Analytics</span></div>
+          <dl className="admin-bento-traffic-stats">
+            <div className="admin-bento-visitors"><Metric label="Visitantes" current={traffic.available ? traffic.visitors : null} previous={previous.traffic.available ? previous.traffic.visitors : null} days={comparison.days} /></div>
+            <div className="admin-bento-pageviews"><Metric label="Páginas vistas" current={traffic.available ? traffic.pageviews : null} previous={previous.traffic.available ? previous.traffic.pageviews : null} days={comparison.days} /></div>
+          </dl>
+          {!traffic.available ? <p role="status" className="admin-traffic-status">{traffic.reason}</p> : null}
+        </section>
+        <dl className="admin-bento-emails"><Metric label="Correos únicos" current={metrics.unique_emails} previous={previous.metrics?.unique_emails ?? null} days={comparison.days} /></dl>
+        <dl className="admin-bento-requests"><Metric label="Solicitudes" current={metrics.leads} previous={previous.metrics?.leads ?? null} days={comparison.days} /></dl>
+        <dl className="admin-bento-consents"><Metric label="Consentimientos WhatsApp" current={metrics.whatsapp_consents} previous={previous.metrics?.whatsapp_consents ?? null} days={comparison.days} /></dl>
+        <dl className="admin-bento-conversion"><Metric label="Conversión orientativa" current={conversion} previous={previousConversion} days={comparison.days} rate /></dl>
+      </div>
+      <div className="admin-overview-note"><span>Pulsa una variación para ver el cambio en porcentaje o en cifras.</span><details className="admin-chart-note admin-metric-help"><summary>Cómo se calculan estos datos</summary><p>Se compara el período seleccionado con los {comparison.days} días inmediatamente anteriores. Correos únicos cuenta las direcciones distintas en cada período, no solo direcciones registradas por primera vez. Conversión: solicitudes / visitantes; su diferencia absoluta se expresa en puntos porcentuales. Una persona puede enviar varias solicitudes. Las fechas incluyen ambos días y usan la hora de Madrid. Sin datos medidos no hay comparación; con una base anterior de cero, solo se puede calcular la diferencia absoluta.</p></details></div>
     </section>
 
     <div className="admin-summary-reports">
@@ -61,12 +86,6 @@ async function Summary({ searchParams }: { searchParams: Promise<{ start?: strin
       </section>
     </div>
 
-    <section className="admin-summary-traffic" aria-labelledby="traffic-heading">
-      <div className="admin-traffic-heading"><h2 id="traffic-heading">Tráfico de la web</h2><span>Vercel Analytics</span></div>
-      <dl className="admin-traffic-stats">{[["Visitantes", traffic.available ? format(traffic.visitors) : null], ["Páginas vistas", traffic.available ? format(traffic.pageviews) : null]].map(([name, value]) => <div key={name}><dt>{name}</dt><dd className={value === null ? "admin-metric-unavailable" : undefined} aria-label={value === null ? "No disponible" : undefined}>{value ?? "—"}</dd></div>)}</dl>
-      {!traffic.available ? <p role="status" className="admin-traffic-status">Vercel Analytics: {traffic.reason}</p> : null}
-      <details className="admin-chart-note admin-metric-help"><summary>Cómo se calculan estos datos</summary><p>Conversión: solicitudes / visitantes. Una persona puede enviar varias solicitudes. Los correos únicos no equivalen necesariamente a personas únicas. Las fechas incluyen ambos días y usan la hora de Madrid. El tráfico sin medir se muestra como no disponible.</p></details>
-    </section>
   </div>;
 }
 

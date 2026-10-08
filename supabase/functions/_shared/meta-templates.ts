@@ -2,16 +2,21 @@ type MetaTemplate = {
   name?: string; language?: string; status?: string; parameter_format?: string;
   components?: { type?: string; text?: string }[];
 };
-export type ApprovedTemplate = { name: string; language: string; body: string };
+export type CatalogTemplate = { name: string; language: string; body: string; meta_status: string; approved: boolean; components: NonNullable<MetaTemplate["components"]> };
 
 // The welcome worker supplies exactly one positional name parameter, and no media or buttons.
-export function compatibleTemplates(templates: MetaTemplate[]): ApprovedTemplate[] {
-  return templates.filter((template) => template?.status === "APPROVED" &&
-    /^[a-z0-9_]{1,512}$/.test(template.name ?? "") && /^[a-z]{2,3}(?:_[A-Z]{2})?$/.test(template.language ?? "") &&
-    template.parameter_format !== "NAMED" && Array.isArray(template.components) && template.components.length === 1 && template.components[0]?.type === "BODY" &&
-    typeof template.components[0].text === "string" &&
-    JSON.stringify(template.components[0].text.match(/\{\{[^}]+\}\}/g)) === JSON.stringify(["{{1}}"])
-  ).map((template) => ({ name: template.name!, language: template.language!, body: template.components![0].text! }));
+export function catalogTemplates(templates: MetaTemplate[]): CatalogTemplate[] {
+  return templates.map((template) => {
+    if (!template || !/^[a-z0-9_]{1,512}$/.test(template.name ?? "") || !/^[a-z]{2,3}(?:_[A-Z]{2})?$/.test(template.language ?? "") ||
+      !/^[A-Z_]{1,64}$/.test(template.status ?? "") || !Array.isArray(template.components)) throw new Error("Unexpected Meta template");
+    const body = template.components.find((component) => component?.type === "BODY")?.text ?? "";
+    if (typeof body !== "string") throw new Error("Unexpected Meta template body");
+    // `approved` retains the existing worker contract: approved AND usable for welcome sends.
+    const approved = template.status === "APPROVED" && template.parameter_format !== "NAMED" &&
+      template.components.length === 1 && template.components[0]?.type === "BODY" &&
+      JSON.stringify(body.match(/\{\{[^}]+\}\}/g)) === JSON.stringify(["{{1}}"]);
+    return { name: template.name!, language: template.language!, body, meta_status: template.status!, approved, components: template.components };
+  });
 }
 
 export async function fetchTemplates({ token, wabaId, version }: { token: string; wabaId: string; version: string }, fetcher: typeof fetch = fetch) {
@@ -29,10 +34,9 @@ export async function fetchTemplates({ token, wabaId, version }: { token: string
     const body = await response.json();
     if (!Array.isArray(body.data)) throw new Error("Unexpected Meta catalog response");
     all.push(...body.data);
+    if (all.length > 1000) throw new Error("Catalog too large");
     if (!body.paging?.next) {
-      const templates = compatibleTemplates(all);
-      if (templates.length > 1000) throw new Error("Catalog too large");
-      return templates;
+      return catalogTemplates(all);
     }
     after = body.paging.cursors?.after;
     if (typeof after !== "string" || !after) throw new Error("Missing catalog cursor");

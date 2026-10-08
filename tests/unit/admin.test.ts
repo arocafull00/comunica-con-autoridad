@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dateRange, passwordSchema, settingsSchema } from "../../lib/admin/validation";
 import { madridMidnight, queryTraffic } from "../../lib/admin/traffic";
-import { compatibleTemplates, fetchTemplates } from "../../supabase/functions/_shared/meta-templates";
+import { catalogTemplates, fetchTemplates } from "../../supabase/functions/_shared/meta-templates";
 
 describe("admin dates and configuration", () => {
   it("uses Madrid calendar days even when UTC is the previous day", () => {
@@ -48,11 +48,19 @@ describe("private Vercel traffic query", () => {
     }
   });
 });
-describe("approved WhatsApp catalog", () => {
+describe("complete WhatsApp catalog", () => {
   const template = { name: "welcome", language: "es", status: "APPROVED", components: [{ type: "BODY", text: "Hola {{1}}, recibimos tu solicitud." }] };
-  it("excludes unapproved, named, multiple-parameter and header templates", () => {
-    const input = [template, { ...template, status: "PENDING" }, { ...template, components: [{ type: "BODY", text: "Hola {{1}} {{2}}" }] }, { ...template, components: [{ type: "BODY", text: "Hola {{name}}" }] }, { ...template, components: [...template.components, { type: "HEADER", text: "Cabecera" }] }];
-    expect(compatibleTemplates(input)).toEqual([{ name: "welcome", language: "es", body: template.components[0].text }]);
+  it("retains every status and format while limiting welcome sends to compatible approved templates", () => {
+    const input = [template, { ...template, status: "PENDING" }, { ...template, status: "REJECTED" }, { ...template, status: "PAUSED" }, { ...template, components: [{ type: "BODY", text: "Hola {{1}} {{2}}" }] }, { ...template, components: [{ type: "BODY", text: "Hola {{name}}" }] }, { ...template, components: [...template.components, { type: "HEADER", text: "Cabecera" }] }, { ...template, parameter_format: "NAMED" }, { ...template, components: [{ type: "HEADER" }] }];
+    const catalog = catalogTemplates(input);
+    expect(catalog).toHaveLength(input.length);
+    expect(catalog.map((t) => t.approved)).toEqual([true, false, false, false, false, false, false, false, false]);
+    expect(catalog.map((t) => t.meta_status)).toEqual(input.map((t) => t.status));
+    expect(catalog[6].components).toEqual(input[6].components);
+    expect(catalog[8].body).toBe("");
+  });
+  it("rejects malformed catalogs rather than withdrawing existing entries after a partial import", () => {
+    expect(() => catalogTemplates([template, { ...template, name: "Bad name" }])).toThrow();
   });
   it("paginates only against Meta with authorization in headers", async () => {
     let calls = 0;
@@ -62,8 +70,8 @@ describe("approved WhatsApp catalog", () => {
       expect(url.searchParams.has("access_token")).toBe(false);
       if (calls === 1) return Response.json({ data: [], paging: { next: "https://untrusted.invalid", cursors: { after: "cursor" } } });
       expect(url.searchParams.get("after")).toBe("cursor");
-      return Response.json({ data: [template] });
+      return Response.json({ data: [template, { ...template, name: "pending", status: "PENDING" }] });
     });
-    expect(calls).toBe(2); expect(result).toHaveLength(1);
+    expect(calls).toBe(2); expect(result).toHaveLength(2);
   });
 });

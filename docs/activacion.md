@@ -73,7 +73,7 @@ Copiar `supabase/functions/.env.example` a un archivo de secretos ignorado por G
 - `WHATSAPP_SEND_ENABLED=false` mientras se configura.
 - `WHATSAPP_ACCESS_TOKEN`: token de Meta.
 - `WHATSAPP_PHONE_NUMBER_ID`: identificador del número, no el número de teléfono.
-- La plantilla e idioma se seleccionan en `/admin/whatsapp` tras sincronizar el catálogo aprobado; ver [administración](administracion.md). Ya no son variables del worker.
+- La plantilla e idioma se seleccionan en `/admin/whatsapp` tras sincronizar el catálogo completo, con sus estados de Meta. Solo las aprobadas y compatibles se pueden guardar para la bienvenida; ver [administración](administracion.md). Ya no son variables del worker.
 - `WHATSAPP_GRAPH_API_VERSION`: versión explícita, con formato `vNN.N`.
 
 ```powershell
