@@ -8,13 +8,14 @@ export type FollowupMessage = {
   id: string; registrationId: string; channel: "email" | "whatsapp"; step: string;
   email: string; phone: string; name: string; time: string; meetingUrl: string | null;
   subject: string | null; body: string; parameter: "name" | "time" | "meetingUrl" | null;
-  templateName: string | null; templateLanguage: string | null;
+  templateName: string | null; templateLanguage: string | null; testMode?: boolean;
 };
 type Claim = { action: "claimed"; claimToken: string; message: FollowupMessage } | { action: "skip" | "paused" | "busy" | "unknown" | "missing_template" | "missing_meeting_url" };
 export type FollowupRpc = <T>(name: string, args: Record<string, unknown>) => Promise<T>;
 export type Config = {
   email: { key: string; from: string; siteUrl: string; unsubscribeSecret: string } | null;
   whatsapp: { token: string; phoneNumberId: string; version: string } | null;
+  whatsappTest?: { token: string; phoneNumberId: string; version: string; recipient: string };
 };
 type Result = { outcome: "sent"; providerId: string } | { outcome: "retry" | "failed" | "unknown"; error: string };
 
@@ -28,7 +29,13 @@ export function loadFollowupConfig(env: Record<string, string | undefined>): Con
     email: env.FOLLOWUP_EMAIL_SEND_ENABLED === "true" && env.RESEND_API_KEY && env.RESEND_FROM &&
       !/[\r\n]/.test(env.RESEND_FROM) && siteUrl && (env.EMAIL_UNSUBSCRIBE_SECRET?.length ?? 0) >= 32
       ? { key: env.RESEND_API_KEY, from: env.RESEND_FROM, siteUrl, unsubscribeSecret: env.EMAIL_UNSUBSCRIBE_SECRET! } : null,
-    whatsapp: env.FOLLOWUP_WHATSAPP_SEND_ENABLED === "true" && env.WHATSAPP_ACCESS_TOKEN &&
+    ...(env.FOLLOWUP_WHATSAPP_TEST_ENABLED === "true" && env.WHATSAPP_TEST_ACCESS_TOKEN &&
+      /^\d+$/.test(env.WHATSAPP_TEST_PHONE_NUMBER_ID || "") && /^v\d+\.\d+$/.test(env.WHATSAPP_TEST_GRAPH_API_VERSION || "") &&
+      /^\+[1-9]\d{6,14}$/.test(env.WHATSAPP_TEST_RECIPIENT || "") ? {
+        whatsappTest: { token: env.WHATSAPP_TEST_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_TEST_PHONE_NUMBER_ID!,
+          version: env.WHATSAPP_TEST_GRAPH_API_VERSION!, recipient: env.WHATSAPP_TEST_RECIPIENT! },
+      } : {}),
+    whatsapp: env.FOLLOWUP_WHATSAPP_TEST_ENABLED !== "true" && env.FOLLOWUP_WHATSAPP_SEND_ENABLED === "true" && env.WHATSAPP_ACCESS_TOKEN &&
       /^\d+$/.test(env.WHATSAPP_PHONE_NUMBER_ID || "") && /^v\d+\.\d+$/.test(env.WHATSAPP_GRAPH_API_VERSION || "")
       ? { token: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID!, version: env.WHATSAPP_GRAPH_API_VERSION! } : null,
   };
@@ -39,6 +46,11 @@ function render(message: FollowupMessage) {
 }
 
 export async function sendFollowup(message: FollowupMessage, config: Config, fetcher: typeof fetch = fetch): Promise<Result> {
+  if (config.whatsappTest && (message.channel !== "whatsapp" || message.testMode !== true ||
+    message.phone !== config.whatsappTest.recipient || message.templateName !== "hello_world" ||
+    message.templateLanguage !== "en_US" || message.parameter !== null)) {
+    return { outcome: "failed", error: "sandbox_message_mismatch" };
+  }
   try {
     let response: Response;
     if (message.channel === "email") {
@@ -80,15 +92,16 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
 }
 
 export async function processFollowups(rpc: FollowupRpc, config: Config, fetcher: typeof fetch = fetch) {
-  const flags = { p_email: !!config.email, p_whatsapp: !!config.whatsapp };
-  const jobs = await rpc<{ id: string }[]>("read_followup_jobs", flags);
+  const test = config.whatsappTest;
+  const flags = test ? { p_phone: test.recipient } : { p_email: !!config.email, p_whatsapp: !!config.whatsapp };
+  const jobs = await rpc<{ id: string }[]>(test ? "read_whatsapp_test_jobs" : "read_followup_jobs", flags);
   const counts = { read: jobs.length, sent: 0, retry: 0, failed: 0, unknown: 0, skipped: 0, errors: 0 };
   let index = 0;
   const consumer = async () => {
     while (index < jobs.length) {
       const job = jobs[index++];
       try {
-        const claim = await rpc<Claim>("claim_followup_job", { p_job_id: job.id, ...flags });
+        const claim = await rpc<Claim>(test ? "claim_whatsapp_test_job" : "claim_followup_job", { p_job_id: job.id, ...flags });
         if (claim.action !== "claimed") { if (claim.action === "unknown") counts.unknown++; else counts.skipped++; continue; }
         const result = await sendFollowup(claim.message, config, fetcher);
         const finished = await rpc<boolean>("finish_followup_job", { p_id: job.id, p_token: claim.claimToken,
@@ -107,10 +120,22 @@ export async function handleFollowupWorker(request: Request, env: Record<string,
   // Only the authenticated handler calls this processor.
   if (request.method !== "POST") return workerJson(405, { ok: false, error: "method_not_allowed" });
   const config = loadFollowupConfig(env);
-  if (!config.email && !config.whatsapp) return workerJson(503, { ok: false, error: "followups_disabled_or_unconfigured" });
+  if (!config.email && !config.whatsapp && !config.whatsappTest) return workerJson(503, { ok: false, error: "followups_disabled_or_unconfigured" });
   try {
-    const counts = await processFollowups(rpc, config, fetcher);
+    const counts = await processFollowups(rpc, { ...config, whatsappTest: undefined }, fetcher);
+    let testCounts;
+    if (config.whatsappTest) {
+      const test = config.whatsappTest;
+      const phone = await fetcher(`https://graph.facebook.com/${test.version}/${test.phoneNumberId}?fields=id,display_phone_number`, {
+        headers: { Authorization: `Bearer ${test.token}` }, signal: AbortSignal.timeout(10_000),
+      });
+      const data = await phone.json();
+      if (!phone.ok || data.id !== test.phoneNumberId || !/^1555\d{7}$/.test(String(data.display_phone_number ?? "").replace(/\D/g, ""))) {
+        return workerJson(503, { ...counts, test: { error: "sandbox_sender_unavailable" } });
+      }
+      testCounts = await processFollowups(rpc, { email: null, whatsapp: test, whatsappTest: test }, fetcher);
+    }
     console.log(JSON.stringify({ event: "followup_queue_processed", ...counts }));
-    return workerJson(counts.errors ? 503 : 200, counts);
+    return workerJson(counts.errors || testCounts?.errors ? 503 : 200, { ...counts, ...(testCounts ? { test: testCounts } : {}) });
   } catch { console.error("followup_queue_unavailable"); return workerJson(503, { ok: false }); }
 }

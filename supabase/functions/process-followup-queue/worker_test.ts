@@ -16,6 +16,62 @@ const noFetch: typeof fetch = () => { throw new Error("Must not send"); };
 const authEnv = { url: "https://example.com", secretKeys: { default: "sb_secret_test_private_key" }, publishableKeys: { default: "sb_publishable_test_key" }, jwks: { keys: [] } };
 const request = (key = authEnv.secretKeys.default, method = "POST") => new Request("https://example.com/functions/v1/process-followup-queue", { method, headers: { apikey: key } });
 
+const testEnv = { FOLLOWUP_WHATSAPP_TEST_ENABLED: "true", WHATSAPP_TEST_ACCESS_TOKEN: "sandbox-token",
+  WHATSAPP_TEST_PHONE_NUMBER_ID: "123", WHATSAPP_TEST_GRAPH_API_VERSION: "v99.0", WHATSAPP_TEST_RECIPIENT: message.phone };
+const testMessage: FollowupMessage = { ...message, channel: "whatsapp", testMode: true, templateName: "hello_world", templateLanguage: "en_US" };
+
+Deno.test("sandbox activation disables paid credentials even when both flags are set", () => {
+  const loaded = loadFollowupConfig({ ...testEnv, FOLLOWUP_WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "paid",
+    WHATSAPP_PHONE_NUMBER_ID: "999", WHATSAPP_GRAPH_API_VERSION: "v99.0" });
+  assert.equal(loaded.whatsapp, null); assert.equal(loaded.whatsappTest?.token, "sandbox-token");
+  assert.equal(loadFollowupConfig({ ...testEnv, WHATSAPP_TEST_RECIPIENT: "invalid" }).whatsappTest, undefined);
+});
+
+Deno.test("sandbox refuses a real sender before reading the test queue", async () => {
+  const calls: string[] = [];
+  const rpc: FollowupRpc = <T>(name: string) => { calls.push(name); return Promise.resolve([] as T); };
+  const response = await handleFollowupWorker(request(), testEnv, rpc, fetchJson({ id: "123", display_phone_number: "+34 612345678" }));
+  assert.equal(response.status, 503); assert.deepEqual(calls, ["read_followup_jobs"]);
+});
+
+Deno.test("sandbox uses real claim and finish with hello_world and dedicated credentials", async () => {
+  const calls: string[] = []; let sends = 0;
+  const rpc: FollowupRpc = <T>(name: string, args: Record<string, unknown>) => {
+    calls.push(name);
+    if (name === "read_followup_jobs") return Promise.resolve([] as T);
+    if (name === "read_whatsapp_test_jobs") { assert.deepEqual(args, { p_phone: message.phone }); return Promise.resolve([{ id: message.id }] as T); }
+    if (name === "claim_whatsapp_test_job") { assert.deepEqual(args, { p_job_id: message.id, p_phone: message.phone }); return Promise.resolve({ action: "claimed", claimToken: "owned", message: testMessage } as T); }
+    assert.equal(name, "finish_followup_job"); assert.equal(args.p_provider_id, "sandbox-sent"); assert.equal(args.p_token, "owned"); return Promise.resolve(true as T);
+  };
+  const fetcher: typeof fetch = async (url, init) => {
+    if (String(url).includes("?fields=")) return Response.json({ id: "123", display_phone_number: "+1 555-657-6659" });
+    sends++; assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer sandbox-token");
+    const payload = JSON.parse(String(init?.body)); assert.equal(payload.to, message.phone.slice(1));
+    assert.deepEqual(payload.template, { name: "hello_world", language: { code: "en_US" } }); return Response.json({ messages: [{ id: "sandbox-sent" }] });
+  };
+  const response = await handleFollowupWorker(request(), testEnv, rpc, fetcher);
+  assert.equal(response.status, 200); assert.equal((await response.json()).test.sent, 1); assert.equal(sends, 1);
+  assert.deepEqual(calls, ["read_followup_jobs", "read_whatsapp_test_jobs", "claim_whatsapp_test_job", "finish_followup_job"]);
+});
+
+Deno.test("sandbox rejects altered recipient, marker and template before sending", async () => {
+  const test = loadFollowupConfig(testEnv).whatsappTest!;
+  for (const alteration of [{ phone: "+34699999999" }, { testMode: false }, { templateName: "paid_template" }, { parameter: "name" as const }]) {
+    assert.deepEqual(await sendFollowup({ ...testMessage, ...alteration }, { email: null, whatsapp: test, whatsappTest: test }, noFetch), { outcome: "failed", error: "sandbox_message_mismatch" });
+  }
+});
+
+Deno.test("ambiguous sandbox sends finish as unknown without an immediate retry", async () => {
+  const test = loadFollowupConfig(testEnv).whatsappTest!; let sends = 0;
+  const rpc: FollowupRpc = <T>(name: string, args: Record<string, unknown>) => {
+    if (name === "read_whatsapp_test_jobs") return Promise.resolve([{ id: message.id }] as T);
+    if (name === "claim_whatsapp_test_job") return Promise.resolve({ action: "claimed", claimToken: "owned", message: testMessage } as T);
+    assert.equal(args.p_outcome, "unknown"); return Promise.resolve(true as T);
+  };
+  const result = await processFollowups(rpc, { email: null, whatsapp: test, whatsappTest: test }, async () => { sends++; throw new Error("timeout"); });
+  assert.equal(result.unknown, 1); assert.equal(sends, 1);
+});
+
 Deno.test("the Edge SDK rejects missing, public, JWT and old cron credentials before accessing data", async () => {
   const handler = createFollowupHandler(env, noRpc, authEnv);
   for (const token of ["", "user-jwt", "anon-jwt", "old-cron-secret", authEnv.publishableKeys.default]) {

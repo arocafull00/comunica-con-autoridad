@@ -77,6 +77,25 @@ La web necesita `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` y el `WHA
 
 ## Resend y ejecución
 
+### Pruebas de la cola de WhatsApp en producción
+
+Con `FOLLOWUP_WHATSAPP_TEST_ENABLED=true`, el worker periódico usa las cuatro credenciales `WHATSAPP_TEST_*` para procesar la cola de prueba. Verifica el número sandbox en Meta antes de reclamar trabajos. El modo impide cargar las credenciales del canal real aunque su flag esté activado. La configuración privada de la base debe autorizar el mismo destinatario; el worker comprueba también el destinatario, el marcador de prueba y la plantilla antes de enviar.
+
+Usar el operador privado `scripts/whatsapp-followup-test.mjs` con `.env.local` (Supabase) y un archivo privado con `WHATSAPP_TEST_RECIPIENT`:
+
+```powershell
+node --env-file=.env.local --env-file=.vercel/whatsapp-test/supabase-test-secrets.env scripts/whatsapp-followup-test.mjs enable
+node --env-file=.env.local --env-file=.vercel/whatsapp-test/supabase-test-secrets.env scripts/whatsapp-followup-test.mjs status
+node --env-file=.env.local --env-file=.vercel/whatsapp-test/supabase-test-secrets.env scripts/whatsapp-followup-test.mjs advance UUID_DEL_TRABAJO
+node --env-file=.env.local --env-file=.vercel/whatsapp-test/supabase-test-secrets.env scripts/whatsapp-followup-test.mjs disable
+```
+
+Después de habilitarlo, completar las seis respuestas del formulario público con un email nuevo, el móvil autorizado y consentimiento de WhatsApp. Dejar el consentimiento de email desmarcado si solo se prueba WhatsApp. Los nuevos trabajos WhatsApp de ese teléfono se marcan permanentemente como prueba; el resto de contactos conserva su flujo y horarios. Las inscripciones anteriores no se incorporan ni se reinician automáticamente.
+
+Los tres avisos del formulario se programan a +1, +3 y +5 minutos, con la resolución del cron de un minuto. Una respuesta posterior a la inscripción suprime el tercero; una reserva asociada suprime los tres. Cada envío usa `hello_world`: prueba condiciones y programación, no el contenido ni los parámetros de las siete plantillas reales. Puede repetir la inscripción con otro email para crear otra secuencia; usar el mismo email en Cal.com para asociar una llamada.
+
+Las llamadas mantienen sus horas reales y su confirmación inmediata. `advance` adelanta un trabajo de prueba pendiente y sin intentos a un minuto después, conservando controles de consentimiento, revisión de reserva, cancelación, enlace Meet y comienzo de la llamada. Los trabajos de prueba quedan excluidos del canal real incluso después de pausar este modo. Para pausarlo de inmediato ejecutar `disable`; para apagar también el acceso a Meta, poner `FOLLOWUP_WHATSAPP_TEST_ENABLED=false`. Los envíos ya reclamados pueden terminar. Renovar el token temporal de Meta cuando caduque.
+
 Preparar un remitente con dominio verificado y configurar `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_SITE_URL` (HTTPS público) y `EMAIL_UNSUBSCRIBE_SECRET` (al menos 32 caracteres) en los **secretos de Supabase Edge Functions**. Usar `supabase/functions/.env.example` como referencia y cargar únicamente estos secretos mediante `pnpm exec supabase secrets set --env-file RUTA_PRIVADA`. Supabase proporciona automáticamente `SUPABASE_URL` y `SUPABASE_SECRET_KEYS`; no copiarlos como secretos personalizados.
 
 La web sigue atendiendo los enlaces de baja: conservar `EMAIL_UNSUBSCRIBE_SECRET` en Next.js y usar exactamente el mismo valor en la Edge Function. La firma se comparte entre ambos runtimes para mantener válidos los enlaces existentes. Cada envío utiliza `Idempotency-Key: followup/<id del trabajo>` y un enlace firmado de baja que exige pulsar un botón; un escáner de enlaces no da de baja automáticamente.
