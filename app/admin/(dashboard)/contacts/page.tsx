@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/auth";
 import { dateRange } from "@/lib/admin/validation";
@@ -12,6 +13,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { AdminLoading } from "../../loading-state";
 import { DateRangeFilter } from "../../date-range-filter";
 async function Contacts({ searchParams }: { searchParams: Promise<{ start?: string; end?: string; page?: string; email?: string }> }) {
+  "use cache: private";
+  cacheLife({ stale: 60 });
   const params = await searchParams;
   const { db } = await requireAdmin();
   const range = dateRange(params.start, params.end);

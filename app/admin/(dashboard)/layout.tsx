@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { getAdminIdentity } from "@/lib/admin/auth";
 import { logout } from "../actions";
 import { Button } from "@/components/ui/button";
 import { AdminLoading } from "../loading-state";
 import { AdminNavigation } from "../navigation";
 import { ArrowUpRight, UserRound, LogOut } from "lucide-react";
 async function Shell({ children }: { children: React.ReactNode }) {
-  const { user } = await requireAdmin();
+  const user = await getAdminIdentity();
   return <div className="admin-shell">
     <a className="admin-skip" href="#admin-content">Ir al contenido</a>
     <aside className="admin-sidebar">

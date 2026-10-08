@@ -67,9 +67,36 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
     await page.getByRole("link",{name:"Llamadas",exact:true}).click();
     await expect(page.getByRole("heading",{name:"Llamadas",exact:true})).toBeVisible();
     const row=page.getByRole("row").filter({hasText:contact});await expect(row).toContainText("Pendiente de revisión");
+    await expect(row).toContainText("Sin formulario asociado a este email.");
     for(const width of [1280,768,390,320]){
       await page.setViewportSize({width,height:900});
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+      const labels = width > 800 ? page.getByRole("columnheader") : row;
+      for (const [column, explanation] of [
+        ["contacto", "Puede haber reservado directamente desde el enlace de Cal.com"],
+        ["sesión", "zona horaria de la persona que reservó"],
+        ["confirmación", "La falta de confirmación no cancela la reserva automáticamente"],
+      ]) {
+        const trigger = labels.getByRole("button", { name: `Información sobre ${column}`, exact: true });
+        await trigger.focus();
+        await page.keyboard.press("Enter");
+        const info = page.getByRole("dialog", { name: `Información sobre ${column}`, exact: true });
+        await expect(info).toBeVisible();
+        await expect(info).toContainText(explanation);
+        const bounds = await info.boundingBox();
+        expect(bounds).not.toBeNull();
+        expect(bounds!.x).toBeGreaterThanOrEqual(0);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+        expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+        await page.screenshot({path:`test-results/calls-info-${column}-${width}.png`,fullPage:true});
+        await page.keyboard.press("Escape");
+        await expect(info).toBeHidden();
+        await expect(trigger).toBeFocused();
+      }
+      const trigger = labels.getByRole("button", { name: "Información sobre contacto", exact: true });
+      await trigger.click();
+      await page.getByRole("button", { name: "Cerrar información", exact: true }).click();
+      await expect(page.getByRole("dialog")).toBeHidden();
       await page.screenshot({path:`test-results/calls-${width}.png`,fullPage:true});
     }
     await db.query("update public.call_bookings set confirmed_at=now() where uid=$1",[uid]);await page.reload();

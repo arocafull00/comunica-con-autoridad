@@ -1,10 +1,13 @@
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 import { requireAdmin } from "@/lib/admin/auth";
 import { WhatsappForm, type Template } from "../../whatsapp-form";
 import { Badge } from "@/components/ui/badge";
 import { AdminLoading } from "../../loading-state";
 import { Pause, Check } from "lucide-react";
 async function Whatsapp() {
+  "use cache: private";
+  cacheLife({ stale: 60 });
   const { db } = await requireAdmin();
   const [settings, templates, audit, failures, ...counts] = await Promise.all([
     db.from("whatsapp_settings").select("enabled,template_id,revision,updated_at").single(),

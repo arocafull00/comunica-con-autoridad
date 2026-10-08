@@ -425,3 +425,7 @@ verify_jwt = false
 [functions.test-whatsapp]
 # Same private API-key authentication; a public key cannot send test messages.
 verify_jwt = false
+
+[functions.sync-whatsapp-templates]
+# User JWT plus Auth verification and active admin membership inside the handler.
+verify_jwt = true

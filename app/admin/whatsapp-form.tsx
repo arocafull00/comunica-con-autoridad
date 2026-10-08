@@ -1,7 +1,8 @@
 "use client";
 import { useActionState, useState } from "react";
-import { MessageCircle, Save } from "lucide-react";
+import { MessageCircle, RefreshCw, Save } from "lucide-react";
 import { saveWhatsappSettings } from "./actions";
+import { syncWhatsappTemplates } from "./whatsapp-sync-action";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,13 +13,17 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
   const approved = templates.filter((t) => t.approved);
   const [selected, setSelected] = useState(approved.some((t) => t.id === settings.template_id) ? settings.template_id! : "");
   const [state, action, pending] = useActionState(saveWhatsappSettings, { message: "" });
+  const [syncState, syncAction, syncing] = useActionState(syncWhatsappTemplates, { message: "" });
   const template = approved.find((t) => t.id === selected);
-  return <form action={action} className="admin-form admin-whatsapp-form"><fieldset disabled={pending}>
+  return <><form id="whatsapp-template-sync" action={syncAction} />
+  <form action={action} className="admin-form admin-whatsapp-form"><fieldset disabled={pending || syncing}>
     <input type="hidden" name="revision" value={settings.revision} />
     <div className="admin-whatsapp-grid"><div className="admin-whatsapp-controls">
       <h2>Mensaje de bienvenida</h2><p className="admin-muted">Elige qué recibirá quien solicite la confirmación por WhatsApp.</p>
-      <Label htmlFor="whatsapp-template">Plantilla aprobada</Label><NativeSelect id="whatsapp-template" name="templateId" value={selected} disabled={pending} onChange={(e) => setSelected(e.target.value)}><NativeSelectOption value="">Selecciona una plantilla</NativeSelectOption>{approved.map((t) => <NativeSelectOption key={t.id} value={t.id}>{t.name} · {t.language}</NativeSelectOption>)}</NativeSelect>
-      {!approved.length ? <Alert className="admin-notice"><AlertDescription>Todavía no hay plantillas aprobadas registradas. El responsable de la web debe sincronizarlas desde Meta.</AlertDescription></Alert> : null}
+      <div className="admin-template-heading"><Label htmlFor="whatsapp-template">Plantilla aprobada</Label><Button type="submit" form="whatsapp-template-sync" variant="outline" disabled={pending || syncing}><RefreshCw size={16} aria-hidden="true" />{syncing ? "Sincronizando…" : "Sincronizar con Meta"}</Button></div>
+      <NativeSelect id="whatsapp-template" name="templateId" value={template?.id ?? ""} disabled={pending || syncing} onChange={(e) => setSelected(e.target.value)}><NativeSelectOption value="">Selecciona una plantilla</NativeSelectOption>{approved.map((t) => <NativeSelectOption key={t.id} value={t.id}>{t.name} · {t.language}</NativeSelectOption>)}</NativeSelect>
+      {syncState.message ? <p role="status" className={syncState.success ? "admin-success" : "admin-error"}>{syncState.message}</p> : null}
+      {!approved.length ? <Alert className="admin-notice"><AlertDescription>Todavía no hay plantillas aprobadas registradas. Pulsa «Sincronizar con Meta» para actualizar el catálogo.</AlertDescription></Alert> : null}
     </div><div className="admin-preview"><div className="admin-preview-header"><MessageCircle size={20} aria-hidden="true" /><h2>Vista previa</h2></div>
       <div className="admin-message"><p>{template ? template.body.replace("{{1}}", "María") : "Selecciona una plantilla para ver el mensaje."}</p></div>
       <p className="admin-muted">{template ? `Parámetro de nombre: María · idioma: ${template.language}` : "El nombre se personalizará con los datos de cada solicitud."}</p>
@@ -28,5 +33,5 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
       <p className="admin-muted">La pausa detiene los próximos envíos. Un envío ya iniciado puede terminar. Al reactivar se procesarán los mensajes pendientes con consentimiento.</p>
       <Button type="submit" disabled={pending}><Save size={16} aria-hidden="true" />{pending ? "Guardando…" : "Guardar configuración"}</Button>
     </div></div>
-  </fieldset><p role="status" className={state.success ? "admin-success" : "admin-error"}>{state.message}</p></form>;
+  </fieldset><p role="status" className={state.success ? "admin-success" : "admin-error"}>{state.message}</p></form></>;
 }

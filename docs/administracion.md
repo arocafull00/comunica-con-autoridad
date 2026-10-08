@@ -63,7 +63,9 @@ Si la conexión falta, falla, el formato no es compatible o el período no está
 
 El panel permite seleccionar una plantilla aprobada e idioma, previsualizarla con un nombre de ejemplo y activar/pausar los envíos. No admite un texto libre para enviarlo directamente. Crear o editar el mensaje en WhatsApp Manager y esperar a que Meta lo apruebe, después sincronizar el catálogo. Solo se admiten plantillas de cuerpo de texto, sin otras secciones, con una única aparición del parámetro posicional `{{1}}` de nombre.
 
-Para sincronizar, el propietario ejecuta una herramienta privada con un archivo de variables **fuera del repositorio** que contiene la configuración Supabase del servidor y, temporalmente para esta herramienta:
+Para sincronizar, un administrador pulsa **Sincronizar con Meta** en `/admin/whatsapp`. El botón llama desde el servidor a la Edge Function `sync-whatsapp-templates` con la sesión del usuario. La función verifica esa sesión con Supabase Auth y comprueba que la cuenta de administrador siga activa antes de consultar Meta.
+
+Configurar estos Secrets en Supabase (nunca en el navegador ni en Next.js):
 
 ```dotenv
 WHATSAPP_ACCESS_TOKEN=
@@ -71,13 +73,13 @@ WHATSAPP_WABA_ID=
 WHATSAPP_GRAPH_API_VERSION=
 ```
 
-El token necesita acceso para leer las plantillas de esa cuenta de WhatsApp Business (gestión de WhatsApp Business). `WABA_ID` identifica la cuenta; no es el identificador del número. No guardar estas variables en Next.js ni enviarlas al navegador.
+El token necesita acceso para leer las plantillas de esa cuenta de WhatsApp Business (`whatsapp_business_management`). `WHATSAPP_WABA_ID` identifica la cuenta; no es el identificador del número. Supabase proporciona las credenciales de su propio servidor a la función.
 
 ```powershell
-node --env-file=C:\ruta-privada\catalogo.env scripts/admin.mjs sync-templates
+pnpm exec supabase functions deploy sync-whatsapp-templates
 ```
 
-La herramienta consulta Meta y sincroniza de forma transaccional solo las plantillas aprobadas y compatibles. Las que ya no aparecen se marcan como no aprobadas. No crea ni presenta plantillas a revisión, y no cambia la selección ni activa envíos. La aprobación mostrada es la del último refresco del catálogo; volver a sincronizar tras cambios en Meta. Si Meta no responde, el catálogo anterior queda intacto.
+La función consulta todas las páginas del catálogo de Meta y sincroniza de forma transaccional solo las plantillas aprobadas y compatibles: un cuerpo de texto con una única variable posicional `{{1}}` para el nombre, sin cabecera, pie ni botones. Las que ya no aparecen se marcan como no aprobadas. No crea ni presenta plantillas a revisión, y no cambia la selección ni activa envíos. La aprobación mostrada es la del último refresco del catálogo; pulsar de nuevo el botón tras cambios en Meta. Si Meta no responde o una página falla, el catálogo anterior queda intacto. El desplegable y la vista previa se actualizan al terminar. Esta sincronización es manual; no depende de Cron. El comando `scripts/admin.mjs sync-templates` se ha retirado.
 
 La migración crea la configuración **pausada** y sin plantilla. El nombre y el idioma ya no se leen de `WHATSAPP_TEMPLATE_NAME` / `WHATSAPP_TEMPLATE_LANGUAGE`: es necesario sincronizar y seleccionar una plantilla en `/admin/whatsapp`. Actualizar también la Edge Function para que use `claim_configured_whatsapp_job`.
 
@@ -88,6 +90,8 @@ La pausa impide nuevas reclamaciones de mensajes pendientes, pero un envío ya i
 La activación del panel no configura las credenciales, despliega el worker ni habilita Cron. También hacen falta `WHATSAPP_SEND_ENABLED=true`, los Secrets completos del worker y la activación de Cron siguiendo [la guía](activacion.md). Mantener Secrets y Cron apagados durante las pruebas de configuración. “Aceptados por Meta” no acredita entrega ni lectura. `delivery_unknown` requiere revisión manual y no tiene un botón de reenvío automático.
 
 ## Validación local y prueba posterior
+
+La navegación precarga las cinco pantallas y conserva su contenido durante 60 segundos en la memoria del navegador mediante `use cache: private`. No se comparte entre sesiones ni se persiste al recargar. Cada petición al servidor comprueba el usuario y su acceso activo; las acciones de guardar siempre vuelven a autorizar el cambio. «Actualizar datos» fuerza una consulta reciente y limpia la caché de navegación. Guardar WhatsApp y cerrar sesión también invalidan el contenido anterior. Los contactos nuevos y los cambios externos de reservas o mensajes pueden tardar hasta un minuto en aparecer al navegar; usar «Actualizar datos» para verlos inmediatamente.
 
 Las pruebas de navegador local crean cuentas temporales con Supabase Auth, prueban login, permisos, revocación, invitación, recuperación, logout, contactos y cambios de configuración con conflicto. También revisan el ancho móvil. Las cuentas y la plantilla de prueba se eliminan y se restaura la configuración original. Las pruebas SQL cubren permisos, auditoría, límites, pausa y reintentos. Vercel y Meta se simulan en las pruebas de sus respuestas; no se conectan cuentas reales.
 

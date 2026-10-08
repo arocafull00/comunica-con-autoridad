@@ -1,7 +1,6 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { connection } from "next/server";
 
 export function authConfiguration() {
   const url = process.env.SUPABASE_URL;
@@ -11,7 +10,6 @@ export function authConfiguration() {
 }
 export const authCookieOptions = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production" && process.env.ADMIN_LOCAL_HTTP !== "true", path: "/admin" };
 export async function getSupabaseSession() {
-  await connection();
   const store = await cookies();
   const { url, key } = authConfiguration();
   return createServerClient(url, key, {

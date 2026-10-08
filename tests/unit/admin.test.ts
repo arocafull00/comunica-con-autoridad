@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dateRange, passwordSchema, settingsSchema } from "../../lib/admin/validation";
 import { madridMidnight, queryTraffic } from "../../lib/admin/traffic";
-import { compatibleTemplates, fetchTemplates } from "../../scripts/meta-templates.mjs";
+import { compatibleTemplates, fetchTemplates } from "../../supabase/functions/_shared/meta-templates";
 
 describe("admin dates and configuration", () => {
   it("uses Madrid calendar days even when UTC is the previous day", () => {

@@ -1,8 +1,11 @@
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 import { requireAdmin } from "@/lib/admin/auth";
 import { AdminLoading } from "../../loading-state";
 import { AuthForm } from "../../auth-form";
 async function Account() {
+  "use cache: private";
+  cacheLife({ stale: 60 });
   const { user } = await requireAdmin();
   return <div className="admin-page admin-account">
     <div className="admin-page-heading"><div><h1>Mi cuenta</h1><p className="admin-muted">Gestiona tu acceso al panel</p></div></div>

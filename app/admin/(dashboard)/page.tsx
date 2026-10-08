@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { connection } from "next/server";
+import { cacheLife } from "next/cache";
 import { ArrowUpRight, Inbox, Megaphone } from "lucide-react";
 import { getDashboard, type LeadMetrics } from "@/lib/admin/data";
 import { dateRange } from "@/lib/admin/validation";
@@ -22,7 +22,8 @@ function CampaignRows({ campaigns, max }: { campaigns: LeadMetrics["campaigns"];
 }
 
 async function Summary({ searchParams }: { searchParams: Promise<{ start?: string; end?: string }> }) {
-  await connection();
+  "use cache: private";
+  cacheLife({ stale: 60 });
   const params = await searchParams;
   const range = dateRange(params.start, params.end);
   const defaultRange = dateRange();
