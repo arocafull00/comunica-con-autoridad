@@ -1,10 +1,10 @@
-import { createHmac } from "node:crypto";
 import { z } from "zod";
+import { signUnsubscribeToken } from "../../supabase/functions/_shared/email-unsubscribe";
 import { matchesSecret } from "./webhook";
 
 export function unsubscribeToken(registrationId: string, secret: string) {
   if (secret.length < 32 || !z.uuid().safeParse(registrationId).success) throw new Error("Invalid unsubscribe configuration");
-  return `${registrationId}.${createHmac("sha256", secret).update(`email-unsubscribe:${registrationId}`).digest("hex")}`;
+  return signUnsubscribeToken(registrationId, secret);
 }
 
 export function readUnsubscribeToken(token: string, secret?: string): string | null {

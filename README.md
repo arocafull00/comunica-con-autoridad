@@ -1,6 +1,6 @@
 # Comunica con Autoridad
 
-Next.js con un formulario de captación, API de leads y bienvenida asíncrona por WhatsApp mediante Supabase Postgres, PGMQ y Edge Functions.
+Next.js con un formulario de captación, API de leads y seguimiento por email mediante Supabase Postgres, Cron y Edge Functions. La bienvenida antigua de WhatsApp utiliza PGMQ y otra Edge Function. Ver [configuración del seguimiento](docs/seguimiento.md).
 
 El consentimiento es opcional: todas las solicitudes válidas se guardan; solo las consentidas generan un mensaje. Los envíos reales y su Cron están desactivados por defecto.
 

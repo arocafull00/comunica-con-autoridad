@@ -45,7 +45,7 @@ Configurar el webhook de Meta en `https://TU-DOMINIO/api/webhooks/whatsapp` y su
 
 Crear y aprobar en Meta las siete plantillas del flujo con el cuerpo de cada paso en `followup_steps`. Los únicos parámetros posicionales son `{{1}}` para nombre (`webinar_1h`), hora (`booking_24h`) y enlace (`booking_2h`); las otras plantillas no tienen parámetros. No añadir botones o cabeceras que requieran componentes adicionales.
 
-Configurar las credenciales de envío de WhatsApp en el **servidor Next.js**, además de las que utiliza el worker de bienvenida anterior. `FOLLOWUP_WHATSAPP_TEMPLATES` es un JSON de este formato, utilizando los nombres reales aprobados:
+Configurar las credenciales de envío de WhatsApp en los **secretos de la Edge Function de Supabase**, además de las que utiliza el worker de bienvenida anterior. El servidor Next.js mantiene las credenciales necesarias para recibir y verificar webhooks. `FOLLOWUP_WHATSAPP_TEMPLATES` es un JSON de este formato, utilizando los nombres reales aprobados:
 
 ```json
 {
@@ -65,13 +65,30 @@ Para habilitar el flujo hacen falta `FOLLOWUP_WHATSAPP_SEND_ENABLED=true` y el i
 
 ## Resend y ejecución
 
-Preparar un remitente con dominio verificado y configurar `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_SITE_URL` (HTTPS público) y `EMAIL_UNSUBSCRIBE_SECRET` (al menos 32 caracteres). Cada envío utiliza `Idempotency-Key: followup/<id del trabajo>` y un enlace firmado de baja que exige pulsar un botón; un escáner de enlaces no da de baja automáticamente.
+Preparar un remitente con dominio verificado y configurar `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_SITE_URL` (HTTPS público) y `EMAIL_UNSUBSCRIBE_SECRET` (al menos 32 caracteres) en los **secretos de Supabase Edge Functions**. Usar `supabase/functions/.env.example` como referencia y cargar únicamente estos secretos mediante `pnpm exec supabase secrets set --env-file RUTA_PRIVADA`. Supabase proporciona automáticamente `SUPABASE_URL` y `SUPABASE_SECRET_KEYS`; no copiarlos como secretos personalizados.
 
-Para habilitar emails usar `FOLLOWUP_EMAIL_SEND_ENABLED=true`. La integración sigue [la API de envío de Resend](https://resend.com/docs/api-reference/emails/send-email) y sus [claves de idempotencia](https://resend.com/docs/dashboard/emails/idempotency-keys).
+La web sigue atendiendo los enlaces de baja: conservar `EMAIL_UNSUBSCRIBE_SECRET` en Next.js y usar exactamente el mismo valor en la Edge Function. La firma se comparte entre ambos runtimes para mantener válidos los enlaces existentes. Cada envío utiliza `Idempotency-Key: followup/<id del trabajo>` y un enlace firmado de baja que exige pulsar un botón; un escáner de enlaces no da de baja automáticamente.
 
-Aplicar las nuevas migraciones primero en la base local y revisar el destino antes de aplicar en Supabase remoto. No habilitar envíos en una base de pruebas. No hay Cron nuevo activado ni llamada a proveedores en las migraciones.
+Para habilitar emails usar `FOLLOWUP_EMAIL_SEND_ENABLED=true` en Supabase. El canal WhatsApp conserva su interruptor independiente `FOLLOWUP_WHATSAPP_SEND_ENABLED`, inicialmente `false`. La integración sigue [la API de envío de Resend](https://resend.com/docs/api-reference/emails/send-email) y sus [claves de idempotencia](https://resend.com/docs/dashboard/emails/idempotency-keys).
 
-Para procesar los trabajos, un planificador debe llamar **cada minuto** a `GET` o `POST https://TU-DOMINIO/api/followups/process`, con `Authorization: Bearer <FOLLOWUP_CRON_SECRET>`. El secreto debe tener al menos 32 caracteres. Preparar el planificador de despliegue al conectar los servicios; no existe un cron externo creado por este cambio.
+Aplicar las nuevas migraciones primero en la base local y revisar el destino antes de aplicar en Supabase remoto. No habilitar envíos en una base de pruebas. La migración `20261008000400_supabase_followup_cron.sql` crea el cron de seguimiento **pausado**. Las migraciones `20261008000500_followup_edge_worker.sql` y `20261008000600_followup_edge_api_key_auth.sql` cambian su destino a Supabase y su autenticación a la clave privada de API, sin alterar los trabajos pendientes ni el estado de activación. Ninguna configura secretos ni llama a proveedores.
+
+El trabajo `process-followup-queue` ejecuta **cada minuto** `private.invoke_followup_worker()`, que llama mediante `pg_net` a `POST https://PROJECT_REF.supabase.co/functions/v1/process-followup-queue`. La Edge Function consulta los RPC de selección y reclamación, envía mediante Resend y persiste el resultado. El envío ya no depende de Vercel y la antigua ruta `/api/followups/process` se ha retirado.
+
+Antes de cambiar el cron, desplegar la función con `pnpm exec supabase functions deploy process-followup-queue`. Esta función utiliza `verify_jwt=false` y el wrapper `withSupabase({ auth: 'secret' })`: el SDK valida la clave privada `default` del proyecto en la cabecera `apikey` antes de consultar la base de datos. Las llamadas sin credenciales, con claves públicas o con JWT de usuario se rechazan con `401`. Es el patrón de [autenticación entre servicios recomendado por Supabase](https://supabase.com/docs/guides/functions/auth).
+
+Guardar en **Supabase Vault** `followup_project_url` (la URL base HTTPS del proyecto Supabase) y `followup_worker_secret_key` (su clave privada `default`, con formato `sb_secret_...`). No incluir secretos en migraciones, Git ni el texto del cron. Para cambiar valores existentes usar `vault.update_secret`. Los antiguos `followup_site_url`, `followup_cron_secret`, `followup_worker_service_role_jwt` y `FOLLOWUP_CRON_SECRET` dejan de utilizarse. Este reparto utiliza [Supabase Cron, pg_net y Vault](https://supabase.com/docs/guides/functions/schedule-functions).
+
+Tras comprobar que producción responde correctamente, activar únicamente este trabajo:
+
+```sql
+select cron.alter_job(
+  (select jobid from cron.job where jobname = 'process-followup-queue'),
+  active := true
+);
+```
+
+Para pausarlo, ejecutar lo mismo con `active := false`. Mantener el cron anterior `process-whatsapp-queue` pausado hasta configurar WhatsApp. Un resultado `succeeded` en `cron.job_run_details` solo confirma que se encoló la petición HTTP: comprobar también el código HTTP y el contenido de `net._http_response`, y el estado de `followup_jobs`. El worker devuelve `200` cuando procesa sin errores y `401` si el secreto no coincide.
 
 Se procesan lotes de 10 con dos envíos simultáneos como máximo entre instancias. Los errores temporales rechazados por el proveedor se reintentan tras 60 y 300 segundos, hasta tres intentos. Un timeout, respuesta ambigua o proceso interrumpido deja `delivery_unknown` para revisión manual, sin reenvío automático. `sent` indica aceptación del proveedor, no entrega al teléfono o buzón. Una reserva o baja recibida después de haber iniciado una petición de envío no puede recuperar ese mensaje.
 

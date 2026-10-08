@@ -76,8 +76,8 @@ Estado a 8 de octubre de 2026; revisar de nuevo al activar los envíos:
 
 - Cal.com: secreto e identificador de evento configurados en local y producción; receptor desplegado. El usuario comunica que el Ping test ha funcionado. Falta verificar una reserva real, su reprogramación y cancelación.
 - WhatsApp: todavía sin configurar, según indica el usuario. Las plantillas y los envíos reales siguen pendientes.
-- Resend: clave, remitente y secreto de baja presentes en `.env.local`, con el interruptor local de email activado. En la comprobación de Vercel faltaban esas variables y la activación de email en producción.
-- Procesamiento de envíos: faltaba `FOLLOWUP_CRON_SECRET` en local y producción. Sigue pendiente configurar la ejecución periódica y comprobar la entrega real.
+- Resend: el envío se ejecuta en la Edge Function `process-followup-queue`, con sus secretos e interruptor de email en Supabase. La web conserva el mismo secreto de baja para validar enlaces existentes. Comprobar la entrega de un email real antes de considerar el envío validado de extremo a extremo.
+- Procesamiento de envíos: `process-followup-queue` utiliza Supabase Cron cada minuto y llama directamente a la Edge Function con el JWT de servicio guardado en Vault. La migración de traslado conserva la cola y el estado del cron; no activa entornos nuevos ni reinicia secuencias. El cron anterior de WhatsApp continúa pausado. La ruta de procesamiento en Vercel se retira.
 
 ## Comprobaciones antes de considerar el encargo terminado
 

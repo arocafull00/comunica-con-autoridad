@@ -1,5 +1,8 @@
-import { unsubscribeToken } from "./unsubscribe";
-import { matchesSecret, webhookJson } from "./webhook";
+import { signUnsubscribeToken } from "../_shared/email-unsubscribe.ts";
+
+function workerJson(status: number, body: object) {
+  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
 
 export type FollowupMessage = {
   id: string; registrationId: string; channel: "email" | "whatsapp"; step: string;
@@ -41,7 +44,7 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
     if (message.channel === "email") {
       if (!config.email || !message.subject) return { outcome: "failed", error: "email_configuration_missing" };
       const unsubscribe = new URL("/api/followups/unsubscribe", config.email.siteUrl);
-      unsubscribe.searchParams.set("token", unsubscribeToken(message.registrationId, config.email.unsubscribeSecret));
+      unsubscribe.searchParams.set("token", signUnsubscribeToken(message.registrationId, config.email.unsubscribeSecret));
       response = await fetcher("https://api.resend.com/emails", {
         method: "POST", headers: { Authorization: `Bearer ${config.email.key}`, "Content-Type": "application/json", "Idempotency-Key": `followup/${message.id}` },
         body: JSON.stringify({ from: config.email.from, to: [message.email], subject: message.subject,
@@ -101,11 +104,13 @@ export async function processFollowups(rpc: FollowupRpc, config: Config, fetcher
 }
 
 export async function handleFollowupWorker(request: Request, env: Record<string, string | undefined>, rpc: FollowupRpc, fetcher: typeof fetch = fetch) {
-  if (!env.FOLLOWUP_CRON_SECRET || env.FOLLOWUP_CRON_SECRET.length < 32 || !matchesSecret(request.headers.get("authorization") || "", `Bearer ${env.FOLLOWUP_CRON_SECRET}`)) return webhookJson(401, { ok: false });
+  // Only the authenticated handler calls this processor.
+  if (request.method !== "POST") return workerJson(405, { ok: false, error: "method_not_allowed" });
   const config = loadFollowupConfig(env);
-  if (!config.email && !config.whatsapp) return webhookJson(503, { ok: false, error: "followups_disabled_or_unconfigured" });
+  if (!config.email && !config.whatsapp) return workerJson(503, { ok: false, error: "followups_disabled_or_unconfigured" });
   try {
     const counts = await processFollowups(rpc, config, fetcher);
-    return webhookJson(counts.errors ? 503 : 200, counts);
-  } catch { console.error("followup_queue_unavailable"); return webhookJson(503, { ok: false }); }
+    console.log(JSON.stringify({ event: "followup_queue_processed", ...counts }));
+    return workerJson(counts.errors ? 503 : 200, counts);
+  } catch { console.error("followup_queue_unavailable"); return workerJson(503, { ok: false }); }
 }
