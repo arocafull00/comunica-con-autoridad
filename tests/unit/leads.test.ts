@@ -38,6 +38,28 @@ describe("lead validation", () => {
 });
 
 describe("POST /api/leads", () => {
+  it("enrolls only complete forms after Sheets succeeds, including idempotent replays", async () => {
+    const registerWebinar = vi.fn(); const syncSheets = vi.fn();
+    const submit = vi.fn().mockResolvedValue({ outcome: "replayed" });
+    const key = randomUUID();
+    await handleLeadRequest(request(valid, key), { submit, syncSheets, registerWebinar, env });
+    expect(registerWebinar).not.toHaveBeenCalled();
+    const complete = { ...valid, profession: "Dirección", situation: SITUATIONS[2], goal: GOALS[0], communicationsConsent: true };
+    expect((await handleLeadRequest(request(complete, key), { submit, syncSheets, registerWebinar, env })).status).toBe(200);
+    expect(registerWebinar).toHaveBeenCalledWith(key);
+    expect(registerWebinar.mock.invocationCallOrder[0]).toBeGreaterThan(syncSheets.mock.invocationCallOrder[1]);
+    expect(submit).toHaveBeenLastCalledWith(expect.objectContaining({ p_communications_consent: true }));
+  });
+  it("does not enroll when Sheets fails, or grant access when registration fails", async () => {
+    const log = vi.spyOn(console,"error").mockImplementation(() => {});
+    const registerWebinar = vi.fn(); const submit = vi.fn().mockResolvedValue({ outcome: "created" });
+    const complete = { ...valid, profession: "Dirección", situation: SITUATIONS[2], goal: GOALS[0] };
+    expect((await handleLeadRequest(request(complete), { submit, registerWebinar, syncSheets: vi.fn().mockRejectedValue(new Error("failed")), env })).status).toBe(503);
+    expect(registerWebinar).not.toHaveBeenCalled();
+    registerWebinar.mockRejectedValue(new Error("failed"));
+    expect((await handleLeadRequest(request(complete), { submit, registerWebinar, env })).status).toBe(503);
+    log.mockRestore();
+  });
   it("copies validated answers only after Supabase confirms persistence", async () => {
     const submit = vi.fn().mockResolvedValue({ outcome: "created" });
     const syncSheets = vi.fn().mockResolvedValue(undefined);

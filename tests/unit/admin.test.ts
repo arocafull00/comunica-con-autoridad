@@ -30,13 +30,13 @@ describe("private Vercel traffic query", () => {
     const result = await queryTraffic(range, { token: "private-token", projectId: "project", teamId: "team" }, async (input, init) => {
       const url = new URL(String(input));
       expect(url.origin).toBe("https://api.vercel.com");
-      expect(url.searchParams.get("by")).toBe("[]");
+      expect(url.searchParams.get("by")).toBe("requestPath");
       expect(url.searchParams.get("since")).toBe("2026-03-28T23:00:00.000Z");
       expect(url.searchParams.get("until")).toBe("2026-03-29T21:59:59.999Z");
       expect(url.searchParams.get("filter")).toBe("requestPath eq '/' and environment eq 'production'");
       expect(init?.headers).toEqual({ Authorization: "Bearer private-token" });
       expect(init?.cache).toBe("no-store");
-      return Response.json({ data: [{ visitors: 20, pageviews: 30 }] });
+      return Response.json({ data: [{ requestPath: "/", visitors: 20, pageviews: 30 }] });
     });
     expect(result).toEqual({ available: true, visitors: 20, pageviews: 30 });
   });

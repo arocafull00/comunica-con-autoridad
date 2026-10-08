@@ -83,3 +83,5 @@
 @media (prefers-reduced-motion:reduce) {
   .webinar-page *, .webinar-page *::before, .webinar-page *::after { transition: none !important; scroll-behavior: auto !important; }
 }
+.webinar-page .whatsapp-consent { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; font-size: 13px; line-height: 1.6; font-weight: 400; }
+.webinar-page .whatsapp-consent input[type="checkbox"] { width: 18px; height: 18px; min-height: 18px; padding: 0; flex: 0 0 18px; margin: 3px 0 0; accent-color: var(--gold, #d8ae61); }

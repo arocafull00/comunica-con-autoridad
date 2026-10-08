@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
-import { ChartNoAxesCombined, UsersRound, MessageCircle, UserRound } from "lucide-react";
+import { CalendarClock, ChartNoAxesCombined, UsersRound, MessageCircle, UserRound } from "lucide-react";
 
 const links = [
   { href: "/admin", label: "Resumen", icon: ChartNoAxesCombined },
   { href: "/admin/contacts", label: "Contactos", icon: UsersRound },
+  { href: "/admin/calls", label: "Llamadas", icon: CalendarClock },
   { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { href: "/admin/account", label: "Mi cuenta", icon: UserRound },
 ];

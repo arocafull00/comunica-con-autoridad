@@ -1,5 +1,7 @@
 # Configuración y activación
 
+El flujo de webinar, webhooks de Cal.com, respuestas WhatsApp y emails con Resend se configura en [seguimiento](seguimiento.md). Sus envíos tienen interruptores separados y empiezan desactivados.
+
 El código guarda solicitudes en Supabase y replica los datos en el Apps Script de Google Sheets que utiliza el HTML de referencia. La integración de WhatsApp y su Cron permanecen desactivados hasta completar esta guía.
 
 ## Desarrollo y pruebas locales

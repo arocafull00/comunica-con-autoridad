@@ -18,6 +18,7 @@ export const leadSchema = z.object({
   }),
   email: z.string().trim().max(254).pipe(z.email("Introduce un email válido")).transform((value) => value.toLowerCase()),
   whatsappConsent: z.boolean(),
+  communicationsConsent: z.boolean().default(false),
   profession: z.string().trim().min(1, "Completa tu profesión o actividad").max(200)
     .refine((value) => !/[\r\n\t]/.test(value), "Introduce tu actividad en una sola línea").optional(),
   situation: z.enum(SITUATIONS, { error: "Selecciona tu situación actual" }).optional(),

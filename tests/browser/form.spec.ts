@@ -3,14 +3,28 @@ import { test, expect } from "@playwright/test";
 
 
 
-test("Spanish, accessible six-step form fits viewport and adds no consent question", async ({ page }, info) => {
+test("Spanish six-step form fits viewport with two optional unchecked consents", async ({ page }, info) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
   await fillMasterclass(page);
-  await expect(page.getByRole("checkbox")).toHaveCount(0);
+  await expect(page.getByRole("checkbox")).toHaveCount(2);
+  await expect(page.locator("#whatsappConsent")).not.toBeChecked();
+  await expect(page.locator("#communicationsConsent")).not.toBeChecked();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: `test-results/form-${info.project.name}.png`, fullPage: true });
+});
+
+test("sends independent consent choices and unlocks the webinar", async ({ page }) => {
+  await page.route("**/api/leads", async route => {
+    expect(route.request().postDataJSON()).toMatchObject({ whatsappConsent: true, communicationsConsent: true });
+    await route.fulfill({ status: 201, json: { ok: true } });
+  });
+  await page.goto("/"); await fillMasterclass(page);
+  await page.locator("#whatsappConsent").check();
+  await page.locator("#communicationsConsent").check();
+  await page.getByRole("button", { name: "DESBLOQUEAR MASTERCLASS" }).click();
+  await expect(page.locator("#webinar-content")).toBeVisible();
 });
 
 test("waits for persistence, prevents double click and confirms without consent", async ({ page }) => {

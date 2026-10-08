@@ -7,6 +7,7 @@ type SubmissionResult = { outcome: "created" | "replayed" | "conflict" | "rate_l
 type Dependencies = {
   submit: (args: Record<string, unknown>) => Promise<SubmissionResult>;
   syncSheets?: (lead: ValidatedLead, submissionId: string) => Promise<void>;
+  registerWebinar?: (submissionId: string) => Promise<void>;
   env: LeadEnvironment;
 };
 
@@ -26,7 +27,7 @@ export async function handleLeadRequest(request: Request, dependencies: Dependen
     const fieldErrors: LeadFieldErrors = {};
     for (const issue of parsed.error.issues) {
       const field = issue.path[0] as LeadField;
-      if (["name", "phone", "email", "whatsappConsent", "profession", "situation", "goal"].includes(field) && !fieldErrors[field]) fieldErrors[field] = issue.message;
+      if (["name", "phone", "email", "whatsappConsent", "communicationsConsent", "profession", "situation", "goal"].includes(field) && !fieldErrors[field]) fieldErrors[field] = issue.message;
     }
     return json(400, { ok: false, message: "Revisa los datos del formulario.", fieldErrors });
   }
@@ -36,6 +37,7 @@ export async function handleLeadRequest(request: Request, dependencies: Dependen
       p_idempotency_key: key.data.toLowerCase(), p_name: parsed.data.name, p_phone: parsed.data.phone,
       p_email: parsed.data.email, p_whatsapp_consent: parsed.data.whatsappConsent,
       p_consent_version: WHATSAPP_CONSENT_VERSION, p_ip_hash: requestIpHash(request, dependencies.env),
+      p_communications_consent: parsed.data.communicationsConsent,
       p_utm_source: parsed.data.utmSource, p_utm_medium: parsed.data.utmMedium, p_utm_campaign: parsed.data.utmCampaign,
       p_profession: parsed.data.profession ?? null, p_situation: parsed.data.situation ?? null, p_goal: parsed.data.goal ?? null,
     });
@@ -49,6 +51,11 @@ export async function handleLeadRequest(request: Request, dependencies: Dependen
             ok: false,
             message: "Tus datos están guardados en la web, pero no hemos podido confirmar la copia en Google Sheets. Vuelve a intentarlo para completar el acceso.",
           });
+        }
+        // A completed form becomes a registration when access can actually be granted.
+        // Retrying after either persistence failure must not restart the sequence.
+        if (parsed.data.profession && parsed.data.situation && parsed.data.goal) {
+          await dependencies.registerWebinar?.(key.data.toLowerCase());
         }
         return json(result.outcome === "created" ? 201 : 200, {
           ok: true, message: "Gracias, hemos recibido tu solicitud. Nos pondremos en contacto contigo próximamente.",

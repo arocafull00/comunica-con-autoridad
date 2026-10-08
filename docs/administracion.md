@@ -47,6 +47,8 @@ Contactos muestra 25 solicitudes por página, sus datos, consentimiento y atribu
 
 Para añadir las visitas reales al resumen, activar Vercel Analytics en el proyecto y configurar, solo en Next.js:
 
+Activar Analytics y añadir su SDK permite recoger visitas y consultarlas en Vercel. La consulta desde este panel es una conexión adicional: necesita un token de acceso a la API y los identificadores del proyecto y del equipo. Sin esa configuración, el panel muestra un aviso específico aunque el colector público esté funcionando.
+
 ```dotenv
 VERCEL_ANALYTICS_TOKEN=
 VERCEL_ANALYTICS_PROJECT_ID=

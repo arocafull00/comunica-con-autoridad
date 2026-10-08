@@ -60,7 +60,10 @@ test("guards pages, rejects non-admin users and invalid credentials, and revokes
 });
 test("shows real reports, contacts, a WhatsApp preview, audited settings and handles concurrent edits", async ({ page, request }) => {
   await login(page); await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();
-  await expect(page.getByRole("status").filter({ hasText: "Vercel Analytics" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Tráfico de la web" })).toContainText("Vercel Analytics");
+  await expect(page.getByRole("banner")).toHaveCount(0);
+  await expect(page.getByRole("complementary").getByRole("button", { name: "Cerrar sesión", exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary").getByRole("link", { name: `Mi cuenta: ${email}`, exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Administración" }).getByRole("link", { name: "Resumen", exact: true })).toHaveAttribute("aria-current", "page");
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Ir al contenido" })).toBeFocused();
@@ -68,19 +71,58 @@ test("shows real reports, contacts, a WhatsApp preview, audited settings and han
   await expect(page.locator("#admin-content")).toBeFocused();
   await expect(page.locator(".admin-campaigns")).toContainText("campana_de_prueba");
   await expect(page.locator('[aria-label="Gráfica diaria de solicitudes y correos únicos"] svg.recharts-surface')).toBeVisible();
-  await expect(page.locator('[aria-label="Gráfica de solicitudes por campaña"] svg.recharts-surface')).toBeVisible();
-  await page.locator('[aria-label="Gráfica de solicitudes por campaña"] .recharts-bar-rectangle').first().hover();
-  await expect(page.locator(".admin-chart-tooltip")).toContainText("campana_de_prueba");
-  await expect(page.locator(".admin-chart-tooltip")).toContainText("Solicitudes");
+  await expect(page.locator(".admin-campaigns li").filter({ hasText: "campana_de_prueba" })).toContainText("1 correos únicos");
+  await expect(page.locator(".admin-summary [data-slot=card]")).toHaveCount(0);
   await page.getByRole("heading", { name: "Resumen", exact: true }).hover();
   await page.getByText("Ver datos diarios", { exact: true }).click();
-  await expect(page.locator("details")).toContainText("1 solicitudes · 1 correos únicos");
+  await expect(page.getByRole("region", { name: "Solicitudes por día" }).locator("details")).toContainText("1 solicitudes · 1 correos únicos");
   await page.getByText("Ver datos diarios", { exact: true }).click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/admin-summary-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const chartBounds = await page.locator(".admin-summary .admin-chart").boundingBox();
+  expect(chartBounds!.y + chartBounds!.height).toBeLessThan(720);
+  const trafficBounds = await page.getByRole("region", { name: "Tráfico de la web" }).boundingBox();
+  expect(trafficBounds!.y + trafficBounds!.height).toBeLessThan(720);
+  await page.setViewportSize({ width: 1920, height: 900 });
+  const wideChart = await page.locator(".admin-summary .admin-chart").boundingBox();
+  expect(wideChart!.height).toBeGreaterThanOrEqual(400);
+  expect(wideChart!.width).toBeGreaterThan(1000);
+  const wideTraffic = await page.getByRole("region", { name: "Tráfico de la web" }).boundingBox();
+  expect(wideTraffic!.y + wideTraffic!.height).toBeLessThan(900);
+  await page.screenshot({ path: "test-results/admin-summary-wide.png", fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole("navigation", { name: "Períodos rápidos" }).getByRole("link", { name: "7 días", exact: true }).click();
+  await expect(page.getByRole("link", { name: "7 días", exact: true })).toHaveAttribute("aria-current", "true");
+  const sevenDays = new URL(page.url()).searchParams;
+  expect((Date.parse(sevenDays.get("end")!) - Date.parse(sevenDays.get("start")!)) / 86400000).toBe(7);
+  await page.getByRole("button", { name: "Cambiar período" }).click();
+  const period = page.getByRole("dialog", { name: "Seleccionar período" });
+  await expect(period).toBeVisible();
+  await period.getByLabel("Desde", { exact: true }).fill("2026-09-10");
+  await period.getByLabel("Hasta", { exact: true }).fill("2026-09-09");
+  await period.getByRole("button", { name: "Aplicar período" }).click();
+  await expect(period.getByRole("alert")).toContainText("entre 1 y 366 días");
+  await period.getByLabel("Hasta", { exact: true }).fill("2026-09-10");
+  await period.getByRole("button", { name: "Aplicar período" }).click();
+  await expect(page).toHaveURL(/start=2026-09-10&end=2026-09-11/);
+  await expect(page.getByRole("button", { name: "Cambiar período" })).toContainText("10 sept");
+  await page.getByRole("link", { name: "90 días", exact: true }).click();
+  await expect(page.getByRole("link", { name: "90 días", exact: true })).toHaveAttribute("aria-current", "true");
+  await page.getByRole("link", { name: "30 días", exact: true }).click();
+  await expect(page.getByRole("link", { name: "30 días", exact: true })).toHaveAttribute("aria-current", "true");
   await page.getByRole("link", { name: "Contactos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Contactos", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: `contact-${adminId}@example.com`, exact: true })).toBeVisible();
+  await page.getByLabel("Buscar email", { exact: true }).fill(`contact-${adminId}@example.com`);
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
+  await expect(page.locator(".admin-result-count")).toContainText("1 solicitud que coincide");
+  await page.getByRole("link", { name: "7 días", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/contacts\?/);
+  await expect(page.getByLabel("Buscar email", { exact: true })).toHaveValue(`contact-${adminId}@example.com`);
+  await expect(page.getByRole("link", { name: `contact-${adminId}@example.com`, exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Limpiar búsqueda", exact: true }).click();
+  await expect(page.getByLabel("Buscar email", { exact: true })).toHaveValue("");
   await page.screenshot({ path: "test-results/admin-contacts-desktop.png", fullPage: true });
   await page.getByRole("link", { name: "WhatsApp", exact: true }).click();
   await page.getByLabel("Plantilla aprobada").selectOption(templateId);
@@ -92,7 +134,7 @@ test("shows real reports, contacts, a WhatsApp preview, audited settings and han
   const actionRequest = await submitted;
   await expect(page.getByRole("status")).toContainText("Configuración guardada");
   expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: true, template_id: templateId });
-  const unauthorized = await request.post("/admin/whatsapp", { headers: { "next-action": actionRequest.headers()["next-action"], "content-type": actionRequest.headers()["content-type"], origin: "http://127.0.0.1:3100" }, data: actionRequest.postData()!, maxRedirects: 0 });
+  const unauthorized = await request.post("/admin/whatsapp", { headers: { "next-action": actionRequest.headers()["next-action"], "content-type": actionRequest.headers()["content-type"], origin: new URL(page.url()).origin }, data: actionRequest.postData()!, maxRedirects: 0 });
   expect(unauthorized.headers()["x-action-redirect"]).toContain("/admin/login");
   expect((await db.query("select count(*)::int as n from public.admin_audit where actor_id=$1", [adminId])).rows[0].n).toBe(1);
   await expect(page.getByRole("heading", { name: "Historial de configuración" })).toBeVisible();
@@ -104,16 +146,36 @@ test("shows real reports, contacts, a WhatsApp preview, audited settings and han
   await page.getByRole("button", { name: "Guardar configuración" }).click();
   await expect(page.getByRole("status")).toContainText("Configuración guardada");
   expect((await db.query("select enabled from public.whatsapp_settings")).rows[0].enabled).toBe(false);
+  await page.goto("/admin/account");
+  await expect(page.getByRole("heading", { name: "Cambiar contraseña", exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/admin-account-desktop.png", fullPage: true });
   for (const width of [768, 320, 390]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const path of ["/admin", "/admin/contacts", "/admin/whatsapp", "/admin/account"]) {
+    for (const path of ["/admin", "/admin/contacts", "/admin/calls", "/admin/whatsapp", "/admin/account"]) {
       await page.goto(path); const navigation = page.getByRole("navigation", { name: "Administración" });
       await expect(navigation).toBeVisible();
       await expect(navigation.locator('[aria-current="page"]')).toHaveAttribute("href", path);
       const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: window.innerWidth }));
       expect(dimensions.content, `${width}px ${path}`).toBeLessThanOrEqual(dimensions.viewport);
+      if (path === "/admin" || path === "/admin/contacts") {
+        await page.getByRole("button", { name: "Cambiar período" }).click();
+        const popover = page.getByRole("dialog", { name: "Seleccionar período" });
+        await expect(popover).toBeVisible();
+        const bounds = await popover.boundingBox();
+        expect(bounds!.x).toBeGreaterThanOrEqual(0);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+        await page.keyboard.press("Escape");
+        await expect(popover).not.toBeVisible();
+        await expect(page.getByRole("button", { name: "Cambiar período" })).toBeFocused();
+      }
       if (width === 390 && path === "/admin") await page.screenshot({ path: "test-results/admin-summary-mobile.png", fullPage: true });
+      if (width === 390 && path === "/admin/contacts") await page.screenshot({ path: "test-results/admin-contacts-mobile.png", fullPage: true });
       if (width === 390 && path === "/admin/whatsapp") await page.screenshot({ path: "test-results/admin-whatsapp-mobile.png", fullPage: true });
+      if (path === "/admin/whatsapp") {
+        const previewBounds = await page.locator(".admin-preview").boundingBox();
+        const saveBounds = await page.getByRole("button", { name: "Guardar configuración", exact: true }).boundingBox();
+        expect(previewBounds!.y + previewBounds!.height).toBeLessThan(saveBounds!.y);
+      }
       if (width === 390 && path === "/admin/account") await page.screenshot({ path: "test-results/admin-account-mobile.png", fullPage: true });
     }
   }

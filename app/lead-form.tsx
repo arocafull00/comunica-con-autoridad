@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type FormEvent } from "react";
 import dynamic from "next/dynamic";
 import type { IntlTelInputRef } from "intl-tel-input/react";
-import { type LeadField, type LeadFieldErrors, type LeadResponse } from "@/lib/leads/contracts";
+import { COMMUNICATIONS_CONSENT_TEXT, WHATSAPP_CONSENT_TEXT, type LeadField, type LeadFieldErrors, type LeadResponse } from "@/lib/leads/contracts";
 import { SITUATIONS, GOALS } from "@/lib/leads/masterclass";
 import { trackLeadCreated } from "@/lib/analytics";
 import { readLeadAttribution } from "@/lib/leads/attribution";
@@ -14,7 +14,7 @@ const PHONE_OPTIONS: ComponentProps<typeof PhoneInput>["initOptions"] = {
   countrySearch: true, countryOrder: ["es", "mx", "co", "ve", "ar", "cl", "pe", "ec", "us"],
   validationNumberTypes: ["MOBILE"],
 };
-const FIELD_STEPS: Record<LeadField, number> = { name: 0, profession: 1, situation: 2, goal: 3, email: 4, phone: 5, whatsappConsent: 5 };
+const FIELD_STEPS: Record<LeadField, number> = { name: 0, profession: 1, situation: 2, goal: 3, email: 4, phone: 5, whatsappConsent: 5, communicationsConsent: 5 };
 
 export function LeadForm({ onSuccess }: { onSuccess: () => void }) {
   const inFlight = useRef(false);
@@ -78,7 +78,8 @@ export function LeadForm({ onSuccess }: { onSuccess: () => void }) {
     const values = new FormData(event.currentTarget);
     const payload = JSON.stringify({
       name: String(values.get("name") ?? "").trim(), phone: phone.getNumber(),
-      email: String(values.get("email") ?? "").trim(), whatsappConsent: false,
+      email: String(values.get("email") ?? "").trim(), whatsappConsent: values.get("whatsappConsent") === "on",
+      communicationsConsent: values.get("communicationsConsent") === "on",
       profession: String(values.get("profession") ?? "").trim(), situation, goal,
       website: String(values.get("website") ?? ""), ...readLeadAttribution(window.location.search),
     });
@@ -160,6 +161,8 @@ export function LeadForm({ onSuccess }: { onSuccess: () => void }) {
           <PhoneInput ref={phoneRef} initOptions={PHONE_OPTIONS} disabled={pending} inputProps={{ id: "telefono_visible", type: "tel", inputMode: "tel", autoComplete: "tel-national", placeholder: "600 000 000", required: true, onChange: clearPhoneError, "aria-invalid": !!errors.phone, "aria-describedby": errors.phone ? "phone-error phone-hint" : "phone-hint" }} />
           {error("phone")}
           <div className="phone-hint" id="phone-hint">Selecciona tu país y escribe tu móvil. Se guardará con su prefijo internacional.</div>
+          <label className="whatsapp-consent" htmlFor="whatsappConsent"><input id="whatsappConsent" name="whatsappConsent" type="checkbox" /> <span>{WHATSAPP_CONSENT_TEXT} (Opcional)</span></label>
+          <label className="whatsapp-consent" htmlFor="communicationsConsent"><input id="communicationsConsent" name="communicationsConsent" type="checkbox" /> <span>{COMMUNICATIONS_CONSENT_TEXT} (Opcional)</span></label>
           <div className="form-actions"><button className="back-btn" type="button" onClick={() => goTo(4)}>← Atrás</button><button className="form-submit" type="submit">{pending ? "DESBLOQUEANDO..." : "DESBLOQUEAR MASTERCLASS →"}</button></div>
         </div>
         <div className="honeypot" aria-hidden="true"><label htmlFor="website">Deja este campo vacío</label><input id="website" name="website" tabIndex={-1} autoComplete="off" maxLength={200} /></div>

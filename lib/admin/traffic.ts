@@ -8,12 +8,13 @@ export function madridMidnight(date: string) {
 const counts = z.object({ pageviews: z.number().nonnegative(), visitors: z.number().nonnegative() });
 export type TrafficResult = { available: true; pageviews: number; visitors: number } | { available: false; reason: string };
 export async function queryTraffic(range: { start: string; end: string }, config: { token?: string; projectId?: string; teamId?: string }, fetcher: typeof fetch = fetch): Promise<TrafficResult> {
-  if (!config.token || !config.projectId) return { available: false, reason: "Las visitas estarán disponibles cuando se conecte Vercel Analytics." };
+  if (!config.token || !config.projectId) return { available: false, reason: "La consulta de visitas desde este panel todavía no está configurada." };
   try {
     const url = new URL("https://api.vercel.com/v1/query/web-analytics/visits/aggregate");
     url.searchParams.set("projectId", config.projectId);
     if (config.teamId) url.searchParams.set("teamId", config.teamId);
-    url.searchParams.set("by", "[]");
+    // Filtering to one path yields a single total, without summing daily unique visitors.
+    url.searchParams.set("by", "requestPath");
     url.searchParams.set("since", madridMidnight(range.start));
     // Vercel's until is inclusive; our date range ends at the next day's midnight, exclusive.
     url.searchParams.set("until", new Date(Date.parse(madridMidnight(range.end)) - 1).toISOString());
