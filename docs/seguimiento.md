@@ -63,6 +63,18 @@ Con el entorno configurado ejecutar `node --env-file=.env.local scripts/sync-fol
 
 Para habilitar el flujo hacen falta `FOLLOWUP_WHATSAPP_SEND_ENABLED=true` y el interruptor del panel WhatsApp activado. El interruptor del panel también pausa este flujo. La selección de bienvenida existente permanece para clientes antiguos de la API: un formulario completo ya no envía esa bienvenida adicional.
 
+## Prueba de conexión con el número gratuito de Meta
+
+La función privada `test-whatsapp` permite enviar `hello_world` (`en_US`) desde el número de prueba de Meta a un único destinatario verificado. Puede utilizarse con la web publicada en producción: el emisor sigue siendo el número de prueba. No activa los canales automáticos, reclama trabajos ni modifica las plantillas de los recordatorios.
+
+Configurar únicamente `WHATSAPP_TEST_ACCESS_TOKEN`, `WHATSAPP_TEST_PHONE_NUMBER_ID`, `WHATSAPP_TEST_GRAPH_API_VERSION` y `WHATSAPP_TEST_RECIPIENT` en los secretos de Supabase. El destinatario debe tener formato E.164 y estar autorizado en «Paso 1. Probar» de Meta. El token temporal puede caducar; sustituirlo cuando sea necesario.
+
+Desplegar con `pnpm exec supabase functions deploy test-whatsapp`. Invocar mediante POST a `/functions/v1/test-whatsapp` con la clave privada `default` del proyecto en la cabecera `apikey`. La autenticación se realiza mediante el mismo wrapper de Supabase que utiliza el seguimiento; las claves públicas y los JWT de usuario se rechazan. El cliente no puede cambiar el destinatario ni el contenido mediante el cuerpo de la petición.
+
+Antes de enviar, la función consulta el identificador y número emisor en Meta y exige un número de su entorno de pruebas `+1 555…`. Utiliza la misma función `sendFollowup` que los recordatorios, pero envía la plantilla de ejemplo sin consumir la cola. Cada POST autorizado es una prueba nueva; no reintentar automáticamente un resultado incierto. Un `200` con `outcome: sent` e identificador del proveedor confirma aceptación en Meta. Comprobar también la recepción en el móvil y las respuestas entrantes en el webhook.
+
+La web necesita `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` y el `WHATSAPP_PHONE_NUMBER_ID` de prueba en Vercel. Suscribir el campo `messages` y la aplicación correcta a la WABA de prueba. Que Meta valide la URL no prueba la recepción de mensajes; su estado de publicación puede limitar los eventos entrantes. Las plantillas de ejemplo no prueban los textos ni la programación de las siete plantillas reales.
+
 ## Resend y ejecución
 
 Preparar un remitente con dominio verificado y configurar `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_SITE_URL` (HTTPS público) y `EMAIL_UNSUBSCRIBE_SECRET` (al menos 32 caracteres) en los **secretos de Supabase Edge Functions**. Usar `supabase/functions/.env.example` como referencia y cargar únicamente estos secretos mediante `pnpm exec supabase secrets set --env-file RUTA_PRIVADA`. Supabase proporciona automáticamente `SUPABASE_URL` y `SUPABASE_SECRET_KEYS`; no copiarlos como secretos personalizados.

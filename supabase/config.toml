@@ -421,3 +421,7 @@ verify_jwt = true
 [functions.process-followup-queue]
 # Service calls authenticate with an API key inside the SDK wrapper.
 verify_jwt = false
+
+[functions.test-whatsapp]
+# Same private API-key authentication; a public key cannot send test messages.
+verify_jwt = false
