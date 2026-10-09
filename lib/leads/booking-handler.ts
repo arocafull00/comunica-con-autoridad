@@ -38,13 +38,18 @@ export async function handleBookingForm(request: Request, stage: "access" | "qua
         const field = issue.path[0] as keyof LeadFieldErrors;
         if (field && !fieldErrors[field]) fieldErrors[field] = issue.message;
       }
-      return json(400, { ok: false, message: "Revisa los datos del formulario.", fieldErrors });
+      const outdatedForm = stage === "qualification" && typeof raw === "object" && raw !== null
+        && !("applicationReasons" in raw) && !("admissionDecision" in raw)
+        && parsed.error.issues.every(issue => issue.path[0] === "applicationReasons" || issue.path[0] === "admissionDecision");
+      return json(400, { ok: false, message: outdatedForm
+        ? "El formulario se ha actualizado con dos preguntas adicionales. Recarga la página y completa las seis preguntas para reservar tu llamada."
+        : "Revisa los datos del formulario.", fieldErrors });
     }
     let args: Record<string, unknown>;
     if (stage === "access") {
       const contact = accessSchema.parse(parsed.data);
       if (contact.website) return json(400, { ok: false, message: "No se ha podido enviar la solicitud." });
-      args = { p_idempotency_key: id, p_phone: contact.phone, p_email: contact.email,
+      args = { p_idempotency_key: id, p_name: contact.name, p_phone: contact.phone, p_email: contact.email,
         p_whatsapp_consent: contact.whatsappConsent, p_communications_consent: contact.communicationsConsent,
         p_consent_version: WHATSAPP_CONSENT_VERSION, p_ip_hash: requestIpHash(request, dependencies.env),
         p_utm_source: contact.utmSource, p_utm_medium: contact.utmMedium, p_utm_campaign: contact.utmCampaign };

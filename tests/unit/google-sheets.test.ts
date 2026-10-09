@@ -23,7 +23,7 @@ describe("Google Sheets copy", () => {
       "form-name": "webinar-leads", submission_id: key, nombre: "Adrián", a_que_te_dedicas: "Dirección",
       situacion_actual: SITUATIONS[2], que_quiere_mejorar: GOALS[0], email: "adrian@example.com",
       telefono: "+33612345678", telefono_pais: "FR", telefono_prefijo: "+33",
-      nivel_compromiso: "", rango_inversion: "",
+      nivel_compromiso: "", rango_inversion: "", razones_para_reservar: "", decision_admision: "",
     });
   });
   it("accepts the Apps Script duplicate acknowledgement on a retry", async () => {

@@ -23,11 +23,23 @@ export function LeadForm({ onSuccess }: { onSuccess: (accessToken: string) => vo
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<LeadFieldErrors>({});
   const clearPhoneError = useCallback(() => setErrors(current => ({ ...current, phone: undefined })), []);
-  useEffect(() => { formRef.current?.querySelector<HTMLInputElement>("[name=email]")?.focus({ preventScroll: true }); }, []);
+  useEffect(() => { formRef.current?.querySelector<HTMLInputElement>("[name=name]")?.focus({ preventScroll: true }); }, []);
+  useEffect(() => {
+    if (pending) return;
+    const firstField = (Object.keys(errors) as LeadField[]).find(field => errors[field]);
+    if (firstField === "phone") phoneRef.current?.getInput()?.focus();
+    else if (firstField === "name" || firstField === "email") {
+      formRef.current?.querySelector<HTMLInputElement>(`[name=${firstField}]`)?.focus();
+    }
+  }, [errors, pending]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
+    const name = event.currentTarget.elements.namedItem("name") as HTMLInputElement;
+    if (name.value.trim().length < 2 || !name.checkValidity()) {
+      setErrors({ name: "Introduce tu nombre (mínimo 2 caracteres)." }); name.focus(); return;
+    }
     const email = event.currentTarget.elements.namedItem("email") as HTMLInputElement;
     if (!email.checkValidity()) {
       setErrors({ email: "Introduce un email válido." }); email.focus(); return;
@@ -41,7 +53,7 @@ export function LeadForm({ onSuccess }: { onSuccess: (accessToken: string) => vo
     setPending(true); setMessage(""); setErrors({});
     const values = new FormData(event.currentTarget);
     const payload = JSON.stringify({
-      phone: phone.getNumber(), email: email.value.trim(),
+      name: name.value.trim(), phone: phone.getNumber(), email: email.value.trim(),
       whatsappConsent: values.get("whatsappConsent") === "on",
       communicationsConsent: values.get("communicationsConsent") === "on",
       website: String(values.get("website") ?? ""), ...readLeadAttribution(window.location.search),
@@ -60,9 +72,6 @@ export function LeadForm({ onSuccess }: { onSuccess: (accessToken: string) => vo
         setMessage(result.message || "No hemos podido guardar tu solicitud. Vuelve a intentarlo.");
         setErrors(result.fieldErrors ?? {});
         if (response.status === 409) submission.current = null;
-        const firstField = Object.keys(result.fieldErrors ?? {})[0];
-        if (firstField === "phone") phoneRef.current?.getInput()?.focus();
-        else if (firstField === "email") email.focus();
       }
     } catch { setMessage("No hemos podido confirmar tu solicitud. Tus datos siguen aquí; vuelve a intentarlo."); }
     finally { inFlight.current = false; setPending(false); }
@@ -74,7 +83,12 @@ export function LeadForm({ onSuccess }: { onSuccess: (accessToken: string) => vo
       <fieldset disabled={pending}>
         <legend className="sr-only">Tus datos para acceder a la masterclass</legend>
         <div className="form-step active">
-          <h3>Accede gratis a la masterclass</h3><p>Completa tu WhatsApp y correo para ver el vídeo.</p>
+          <h3>Accede gratis a la masterclass</h3><p>Completa tu nombre, WhatsApp y correo para ver el vídeo.</p>
+          <div className="contact-field">
+            <label htmlFor="name">Nombre</label>
+            <input id="name" name="name" type="text" autoComplete="name" placeholder="Tu nombre" required minLength={2} maxLength={100} aria-invalid={!!errors.name} aria-describedby={errors.name ? "name-error" : undefined} onInput={() => setErrors(current => ({ ...current, name: undefined }))} />
+            {error("name")}
+          </div>
           <div className="contact-field">
             <label htmlFor="telefono_visible">Número de teléfono</label>
             <PhoneInput ref={phoneRef} initOptions={PHONE_OPTIONS} disabled={pending} inputProps={{ id: "telefono_visible", type: "tel", inputMode: "tel", autoComplete: "tel-national", placeholder: "600 000 000", required: true, onChange: clearPhoneError, "aria-invalid": !!errors.phone, "aria-describedby": errors.phone ? "phone-error phone-hint" : "phone-hint" }} />
