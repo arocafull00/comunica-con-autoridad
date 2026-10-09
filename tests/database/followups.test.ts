@@ -73,20 +73,20 @@ describe("booking lifecycle",()=>{
     const l=await lead(); const id=await register(l.key); const {event}=await booking(l.email);
     await booking(l.email,event);
     const {rows}=await db.query("select step,status from public.followup_jobs where registration_id=$1",[id]);
-    expect(rows.filter(row=>row.status==="suppressed")).toHaveLength(3);
-    expect(rows.filter(row=>row.step.startsWith("booking_"))).toHaveLength(4);
+    expect(rows.filter(row=>row.status==="suppressed"&&!row.step.startsWith("booking_"))).toHaveLength(3);
+    expect(rows.filter(row=>row.step.startsWith("booking_")&&row.status==="pending")).toHaveLength(4);
     expect(rows.filter(row=>row.step.startsWith("email_")&&row.status==="pending")).toHaveLength(4);
   });
   it("associates earlier unmatched bookings on registration",async()=>{
     const l=await lead(); const {event,result}=await booking(l.email); expect(result.matched).toBe(false);
     const id=await register(l.key);
     expect((await db.query("select registration_id from public.call_bookings where uid=$1",[event.uid])).rows[0].registration_id).toBe(id);
-    expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1",[event.uid])).rows[0].n).toBe(4);
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1 and status='pending'",[event.uid])).rows[0].n).toBe(4);
   });
   it("does not schedule elapsed reminders for a short-notice booking",async()=>{
     const l=await lead(); await register(l.key);
     const {event}=await booking(l.email,{startTime:new Date(Date.now()+3600_000).toISOString(),endTime:new Date(Date.now()+6300_000).toISOString()});
-    expect((await db.query("select step from public.followup_jobs where booking_uid=$1 order by step",[event.uid])).rows).toEqual([{step:"booking_15m"},{step:"booking_confirmation"}]);
+    expect((await db.query("select step from public.followup_jobs where booking_uid=$1 and status='pending' order by step",[event.uid])).rows).toEqual([{step:"booking_15m"}]);
   });
   it("reschedules to a new UID and ignores delayed original creates",async()=>{
     const l=await lead(); await register(l.key); const first=await booking(l.email);

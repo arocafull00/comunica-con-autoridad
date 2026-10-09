@@ -6,7 +6,7 @@ const required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "WHATSAPP_ACCESS_
 if (required.some(key => !env[key])) throw new Error("Missing template sync configuration");
 if (!/^\d+$/.test(env.WHATSAPP_BUSINESS_ACCOUNT_ID) || !/^v\d+\.\d+$/.test(env.WHATSAPP_GRAPH_API_VERSION)) throw new Error("Invalid Meta configuration");
 const mappings = JSON.parse(env.FOLLOWUP_WHATSAPP_TEMPLATES);
-if (!mappings || Array.isArray(mappings) || typeof mappings !== "object" || Object.keys(mappings).length > 7) throw new Error("Invalid template mappings");
+if (!mappings || Array.isArray(mappings) || typeof mappings !== "object" || Object.keys(mappings).length > 8) throw new Error("Invalid template mappings");
 const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const { data: steps, error } = await db.from("followup_steps").select("key,body,parameter").eq("channel", "whatsapp");
 if (error) throw new Error("Cannot read followup steps");

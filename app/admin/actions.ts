@@ -72,20 +72,16 @@ export async function changePassword(_previous: ActionState, form: FormData): Pr
 }
 export async function saveWhatsappSettings(_previous: ActionState, form: FormData): Promise<ActionState> {
   const { db, user } = await requireAdmin();
-  const intent = form.get("intent");
-  if (intent !== "template" && intent !== "delivery") return { message: "La acción no es válida." };
-  if (intent === "delivery" && !["on", "off"].includes(String(form.get("enabled")))) return { message: "El estado no es válido." };
+  // Templates are fixed by the automation. The panel only pauses or resumes delivery.
+  if (form.get("intent") !== "delivery") return { message: "Los mensajes de las automatizaciones son fijos y no se pueden cambiar desde el panel." };
+  if (!["on", "off"].includes(String(form.get("enabled")))) return { message: "El estado no es válido." };
+  const input = settingsSchema.safeParse({ revision: form.get("revision"), enabled: form.get("enabled") === "on", templateId: null });
+  if (!input.success) return { message: "La configuración no es válida." };
   try {
-    // Change only the setting requested by the form. The RPC checks the posted
-    // revision atomically so simultaneous administrators cannot overwrite changes.
-    const current = await db.from("whatsapp_settings").select("enabled,template_id").single();
-    if (current.error || !current.data) throw new Error("Settings unavailable");
-    const input = settingsSchema.safeParse({ revision: form.get("revision"), enabled: intent === "delivery" ? form.get("enabled") === "on" : current.data.enabled, templateId: intent === "template" ? form.get("templateId") || null : current.data.template_id });
-    if (!input.success || (intent === "template" && !input.data.templateId)) return { message: "Selecciona una plantilla aprobada." };
-    const { data, error } = await db.rpc("set_whatsapp_settings", { p_actor: user.id, p_revision: input.data.revision, p_enabled: input.data.enabled, p_template_id: input.data.templateId });
-    if (error) return { message: "No se pudo guardar. Comprueba que la plantilla está aprobada y vuelve a intentarlo." };
-    if (data.outcome === "conflict") return { message: "Otro administrador cambió la configuración. Recarga la página antes de guardar." };
-  } catch { return { message: "No se pudo guardar. Inténtalo de nuevo." }; }
+    const { data, error } = await db.rpc("set_whatsapp_delivery", { p_actor: user.id, p_revision: input.data.revision, p_enabled: input.data.enabled });
+    if (error) return { message: "No se pudo aplicar el cambio. Sincroniza las plantillas con Meta y vuelve a intentarlo." };
+    if (data.outcome === "conflict") return { message: "Otro administrador cambió la configuración. Recarga la página antes de continuar." };
+  } catch { return { message: "No se pudo aplicar el cambio. Inténtalo de nuevo." }; }
   revalidatePath("/admin/whatsapp");
-  return { message: intent === "template" ? "Plantilla guardada." : form.get("enabled") === "on" ? "Envíos de bienvenida activados." : "Envíos de bienvenida desactivados.", success: true };
+  return { message: input.data.enabled ? "Envíos automáticos activados." : "Envíos automáticos desactivados.", success: true };
 }

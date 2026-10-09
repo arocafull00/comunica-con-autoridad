@@ -92,14 +92,8 @@
 .admin-empty { padding: 24px 0 12px; color: var(--admin-muted); max-width: 65ch; }
 .admin-empty p { font-size: 15px; line-height: 1.65; }
 .admin-empty strong { display: block; color: var(--admin-ink); font-weight: 500; margin: 10px 0 6px; }
-.admin-whatsapp-form { max-width: none; margin-top: 28px; }
-.admin-whatsapp-controls { min-width: 0; }
-.admin-whatsapp-controls h2 { margin-bottom: 8px; }
 .admin-toggle { display: flex !important; gap: 12px; align-items: start; margin: 24px 0 10px; cursor: pointer; }
 .admin-toggle [data-slot=label] { flex: 1; cursor: pointer; }
-.admin-preview { background: var(--admin-raised); padding: 24px; border-radius: 8px; line-height: 1.65; min-width: 0; align-self: start; }
-.admin-preview-header { display: flex; gap: 10px; align-items: center; padding-bottom: 18px; border-bottom: 1px solid #514334; color: var(--admin-accent); }
-.admin-preview-header h2 { color: var(--admin-ink); margin: 0; font-size: 16px; }
 .admin-message { background: #30271c; padding: 18px; border-radius: 0 8px 8px 8px; margin: 24px 0 16px; }
 .admin-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .admin-template-buttons { display: grid; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--admin-line); }
@@ -108,8 +102,6 @@
 .admin-template-buttons a > span { display: flex; align-items: center; gap: 8px; }
 .admin-template-buttons svg { flex-shrink: 0; }
 .admin-template-buttons small { font-size: 13px; color: var(--admin-muted); }
-.admin-preview .admin-muted { font-size: 14px; margin-bottom: 0; }
-.admin-whatsapp-form [data-slot=button] { width: auto; margin-top: 24px; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .admin-table th { text-align: left; font-size: 14px; font-weight: 500; color: var(--admin-muted); padding: 0 16px 14px 0; border-bottom: 1px solid var(--admin-line); }
 .admin-table td { padding: 20px 16px 20px 0; border-bottom: 1px solid var(--admin-line); vertical-align: top; overflow-wrap: anywhere; }
@@ -348,7 +340,7 @@
 .admin-inline-stats dd { font-size: 32px; margin-top: 8px; }
 .admin-inline-stats .admin-attention { color: var(--admin-accent); }
 .admin-inline-stats .admin-error-count { color: var(--destructive); }
-.admin-message-stats { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.admin-message-stats { grid-template-columns: repeat(5,minmax(0,1fr)); }
 .admin-context-note { margin: 12px 0 20px; color: var(--admin-muted); font-size: 14px; max-width: 75ch; line-height: 1.65; }
 .admin-call-column-label { display: inline-flex; align-items: center; gap: 4px; color: var(--admin-muted); font-size: 14px; }
 .admin-call-mobile-label { display: none; }
@@ -362,31 +354,39 @@
 @media (pointer: coarse) {
   .admin-call-info-button { width: 44px; height: 44px; }
 }
-.admin-whatsapp-settings { max-width: 760px; --panel-open-dur: 220ms; --panel-close-dur: 150ms; --panel-translate-y: 8px; }
+.admin-whatsapp-settings { min-width: 0; }
+.admin-template-toolbar { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 24px; }
+.admin-template-toolbar .admin-muted { margin: 0; max-width: 65ch; }
+.admin-root .admin-template-toolbar-actions a[data-slot=button] { color: var(--primary-foreground); }
+.admin-template-toolbar-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.admin-template-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; align-items: stretch; }
+.admin-template-card { display: flex; flex-direction: column; min-width: 0; padding: 20px; border: 1px solid var(--admin-line); border-radius: 10px; background: var(--admin-surface); }
+.admin-automation-group + .admin-automation-group { margin-top: 32px; }
+.admin-template-trigger { margin: 0; color: var(--admin-accent); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.admin-template-card-status { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.admin-root .admin-template-card-status [data-slot=badge] { max-width: 100%; white-space: normal; text-align: center; font-size: 13px; color: var(--admin-muted); border-color: var(--admin-line); }
+.admin-root .admin-template-card-status [data-status=APPROVED] { color: #99d6b3; background: #17271d; border-color: #375a43; }
+.admin-root .admin-template-card-status [data-status=PENDING], .admin-root .admin-template-card-status [data-status=IN_APPEAL] { color: var(--admin-accent); background: #302419; border-color: #634728; }
+.admin-root .admin-template-card-status [data-status=REJECTED] { color: #ffb5a9; background: #321c19; border-color: #6c3730; }
+.admin-template-card h3 { margin: 0 0 8px; font-size: 16px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; }
+.admin-template-meta { color: var(--admin-muted); font-size: 14px; line-height: 1.6; margin: 0; overflow-wrap: anywhere; }
+.admin-template-content { padding-block: 20px; font-size: 15px; line-height: 1.65; overflow-wrap: anywhere; }
+.admin-template-content > p { margin: 0; white-space: pre-wrap; }
+.admin-template-content .admin-template-header { font-weight: 600; margin-bottom: 12px; }
+.admin-template-content .admin-template-meta { margin-top: 12px; }
+.admin-template-buttons > div { display: grid; gap: 4px; overflow-wrap: anywhere; }
+.admin-template-card-footer { margin-top: auto; display: grid; gap: 16px; }
+.admin-template-in-use { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--admin-accent); font-size: 14px; }
+.admin-template-in-use svg { flex-shrink: 0; }
+.admin-whatsapp-settings > .admin-context-note { margin: 20px 0 32px; }
+@media (max-width:1199px) { .admin-template-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width:599px) { .admin-template-grid { grid-template-columns: minmax(0,1fr); } .admin-template-toolbar-actions { width: 100%; } }
 .admin-delivery-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--admin-line); }
 .admin-delivery-bar h2 { margin-bottom: 6px; }
 .admin-delivery-bar .admin-muted { margin: 8px 0 0; }
 .admin-delivery-status { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--admin-muted); font-size: 14px; }
 .admin-delivery-status.is-enabled { color: var(--admin-accent); }
-.admin-whatsapp .admin-whatsapp-form { margin: 28px 0 0; }
-.admin-whatsapp .admin-preview { padding: 0; background: transparent; border-radius: 0; }
-.admin-whatsapp .admin-preview-header { min-height: 24px; padding: 0; border: 0; }
-.admin-whatsapp .admin-preview-header h3 { margin: 0; font-size: 15px; font-weight: 500; }
 .admin-whatsapp .admin-message { margin: 12px 0; padding: 20px; border-radius: 8px; }
-.admin-whatsapp .admin-preview > .admin-muted { margin: 8px 0 0; font-size: 14px; }
-.admin-whatsapp-controls .admin-muted { margin-bottom: 16px; }
-.admin-template-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px; margin: 8px 0 20px; }
-.admin-root .admin-template-row [data-slot=native-select-wrapper] { min-width: 0; margin: 0; }
-.admin-whatsapp-form .admin-template-row [data-slot=button] { margin: 0; }
-.admin-template-status { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.admin-version-editor { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--admin-line); }
-.admin-version-editor .admin-panel-heading h2 { margin: 0; }
-.admin-version-editor .admin-muted { font-size: 14px; }
-.admin-version-body { display: block; width: 100%; resize: vertical; min-height: 140px; padding: 12px; margin-top: 8px; border: 1px solid var(--admin-line); border-radius: 6px; background: var(--admin-raised); color: var(--admin-ink); font: inherit; }
-.admin-version-body:focus-visible { outline: 2px solid var(--admin-accent); outline-offset: 2px; }
-.admin-template-save { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; margin-top: 20px; }
-.admin-template-save .admin-muted, .admin-whatsapp-form .admin-template-save [data-slot=button] { margin: 0; }
-.admin-template-save .admin-muted { font-size: 14px; }
 .admin-whatsapp-details { margin-top: 40px; }
 .admin-whatsapp-disclosure { border-top: 1px solid var(--admin-line); }
 .admin-whatsapp-disclosure > summary { display: flex; align-items: center; gap: 12px; min-height: 64px; cursor: pointer; font-weight: 500; list-style: none; }
@@ -401,39 +401,8 @@
 .admin-confirm-dialog h2 { font-size: 21px; }
 .admin-confirm-dialog .admin-muted { margin: 12px 0 24px; }
 .admin-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
-:root {
-  --panel-open-dur: 400ms;
-  --panel-close-dur: 350ms;
-  --panel-translate-y: 100px;
-  --panel-blur: 2px;
-  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
-}
-.t-panel-slide {
-  transform: translateY(var(--panel-translate-y));
-  opacity: 0;
-  filter: blur(var(--panel-blur));
-  pointer-events: none;
-  transition:
-    transform var(--panel-close-dur) var(--panel-ease),
-    opacity   var(--panel-close-dur) var(--panel-ease),
-    filter    var(--panel-close-dur) var(--panel-ease);
-  will-change: transform, opacity, filter;
-}
-.t-panel-slide[data-open="true"] {
-  transform: translateY(0);
-  opacity: 1;
-  filter: blur(0);
-  pointer-events: auto;
-  transition:
-    transform var(--panel-open-dur) var(--panel-ease),
-    opacity   var(--panel-open-dur) var(--panel-ease),
-    filter    var(--panel-open-dur) var(--panel-ease);
-}
-@starting-style {
-  .t-panel-slide[data-open="true"] { transform: translateY(var(--panel-translate-y)); opacity: 0; filter: blur(var(--panel-blur)); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .t-panel-slide { transition: none !important; }
+  .admin-whatsapp :is(a,button) { transition: none; }
   .admin-whatsapp-disclosure > summary::before { transition: none; }
 }
 .admin-operations-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 32px; border-top: 1px solid var(--admin-line); }
@@ -472,8 +441,6 @@
   .admin-account-grid section + section { padding-top: 24px; border-top: 1px solid var(--admin-line); }
 }
 @media (max-width:480px) {
-  .admin-template-row { grid-template-columns: minmax(0,1fr); }
-  .admin-template-row [data-slot=button] { justify-self: start; }
   .admin-search { width: 100%; }
   .admin-search-field { flex: 1; width: auto; }
   .admin-clear-search { padding-left: 0; }

@@ -1,0 +1,3 @@
+[mcp_servers.whatsapp_business_tools]
+url = "https://mcp.facebook.com/whatsapp_business_tools"
+enabled = true

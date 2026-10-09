@@ -16,14 +16,14 @@ Una dirección de email entra una sola vez en el webinar. Los reintentos conserv
 | Formulario completo | WhatsApp | +1 día | Permiso y ninguna reserva registrada |
 | Formulario completo | WhatsApp | +3 días | Permiso, ninguna reserva y ninguna respuesta por WhatsApp |
 | Formulario completo | Resend | +30 minutos, +1, +2 y +3 días | Permiso de comunicaciones; continúa si reserva |
-| Reserva en Cal.com | WhatsApp | Inmediato | Permiso y reserva asociada |
+| Reserva en Cal.com | WhatsApp | Inmediato | Confirmación habitual con ≥24h; variante corta entre 2 y <24h |
 | Llamada | WhatsApp | −24 horas, −2 horas y −15 minutos | Permiso y reserva vigente |
 
-Los textos están en `public.followup_steps` y el original preparado en `lib/followups/messages.json`. Los dos emails rotulados «Email 4» en el documento corresponden a los pasos 3 y 4. Se ha adaptado el aviso de liberación de plaza a **revisión manual**, según la decisión del usuario. El original conserva la discrepancia Mateo/Álvaro y 35/45 minutos: revisar estos detalles de contenido antes de activar.
+Los textos están en `public.followup_steps` y el original preparado en `lib/followups/messages.json`. Los dos emails rotulados «Email 4» en el documento corresponden a los pasos 3 y 4. El aviso de falta de confirmación indica **revisión manual**, según la decisión del usuario del 9 de octubre. Los mensajes son fijos y no se pueden editar o seleccionar en el panel. El original conserva la discrepancia Mateo/Álvaro y 35/45 minutos: revisar estos detalles de contenido antes de activar.
 
-No se recuperan recordatorios cuyo momento ya pasó al reservar: si alguien reserva a 1 hora de la sesión, solo recibe la confirmación y el recordatorio de 15 minutos. Los recordatorios tienen una tolerancia máxima de 30 minutos y siempre caducan antes de empezar la llamada; los de webinar y emails caducan 6 horas después de su fecha. Un sistema pausado no enviará de golpe una secuencia antigua al reactivarse.
+No se recuperan recordatorios cuyo momento ya pasó al reservar. Con menos de dos horas de antelación solo se programa el recordatorio de 15 minutos, si su momento todavía no ha pasado; no se envía confirmación inmediata ni el recordatorio de dos horas. El resto de pasos queda `suppressed` con `not_needed_short_notice` y se muestra como «No ha hecho falta». Entre dos y menos de 24 horas se envía `booking_short_notice` en lugar de `booking_confirmation`. Los pasos de la otra variante y los horarios ya pasados se conservan como descartados, sin duplicar mensajes. Los recordatorios tienen una tolerancia máxima de 30 minutos y siempre caducan antes de empezar la llamada; los de webinar y emails caducan 6 horas después de su fecha. Un sistema pausado no enviará de golpe una secuencia antigua al reactivarse.
 
-`CONFIRMO` registra asistencia cuando el teléfono tiene una única reserva futura asociada y la respuesta es posterior a su creación o cambio. Si hay varias llamadas futuras para ese teléfono o una respuesta llega antes de su webhook, la respuesta queda registrada para revisión; no se confirman varias llamadas por inferencia. No se cancelan llamadas por falta de respuesta. Cancelarlas manualmente en Cal.com retira los recordatorios al recibir su webhook. Después de una cancelación no se reinicia automáticamente la secuencia de captación.
+`CONFIRMO` permanece pausado en el receptor de WhatsApp: la respuesta se registra con `confirms: false`. El código de detección está comentado para una futura iteración. La lógica interna conservada solo registra asistencia cuando el teléfono tiene una única reserva futura asociada y la respuesta es posterior a su creación o cambio, pero actualmente el receptor no la activa. Si hay varias llamadas futuras para ese teléfono o una respuesta llega antes de su webhook, la respuesta queda registrada para revisión; no se confirman varias llamadas por inferencia. No se cancelan llamadas por falta de respuesta. Cancelarlas manualmente en Cal.com retira los recordatorios al recibir su webhook. Después de una cancelación no se reinicia automáticamente la secuencia de captación.
 
 ## Cal.com
 
@@ -43,13 +43,14 @@ Documentación del proveedor: [webhooks de Cal.com](https://github.com/calcom/he
 
 Configurar el webhook de Meta en `https://TU-DOMINIO/api/webhooks/whatsapp` y suscribir `messages`. Next.js necesita `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`. El GET valida el challenge; los POST validan `X-Hub-Signature-256` y solo admiten el número de negocio configurado. Los identificadores de mensajes evitan procesar dos veces una respuesta. Las notificaciones de estado no cuentan como respuestas.
 
-Crear y aprobar en Meta las siete plantillas del flujo con el cuerpo de cada paso en `followup_steps`. Los únicos parámetros posicionales son `{{1}}` para nombre (`webinar_1h`), hora (`booking_24h`) y enlace (`booking_2h`); las otras plantillas no tienen parámetros. No añadir botones o cabeceras que requieran componentes adicionales.
+Crear y aprobar en Meta las ocho plantillas del flujo con el cuerpo de cada paso en `followup_steps`. Los únicos parámetros posicionales son `{{1}}` para nombre (`webinar_1h`) y enlace (`booking_2h`); las otras plantillas no tienen parámetros. No añadir botones o cabeceras que requieran componentes adicionales.
 
 Configurar las credenciales de envío de WhatsApp en los **secretos de la Edge Function de Supabase**, además de las que utiliza el worker de bienvenida anterior. El servidor Next.js mantiene las credenciales necesarias para recibir y verificar webhooks. `FOLLOWUP_WHATSAPP_TEMPLATES` es un JSON de este formato, utilizando los nombres reales aprobados:
 
 ```json
 {
   "booking_confirmation": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
+  "booking_short_notice": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
   "booking_24h": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
   "booking_2h": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
   "booking_15m": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
@@ -59,9 +60,9 @@ Configurar las credenciales de envío de WhatsApp en los **secretos de la Edge F
 }
 ```
 
-Con el entorno configurado ejecutar `node --env-file=.env.local scripts/sync-followup-templates.mjs`. Este script **solo consulta plantillas aprobadas** y verifica su cuerpo contra cada paso; no crea plantillas, envía mensajes ni activa el sistema. Repetir la sincronización si cambian o se retiran plantillas; el catálogo local no detecta una retirada de aprobación hasta la próxima sincronización.
+La vía habitual es **Sincronizar con Meta** en el panel: la nueva migración vincula automáticamente una única coincidencia exacta en español y conserva después su nombre e idioma. Si no hay coincidencia única, no elige otra plantilla por aproximación. Como herramienta técnica para instalaciones anteriores se conserva `node --env-file=.env.local scripts/sync-followup-templates.mjs`, con los ocho nombres reales del JSON anterior. Este script **solo consulta plantillas aprobadas** y verifica su cuerpo contra cada paso; no crea plantillas, envía mensajes ni activa el sistema. Repetir la sincronización si cambian o se retiran plantillas; el catálogo local no detecta una retirada de aprobación hasta la próxima sincronización.
 
-Para habilitar el flujo hacen falta `FOLLOWUP_WHATSAPP_SEND_ENABLED=true` y el interruptor del panel WhatsApp activado. El interruptor del panel también pausa este flujo. La selección de bienvenida existente permanece para clientes antiguos de la API: un formulario completo ya no envía esa bienvenida adicional.
+Para habilitar el flujo hacen falta `FOLLOWUP_WHATSAPP_SEND_ENABLED=true` y el interruptor del panel WhatsApp activado. El interruptor comprueba mensajes fijos aprobados, sin exigir seleccionar una bienvenida adicional. El interruptor del panel también pausa este flujo. La selección de bienvenida existente permanece para clientes antiguos de la API: un formulario completo ya no envía esa bienvenida adicional.
 
 ## Prueba de conexión con el número gratuito de Meta
 
@@ -73,7 +74,7 @@ Desplegar con `pnpm exec supabase functions deploy test-whatsapp`. Invocar media
 
 Antes de enviar, la función consulta el identificador y número emisor en Meta y exige un número de su entorno de pruebas `+1 555…`. Utiliza la misma función `sendFollowup` que los recordatorios, pero envía la plantilla de ejemplo sin consumir la cola. Cada POST autorizado es una prueba nueva; no reintentar automáticamente un resultado incierto. Un `200` con `outcome: sent` e identificador del proveedor confirma aceptación en Meta. Comprobar también la recepción en el móvil y las respuestas entrantes en el webhook.
 
-La web necesita `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` y el `WHATSAPP_PHONE_NUMBER_ID` de prueba en Vercel. Suscribir el campo `messages` y la aplicación correcta a la WABA de prueba. Que Meta valide la URL no prueba la recepción de mensajes; su estado de publicación puede limitar los eventos entrantes. Las plantillas de ejemplo no prueban los textos ni la programación de las siete plantillas reales.
+La web necesita `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` y el `WHATSAPP_PHONE_NUMBER_ID` de prueba en Vercel. Suscribir el campo `messages` y la aplicación correcta a la WABA de prueba. Que Meta valide la URL no prueba la recepción de mensajes; su estado de publicación puede limitar los eventos entrantes. Las plantillas de ejemplo no prueban los textos ni la programación de las ocho plantillas reales.
 
 ## Resend y ejecución
 
@@ -92,9 +93,9 @@ node --env-file=.env.local --env-file=.vercel/whatsapp-test/supabase-test-secret
 
 Después de habilitarlo, completar las seis respuestas del formulario público con un email nuevo, el móvil autorizado y consentimiento de WhatsApp. Dejar el consentimiento de email desmarcado si solo se prueba WhatsApp. Los nuevos trabajos WhatsApp de ese teléfono se marcan permanentemente como prueba; el resto de contactos conserva su flujo y horarios. Las inscripciones anteriores no se incorporan ni se reinician automáticamente.
 
-Los tres avisos del formulario se programan a +1, +3 y +5 minutos, con la resolución del cron de un minuto. Una respuesta posterior a la inscripción suprime el tercero; una reserva asociada suprime los tres. Cada envío usa `hello_world`: prueba condiciones y programación, no el contenido ni los parámetros de las siete plantillas reales. Puede repetir la inscripción con otro email para crear otra secuencia; usar el mismo email en Cal.com para asociar una llamada.
+Los tres avisos del formulario se programan a +1, +3 y +5 minutos, con la resolución del cron de un minuto. Una respuesta posterior a la inscripción suprime el tercero; una reserva asociada suprime los tres. Cada envío usa `hello_world`: prueba condiciones y programación, no el contenido ni los parámetros de las ocho plantillas reales. Puede repetir la inscripción con otro email para crear otra secuencia; usar el mismo email en Cal.com para asociar una llamada.
 
-Las llamadas mantienen sus horas reales y su confirmación inmediata. `advance` adelanta un trabajo de prueba pendiente y sin intentos a un minuto después, conservando controles de consentimiento, revisión de reserva, cancelación, enlace Meet y comienzo de la llamada. Los trabajos de prueba quedan excluidos del canal real incluso después de pausar este modo. Para pausarlo de inmediato ejecutar `disable`; para apagar también el acceso a Meta, poner `FOLLOWUP_WHATSAPP_TEST_ENABLED=false`. Los envíos ya reclamados pueden terminar. Renovar el token temporal de Meta cuando caduque.
+Las llamadas mantienen sus horas reales y las reglas de antelación del flujo fijo; a menos de dos horas no hay confirmación inmediata. `advance` adelanta un trabajo de prueba pendiente y sin intentos a un minuto después, conservando controles de consentimiento, revisión de reserva, cancelación, enlace Meet y comienzo de la llamada. Los trabajos de prueba quedan excluidos del canal real incluso después de pausar este modo. Para pausarlo de inmediato ejecutar `disable`; para apagar también el acceso a Meta, poner `FOLLOWUP_WHATSAPP_TEST_ENABLED=false`. Los envíos ya reclamados pueden terminar. Renovar el token temporal de Meta cuando caduque.
 
 Preparar un remitente con dominio verificado y configurar `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_SITE_URL` (HTTPS público) y `EMAIL_UNSUBSCRIBE_SECRET` (al menos 32 caracteres) en los **secretos de Supabase Edge Functions**. Usar `supabase/functions/.env.example` como referencia y cargar únicamente estos secretos mediante `pnpm exec supabase secrets set --env-file RUTA_PRIVADA`. Supabase proporciona automáticamente `SUPABASE_URL` y `SUPABASE_SECRET_KEYS`; no copiarlos como secretos personalizados.
 
@@ -137,3 +138,9 @@ where status='failed' or last_error in ('missing_template','missing_meeting_url'
 -- Reservas cuyo email aún no se ha registrado en el webinar.
 select uid,email,start_time from public.call_bookings where registration_id is null;
 ```
+
+## Actualización del flujo fijo (9 de octubre de 2026)
+
+Aplicar `20261009170000_fixed_whatsapp_automations.sql` antes de publicar la nueva pantalla. No reinicia secuencias ni reprograma trabajos anteriores. Los reintentos WhatsApp cuyo cuerpo o contrato de variables ya no coincide con el mensaje fijo se suprimen como `automation_content_changed`; no se reinterpretan con la nueva plantilla. No se reintentan resultados inciertos de Meta.
+
+La liberación automática de plazas queda fuera de esta iteración por decisión expresa del usuario. El administrador cancela manualmente en Cal.com y el webhook retira los recordatorios pendientes. La confirmación automática de asistencia permanece pausada.

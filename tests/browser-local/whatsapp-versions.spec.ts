@@ -23,34 +23,17 @@ test.afterAll(async () => {
   if (userId) await auth.auth.admin.deleteUser(userId);
   await db.end();
 });
-test("new-version editor preserves the active original, validates the name variable and fits mobile", async ({ page }) => {
+test("template management opens Meta without editing the active original in the panel", async ({ page }) => {
   await page.goto("/admin/login"); await page.getByLabel("Email", { exact: true }).fill(email); await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click(); await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();
   await page.goto("/admin/whatsapp");
   const settings = (await db.query("select * from public.whatsapp_settings")).rows[0];
-  await expect(page.getByLabel("Plantillas de Meta")).toHaveValue(templateId);
-  await page.getByRole("button", { name: "Crear nueva versión", exact: true }).click();
-  const editor = page.getByRole("region", { name: "Crear nueva versión", exact: true });
-  await expect(editor.getByLabel("Nombre de la nueva versión")).toHaveValue(name.replace(/_v1$/, "_v2"));
-  await expect(editor).toContainText("Idioma: es · categoría: Utilidad");
-  const submit = editor.getByRole("button", { name: "Enviar nueva versión a Meta", exact: true });
-  await expect(submit).toBeDisabled();
-  await editor.getByLabel("Mensaje de la nueva versión").fill("Gracias {{1}}, hemos recibido tu solicitud.");
-  await expect(editor.getByLabel("Vista previa de la nueva versión")).toContainText("Gracias María");
-  await expect(submit).toBeEnabled();
-  await editor.getByLabel("Nombre de la nueva versión").fill(name); await expect(submit).toBeDisabled();
-  await editor.getByLabel("Nombre de la nueva versión").fill(name.replace(/_v1$/, "_v2"));
-  await editor.getByLabel("Mensaje de la nueva versión").fill("Hola {{1}} {{2}}"); await expect(submit).toBeDisabled();
-  await editor.getByLabel("Mensaje de la nueva versión").fill("Gracias {{1}}, hemos recibido tu solicitud.");
+  await expect(page.locator(".admin-template-card")).toHaveCount(8);
+  await expect(page.getByRole("button", { name: "Crear nueva versión" })).toHaveCount(0);
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Gestionar en Meta" })).toHaveAttribute("href", /business\.facebook\.com\/latest\/whatsapp_manager\/message_templates/);
   await page.setViewportSize({ width: 320, height: 844 });
-  await expect(submit).toBeEnabled();
+  await expect(page.getByRole("link", { name: "Gestionar en Meta" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
-  await page.screenshot({ path: ".vercel/whatsapp-version-mobile.png", fullPage: true });
-  // Provider submission is tested with mocks; browser tests never create real Meta templates.
   expect((await db.query("select * from public.whatsapp_settings")).rows[0]).toEqual(settings);
-  await editor.getByRole("button", { name: "Cerrar editor" }).click();
-  await expect(page.getByLabel("Plantillas de Meta")).toHaveValue(templateId);
-  await page.getByRole("button", { name: "Crear nueva versión", exact: true }).click();
-  await expect(editor.getByLabel("Mensaje de la nueva versión")).toHaveValue("Hola {{1}}, bienvenida.");
-  await expect(editor.getByRole("button", { name: "Enviar nueva versión a Meta", exact: true })).toBeDisabled();
 });

@@ -18,14 +18,14 @@ Los tiempos de captación y email se cuentan desde la inscripción al webinar; l
 | Mensaje | Cuándo | Contenido solicitado | Variables | Situación en el código |
 | --- | --- | --- | --- | --- |
 | Confirmación de reserva | Al reservar | Explicar el objetivo de la sesión y cómo se valorará trabajar juntos. | Ninguna | Preparado como `booking_confirmation`. |
-| Recordatorio de 24 horas | 24 horas antes | Reservar 45 minutos, entrar desde un sitio tranquilo y responder «CONFIRMO» para mantener la plaza. | Ninguna en el original | Preparado como `booking_24h`, con hora adicional y texto de revisión manual. |
-| Confirmación de reserva próxima | Al reservar con menos de 24 horas de antelación | Versión breve que pide «CONFIRMO» desde el primer mensaje. | Ninguna | Variante pendiente; debe sustituir a la confirmación habitual, sin duplicar ambos mensajes. |
-| Recordatorio de 2 horas | 2 horas antes | Recordar la confirmación e incluir el enlace real de Google Meet. | Enlace de Meet | Preparado como `booking_2h`, con texto de revisión manual. |
+| Recordatorio de 24 horas | 24 horas antes | Reservar 45 minutos, entrar desde un sitio tranquilo y responder «CONFIRMO» para mantener la plaza. | Ninguna en el original | Preparado como `booking_24h`, sin variable de hora y con aviso de revisión manual. |
+| Confirmación de reserva próxima | Al reservar con menos de 24 horas de antelación | Versión breve que pide «CONFIRMO» desde el primer mensaje. | Ninguna | Preparado como `booking_short_notice` entre 2 y menos de 24 horas; sustituye a la confirmación habitual. |
+| Recordatorio de 2 horas | 2 horas antes | Recordar la confirmación e incluir el enlace real de Google Meet. | Enlace de Meet | Preparado como `booking_2h`, con el enlace real de Meet como única variable. |
 | Recordatorio de 15 minutos | 15 minutos antes | «En 15 minutos empezamos. Nos vemos ahora.» | Ninguna | Preparado como `booking_15m`. |
 
 ### Respuesta «CONFIRMO» y mantenimiento de la plaza
 
-El cliente pide liberar automáticamente la plaza si no se recibe confirmación, y que no se realice la reunión sin ella. El documento no fija el plazo límite para confirmar ni el momento de liberación, especialmente para reservas de última hora.
+El encargo original pedía liberar la plaza automáticamente. El 9 de octubre el usuario revoca ese comportamiento: el administrador de la cuenta debe cancelar manualmente. Los mensajes preparados indican revisión manual en lugar de prometer una liberación automática. No existe código que cancele reservas automáticamente; se conserva una nota de futura iteración en la nueva migración.
 
 El 8 de octubre el usuario solicita aceptar directamente la plaza al recibir «CONFIRMO». Está pendiente concretar si esa aceptación debe reflejarse también en Cal.com o únicamente en el panel.
 
@@ -65,12 +65,12 @@ El original llama «Email 4» tanto al mensaje de dos días como al de tres día
 ## Diferencias y decisiones pendientes
 
 - **Aceptación con «CONFIRMO»:** en pausa por decisión del usuario el 9 de octubre; código conservado para una futura iteración. Concretar la aceptación de la reserva en Cal.com y verificar el recorrido completo antes de reactivarla.
-- **Liberación automática:** solicitada por el cliente, pendiente de definir el plazo y de implementar. La guía técnica vigente utiliza revisión manual. No asumir que aceptar una plaza autoriza también a cancelarla automáticamente.
-- **Reservas con menos de 24 horas:** falta la variante específica del primer mensaje. No enviar el recordatorio de 24 horas cuando su momento ya haya pasado.
+- **Liberación automática:** descartada por el usuario el 9 de octubre. El administrador cancela manualmente en Cal.com.
+- **Reservas con menos de 24 horas:** variante `booking_short_notice` preparada entre 2 y menos de 24 horas. Con menos de dos horas solo se programa el aviso de 15 minutos y el resto queda como «No ha hecho falta»; si el horario de 15 minutos ya pasó, tampoco se recupera ese aviso.
 - **Duración de la llamada:** los WhatsApp dicen 45 minutos y el último email dice 35 minutos. Confirmar una duración y compararla con el evento de Cal.com.
 - **Testimonio Mateo/Álvaro:** el título del segundo email dice Mateo, pero el párrafo habla de Álvaro. Confirmar el nombre antes de cambiar el texto.
 - **Inicio de los tiempos:** confirmar que «entrar/apuntarse al webinar» significa completar el formulario, tal como está preparado actualmente.
-- **Redacción:** la plantilla preparada de una hora cambia «dime un una cosa» por «piensa en una cosa». Los recordatorios preparados también sustituyen la liberación automática por revisión manual. El anexo conserva el texto del cliente sin estos cambios.
+- **Redacción:** el mensaje de una hora conserva «dime un una cosa» del original. Los avisos de falta de confirmación indican revisión manual, según la última instrucción del usuario. El anexo conserva el texto del cliente sin estos cambios.
 
 ## Estado de conexión comprobado en esta conversación
 
@@ -88,7 +88,7 @@ Estado a 8 de octubre de 2026; revisar de nuevo al activar los envíos:
 - [ ] Probar la confirmación habitual y la variante de menos de 24 horas, sin duplicarlas.
 - [ ] Mientras siga en pausa, responder «CONFIRMO» y comprobar que se registra la respuesta sin confirmar asistencia. Al reactivar, comprobar la aceptación en el destino acordado.
 - [ ] Comprobar que una respuesta ambigua no acepta varias reservas.
-- [ ] Definir y probar qué ocurre al no confirmar dentro del plazo acordado.
+- [ ] Verificar la cancelación manual en Cal.com y la retirada de sus recordatorios.
 - [ ] Probar los recordatorios de 24 horas, 2 horas y 15 minutos, con el enlace real de la llamada.
 - [ ] Reprogramar y cancelar: los recordatorios de la fecha anterior deben dejar de enviarse.
 - [ ] Reservar durante la captación: los WhatsApp de captación pendientes deben detenerse.
@@ -252,3 +252,7 @@ Un saludo,
 Ignacio Roa.
 PD. Cuanto antes agendes, antes puedes empezar a mejorar las conversaciones que más impacto tienen en tus resultados. Elige tu hueco aquí >> https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion
 ```
+
+## Decisión del 9 de octubre: mensajes fijos
+
+El panel muestra ocho tarjetas con su trigger, contenido y estado de Meta. Se retiran la selección de bienvenida y el editor de versiones. Solo varían el nombre del registro (`webinar_1h`) y el enlace de Meet (`booking_2h`). La vinculación por cuerpo exacto y los nuevos horarios están preparados en `20261009170000_fixed_whatsapp_automations.sql`, comprobados en Supabase local. Este documento no demuestra despliegue ni envío real en producción.
