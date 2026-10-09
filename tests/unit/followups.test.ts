@@ -66,10 +66,17 @@ const timestamp = Math.floor(Date.now() / 1000).toString();
 const inbound = { object: "whatsapp_business_account", entry: [{ changes: [{ field: "messages", value: { metadata: { phone_number_id: "123" },
   messages: [{ id: "wamid.reply", from: "34612345678", timestamp, type: "text", text: { body: "  confirmo  " } }] } }] }] };
 describe("WhatsApp replies", () => {
-  it("validates signature and recognizes an exact CONFIRMO", async () => {
+  it.each([
+    { type: "text", text: { body: "  confirmo  " } },
+    { type: "button", button: { text: "CONFIRMO" } },
+    { type: "interactive", interactive: { button_reply: { title: "CONFIRMO" } } },
+  ])("keeps attendance confirmation paused for $type replies", async reply => {
+    const value = { object: inbound.object, entry: [{ changes: [{ field: "messages", value: {
+      metadata: { phone_number_id: "123" }, messages: [{ id: "wamid.reply", from: "34612345678", timestamp, ...reply }],
+    } }] }] };
     const save = vi.fn();
-    expect((await handleWhatsappWebhook(signed(inbound, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
-    expect(save).toHaveBeenCalledWith([expect.objectContaining({ id: "wamid.reply", phone: "+34612345678", confirms: true, optsOut: false })]);
+    expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ id: "wamid.reply", phone: "+34612345678", confirms: false, optsOut: false })]);
   });
   it("counts nontext replies and recognizes BAJA without logging their content", async () => {
     const value = structuredClone(inbound);

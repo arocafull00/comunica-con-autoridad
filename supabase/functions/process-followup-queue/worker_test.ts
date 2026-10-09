@@ -95,17 +95,53 @@ Deno.test("Deno sends idempotent personalized emails with the existing HMAC unsu
     assert.equal(url, "https://api.resend.com/emails");
     assert.equal(new Headers(init?.headers).get("Idempotency-Key"), `followup/${message.id}`);
     const body = JSON.parse(String(init?.body));
-    assert.ok(body.text.includes("Hola Adrián"));
+    assert.equal(body.template.id, "email-2-casos");
+    assert.equal(body.template.variables.LEAD_NAME, "Adrián");
+    // Resend rejects template requests combined with raw text or HTML.
+    assert.equal(body.text, undefined);
+    assert.equal(body.html, undefined);
+    assert.deepEqual(body.to, [message.email]);
+    assert.equal(body.from, config.email.from);
+    assert.equal(body.subject, message.subject);
     const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`email-unsubscribe:${message.registrationId}`)));
     const token = `${message.registrationId}.${Array.from(signature, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-    const link = new URL(body.text.split("Dejar de recibir estos emails: ")[1]);
+    const link = new URL(body.template.variables.EMAIL_UNSUBSCRIBE_URL);
     assert.equal(link.origin, env.ADMIN_SITE_URL);
     assert.equal(link.pathname, "/api/followups/unsubscribe");
     assert.equal(link.searchParams.get("token"), token);
     return Response.json({ id: "email-provider-id" });
   };
   assert.deepEqual(await sendFollowup(message, config, fetcher), { outcome: "sent", providerId: "email-provider-id" });
+});
+
+Deno.test("all four email steps select the published template and supply exactly its required variables", async () => {
+  const aliases = ["email-1-claridad", "email-2-casos", "email-3-empezar", "email-4-resultados"];
+  for (const [index, alias] of aliases.entries()) {
+    const fetcher: typeof fetch = async (_url, init) => {
+      const payload = JSON.parse(String(init?.body));
+      assert.equal(payload.template.id, alias);
+      assert.deepEqual(Object.keys(payload.template.variables).sort(), index === 1
+        ? ["EMAIL_UNSUBSCRIBE_URL", "LEAD_NAME"] : ["EMAIL_UNSUBSCRIBE_URL"]);
+      return Response.json({ id: "email-provider-id" });
+    };
+    assert.equal((await sendFollowup({ ...message, step: `email_${index + 1}` }, config, fetcher)).outcome, "sent");
+  }
+});
+
+Deno.test("untrusted lead names cannot inject HTML into the case study template", async () => {
+  const fetcher: typeof fetch = async (_url, init) => {
+    const payload = JSON.parse(String(init?.body));
+    assert.equal(payload.template.variables.LEAD_NAME, "&lt;img src=x&gt; &amp; &quot;Ana&quot; &#39;Roa&#39;");
+    return Response.json({ id: "email-provider-id" });
+  };
+  assert.equal((await sendFollowup({ ...message, name: '<img src=x> & "Ana" \'Roa\'' }, config, fetcher)).outcome, "sent");
+});
+
+Deno.test("unknown email steps never send an unintended template", async () => {
+  for (const step of ["unknown", "constructor", "__proto__"]) {
+    assert.deepEqual(await sendFollowup({ ...message, step }, config, noFetch), { outcome: "failed", error: "email_template_missing" });
+  }
 });
 
 for (const parameter of [null, "meetingUrl", "time", "name"] as const) {

@@ -1,5 +1,13 @@
 import { signUnsubscribeToken } from "../_shared/email-unsubscribe.ts";
 
+// Stable aliases from templates/resend-templates.json. Resend serves the published HTML and text versions.
+const emailTemplates: Record<string, string> = {
+  email_1: "email-1-claridad",
+  email_2: "email-2-casos",
+  email_3: "email-3-empezar",
+  email_4: "email-4-resultados",
+};
+
 function workerJson(status: number, body: object) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -41,8 +49,8 @@ export function loadFollowupConfig(env: Record<string, string | undefined>): Con
   };
 }
 
-function render(message: FollowupMessage) {
-  return message.body.replace(/\{\{(name|time|meetingUrl)\}\}/g, (_, key: "name" | "time" | "meetingUrl") => message[key] ?? "");
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 }
 
 export async function sendFollowup(message: FollowupMessage, config: Config, fetcher: typeof fetch = fetch): Promise<Result> {
@@ -55,12 +63,15 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
     let response: Response;
     if (message.channel === "email") {
       if (!config.email || !message.subject) return { outcome: "failed", error: "email_configuration_missing" };
+      if (!Object.hasOwn(emailTemplates, message.step)) return { outcome: "failed", error: "email_template_missing" };
+      const templateId = emailTemplates[message.step];
       const unsubscribe = new URL("/api/followups/unsubscribe", config.email.siteUrl);
       unsubscribe.searchParams.set("token", signUnsubscribeToken(message.registrationId, config.email.unsubscribeSecret));
       response = await fetcher("https://api.resend.com/emails", {
         method: "POST", headers: { Authorization: `Bearer ${config.email.key}`, "Content-Type": "application/json", "Idempotency-Key": `followup/${message.id}` },
         body: JSON.stringify({ from: config.email.from, to: [message.email], subject: message.subject,
-          text: `${render(message)}\n\nDejar de recibir estos emails: ${unsubscribe.href}` }), signal: AbortSignal.timeout(10_000),
+          template: { id: templateId, variables: { EMAIL_UNSUBSCRIBE_URL: unsubscribe.href,
+            ...(message.step === "email_2" ? { LEAD_NAME: escapeHtml(message.name) } : {}) } } }), signal: AbortSignal.timeout(10_000),
       });
     } else {
       if (!config.whatsapp || !message.templateName || !message.templateLanguage) return { outcome: "failed", error: "whatsapp_configuration_missing" };

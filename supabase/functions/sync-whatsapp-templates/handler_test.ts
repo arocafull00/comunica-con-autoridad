@@ -56,9 +56,9 @@ Deno.test("catalog sync paginates against Meta and stores every template with st
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { count: 3 });
   assert.deepEqual(test.writes, [{ p_templates: [
-    { name: template.name, language: template.language, body: template.components[0].text, meta_status: "APPROVED", approved: true, components: template.components },
-    { name: "pending", language: "es", body: template.components[0].text, meta_status: "PENDING", approved: false, components: template.components },
-    { name: "with_header", language: "es", body: template.components[0].text, meta_status: "APPROVED", approved: false, components: [...template.components, { type: "HEADER" }] },
+    { name: template.name, language: template.language, body: template.components[0].text, meta_status: "APPROVED", approved: true, components: template.components, category: "UNKNOWN", meta_id: null },
+    { name: "pending", language: "es", body: template.components[0].text, meta_status: "PENDING", approved: false, components: template.components, category: "UNKNOWN", meta_id: null },
+    { name: "with_header", language: "es", body: template.components[0].text, meta_status: "APPROVED", approved: false, components: [...template.components, { type: "HEADER" }], category: "UNKNOWN", meta_id: null },
   ] }]);
 });
 

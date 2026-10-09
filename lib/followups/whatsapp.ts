@@ -28,7 +28,11 @@ export async function handleWhatsappWebhook(request: Request, deps: {
         const time = Number(message.timestamp) * 1000;
         if (!Number.isFinite(time) || time <= 0 || time > Date.now() + 300_000) return webhookJson(400, { ok: false });
         const text = (message.text?.body ?? message.button?.text ?? message.interactive?.button_reply?.title ?? "").trim().toUpperCase();
-        messages.push({ id: message.id, phone: `+${message.from}`, receivedAt: new Date(time).toISOString(), confirms: text === "CONFIRMO", optsOut: ["BAJA", "STOP"].includes(text) });
+        // TODO: Retomar en una futura iteración la confirmación automática de asistencia
+        // al recibir CONFIRMO (por texto o botón). En pausa por decisión del usuario.
+        // const confirms = text === "CONFIRMO";
+        const confirms = false;
+        messages.push({ id: message.id, phone: `+${message.from}`, receivedAt: new Date(time).toISOString(), confirms, optsOut: ["BAJA", "STOP"].includes(text) });
       }
     }
     if (messages.length) await deps.save(messages);

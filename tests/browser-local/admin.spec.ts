@@ -107,7 +107,7 @@ test("guards pages, rejects non-admin users and invalid credentials, and revokes
 });
 test("shows real reports, contacts, a WhatsApp preview, audited settings and handles concurrent edits", async ({ page, request }) => {
   await login(page); await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Tráfico de la web" })).toContainText("Vercel Analytics");
+  await expect(page.getByText("Vercel Analytics", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("banner")).toHaveCount(0);
   await expect(page.getByRole("complementary").getByRole("button", { name: "Cerrar sesión", exact: true })).toBeVisible();
   await expect(page.getByRole("complementary").getByRole("link", { name: `Mi cuenta: ${email}`, exact: true })).toBeVisible();

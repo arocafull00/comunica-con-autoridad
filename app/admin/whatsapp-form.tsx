@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { WhatsappVersionEditor } from "./whatsapp-version-editor";
 
-export type Template = { id: string; name: string; language: string; body: string; approved: boolean; meta_status: string; verified_at: string };
+export type Template = { id: string; name: string; language: string; body: string; approved: boolean; meta_status: string; verified_at: string; category: string; components: { type?: string }[] };
 
 function templateStatus(status: string) {
   const labels: Record<string, string> = { APPROVED: "Aprobada", PENDING: "Pendiente de aprobación", REJECTED: "Rechazada", PAUSED: "Pausada", DISABLED: "Deshabilitada", IN_APPEAL: "En revisión de recurso", PENDING_DELETION: "Pendiente de eliminación", DELETED: "Eliminada", UNAVAILABLE: "Ya no está en Meta" };
@@ -22,6 +23,7 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
   const approved = templates.filter((t) => t.approved);
   const [selected, setSelected] = useState(approved.some((t) => t.id === settings.template_id) ? settings.template_id! : "");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [creatingVersion, setCreatingVersion] = useState(false);
   const [state, action, pending] = useActionState(saveWhatsappSettings, { message: "" });
   const [deliveryState, deliveryAction, changingDelivery] = useActionState(async (previous: { message: string; success?: boolean }, form: FormData) => {
     const result = await saveWhatsappSettings(previous, form);
@@ -32,7 +34,7 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
   const template = templates.find((t) => t.id === selected);
   const savedTemplate = approved.find((t) => t.id === settings.template_id);
   const changed = !!template?.approved && template.id !== settings.template_id;
-  const busy = pending || syncing || changingDelivery;
+  const busy = pending || syncing || changingDelivery || creatingVersion;
 
   return <div className="admin-whatsapp-settings">
     <div className="admin-delivery-bar">
@@ -107,5 +109,6 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
       </fieldset>
       {state.message ? <p role="status" className={state.success ? "admin-success" : "admin-error"}>{state.message}</p> : null}
     </form>
+    {template ? <WhatsappVersionEditor key={template.id} source={template} templates={templates} busy={pending || syncing || changingDelivery} onPendingChange={setCreatingVersion} /> : null}
   </div>;
 }

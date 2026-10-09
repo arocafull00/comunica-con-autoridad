@@ -29,7 +29,9 @@ El cliente pide liberar automáticamente la plaza si no se recibe confirmación,
 
 El 8 de octubre el usuario solicita aceptar directamente la plaza al recibir «CONFIRMO». Está pendiente concretar si esa aceptación debe reflejarse también en Cal.com o únicamente en el panel.
 
-El código actual reconoce «CONFIRMO» por WhatsApp y registra asistencia en `confirmed_at` cuando hay una única reserva futura asociada al teléfono y el mensaje es posterior a su creación o cambio. Si hay varias reservas posibles, o la respuesta llega antes del webhook de la reserva, requiere revisión. Actualmente no acepta reservas por la API de Cal.com ni cancela automáticamente por falta de respuesta.
+El 9 de octubre el usuario deja en pausa la confirmación automática de asistencia. La detección de «CONFIRMO» queda comentada en `lib/followups/whatsapp.ts` para retomarla en una futura iteración: tanto los mensajes de texto como los botones se registran con `confirms: false` y no actualizan `confirmed_at`. Se mantienen el registro de respuestas y las bajas «BAJA»/«STOP».
+
+La lógica conservada en la base de datos permite registrar asistencia cuando hay una única reserva futura asociada al teléfono y el mensaje es posterior a su creación o cambio. Actualmente no acepta reservas por la API de Cal.com ni cancela automáticamente por falta de respuesta. Antes de reactivar la detección, revisar el destino de la confirmación y probar el recorrido completo.
 
 ## Si no reserva una llamada: WhatsApp
 
@@ -62,7 +64,7 @@ El original llama «Email 4» tanto al mensaje de dos días como al de tres día
 
 ## Diferencias y decisiones pendientes
 
-- **Aceptación con «CONFIRMO»:** el registro de asistencia en el panel está preparado; concretar la aceptación de la reserva en Cal.com y verificar el recorrido completo.
+- **Aceptación con «CONFIRMO»:** en pausa por decisión del usuario el 9 de octubre; código conservado para una futura iteración. Concretar la aceptación de la reserva en Cal.com y verificar el recorrido completo antes de reactivarla.
 - **Liberación automática:** solicitada por el cliente, pendiente de definir el plazo y de implementar. La guía técnica vigente utiliza revisión manual. No asumir que aceptar una plaza autoriza también a cancelarla automáticamente.
 - **Reservas con menos de 24 horas:** falta la variante específica del primer mensaje. No enviar el recordatorio de 24 horas cuando su momento ya haya pasado.
 - **Duración de la llamada:** los WhatsApp dicen 45 minutos y el último email dice 35 minutos. Confirmar una duración y compararla con el evento de Cal.com.
@@ -84,7 +86,7 @@ Estado a 8 de octubre de 2026; revisar de nuevo al activar los envíos:
 - [ ] Registrar un contacto nuevo y comprobar que los tiempos parten de esa inscripción.
 - [ ] Reservar con el mismo email y comprobar que se relaciona con el contacto.
 - [ ] Probar la confirmación habitual y la variante de menos de 24 horas, sin duplicarlas.
-- [ ] Responder «CONFIRMO» y comprobar la aceptación en el destino acordado.
+- [ ] Mientras siga en pausa, responder «CONFIRMO» y comprobar que se registra la respuesta sin confirmar asistencia. Al reactivar, comprobar la aceptación en el destino acordado.
 - [ ] Comprobar que una respuesta ambigua no acepta varias reservas.
 - [ ] Definir y probar qué ocurre al no confirmar dentro del plazo acordado.
 - [ ] Probar los recordatorios de 24 horas, 2 horas y 15 minutos, con el enlace real de la llamada.

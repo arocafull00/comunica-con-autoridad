@@ -429,3 +429,7 @@ verify_jwt = false
 [functions.sync-whatsapp-templates]
 # User JWT plus Auth verification and active admin membership inside the handler.
 verify_jwt = true
+
+[functions.create-whatsapp-template-version]
+# User JWT plus fresh active admin membership. Creates a new template; never edits the source.
+verify_jwt = true

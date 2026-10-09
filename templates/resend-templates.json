@@ -24,5 +24,10 @@
       "id": "9e868249-86bf-4647-a0c1-5fa0a5e6025c",
       "alias": "email-4-resultados"
     }
-  ]
+  ],
+  "assets": {
+    "santiago.jpg": "https://lantnlpmkxazcfwmfmgx.supabase.co/storage/v1/object/public/email-assets/success-stories/4d26a4971a2c80b5-santiago.jpg",
+    "maria.jpeg": "https://lantnlpmkxazcfwmfmgx.supabase.co/storage/v1/object/public/email-assets/success-stories/4333ed5926b934f1-maria.jpeg",
+    "mateo.jpeg": "https://lantnlpmkxazcfwmfmgx.supabase.co/storage/v1/object/public/email-assets/success-stories/be689da088a87ba4-mateo.jpeg"
+  }
 }

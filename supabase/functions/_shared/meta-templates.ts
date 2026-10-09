@@ -1,8 +1,8 @@
 type MetaTemplate = {
-  name?: string; language?: string; status?: string; parameter_format?: string;
+  id?: string; category?: string; name?: string; language?: string; status?: string; parameter_format?: string;
   components?: { type?: string; text?: string }[];
 };
-export type CatalogTemplate = { name: string; language: string; body: string; meta_status: string; approved: boolean; components: NonNullable<MetaTemplate["components"]> };
+export type CatalogTemplate = { name: string; language: string; body: string; meta_status: string; approved: boolean; category: string; meta_id: string | null; components: NonNullable<MetaTemplate["components"]> };
 
 // The welcome worker supplies exactly one positional name parameter, and no media or buttons.
 export function catalogTemplates(templates: MetaTemplate[]): CatalogTemplate[] {
@@ -15,7 +15,8 @@ export function catalogTemplates(templates: MetaTemplate[]): CatalogTemplate[] {
     const approved = template.status === "APPROVED" && template.parameter_format !== "NAMED" &&
       template.components.length === 1 && template.components[0]?.type === "BODY" &&
       JSON.stringify(body.match(/\{\{[^}]+\}\}/g)) === JSON.stringify(["{{1}}"]);
-    return { name: template.name!, language: template.language!, body, meta_status: template.status!, approved, components: template.components };
+    return { name: template.name!, language: template.language!, body, meta_status: template.status!, approved, components: template.components,
+      category: template.category ?? "UNKNOWN", meta_id: template.id ?? null };
   });
 }
 
@@ -26,7 +27,7 @@ export async function fetchTemplates({ token, wabaId, version }: { token: string
   let after: string | undefined;
   for (let page = 0; page < 100; page++) {
     const url = new URL(`https://graph.facebook.com/${version}/${wabaId}/message_templates`);
-    url.searchParams.set("fields", "name,language,status,parameter_format,components");
+    url.searchParams.set("fields", "id,name,language,status,category,parameter_format,components");
     url.searchParams.set("limit", "100");
     if (after) url.searchParams.set("after", after);
     const response = await fetcher(url, { headers: { Authorization: `Bearer ${token}` }, signal });

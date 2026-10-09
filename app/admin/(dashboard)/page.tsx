@@ -57,7 +57,7 @@ async function Summary({ searchParams }: { searchParams: Promise<{ start?: strin
     <section className="admin-overview" aria-label="Métricas del período">
       <div className="admin-bento" key={`${range.start}-${range.end}`}>
         <section className="admin-bento-traffic" aria-labelledby="traffic-heading">
-          <div className="admin-traffic-heading"><h2 id="traffic-heading">Tráfico de la web</h2><span>Vercel Analytics</span></div>
+          <div className="admin-traffic-heading"><h2 id="traffic-heading">Tráfico de la web</h2></div>
           <dl className="admin-bento-traffic-stats">
             <div className="admin-bento-visitors"><Metric label="Visitantes" current={traffic.available ? traffic.visitors : null} previous={previous.traffic.available ? previous.traffic.visitors : null} days={comparison.days} /></div>
             <div className="admin-bento-pageviews"><Metric label="Páginas vistas" current={traffic.available ? traffic.pageviews : null} previous={previous.traffic.available ? previous.traffic.pageviews : null} days={comparison.days} /></div>

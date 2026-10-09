@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "vitest run --config vitest.db.config.ts",
-    "test:worker": "deno test --allow-env --config supabase/functions/deno.json supabase/functions/process-whatsapp-queue/worker_test.ts supabase/functions/process-followup-queue/worker_test.ts supabase/functions/test-whatsapp/handler_test.ts supabase/functions/sync-whatsapp-templates/handler_test.ts",
-    "check:worker": "deno check --config supabase/functions/deno.json supabase/functions/process-whatsapp-queue/index.ts supabase/functions/process-followup-queue/index.ts supabase/functions/test-whatsapp/index.ts supabase/functions/sync-whatsapp-templates/index.ts",
+    "test:worker": "deno test --allow-env --config supabase/functions/deno.json supabase/functions/process-whatsapp-queue/worker_test.ts supabase/functions/process-followup-queue/worker_test.ts supabase/functions/test-whatsapp/handler_test.ts supabase/functions/sync-whatsapp-templates/handler_test.ts supabase/functions/create-whatsapp-template-version/handler_test.ts",
+    "check:worker": "deno check --config supabase/functions/deno.json supabase/functions/process-whatsapp-queue/index.ts supabase/functions/process-followup-queue/index.ts supabase/functions/test-whatsapp/index.ts supabase/functions/sync-whatsapp-templates/index.ts supabase/functions/create-whatsapp-template-version/index.ts",
     "check:worker:local": "node scripts/check-local-worker.mjs",
     "test:browser": "playwright test",
     "test:browser:local": "playwright test --config playwright.local.config.ts"

@@ -10,7 +10,7 @@ async function Whatsapp() {
   const { db } = await requireAdmin();
   const [settings, templates, audit, failures, ...counts] = await Promise.all([
     db.from("whatsapp_settings").select("enabled,template_id,revision,updated_at").single(),
-    db.from("whatsapp_templates").select("id,name,language,body,approved,meta_status,verified_at").order("name"),
+    db.from("whatsapp_templates").select("id,name,language,body,approved,meta_status,verified_at,category,components").order("name"),
     db.from("admin_audit").select("id,details,created_at,actor_email").order("created_at", { ascending: false }).limit(10),
     db.from("whatsapp_messages").select("id,last_error,created_at,leads!inner(source)").eq("leads.source", "web").eq("status", "failed").order("created_at", { ascending: false }).limit(10),
     ...["pending", "processing", "sent", "failed"].map((status) => db.from("whatsapp_messages").select("id,leads!inner(source)", { count: "exact", head: true }).eq("leads.source", "web").eq("status", status)),
