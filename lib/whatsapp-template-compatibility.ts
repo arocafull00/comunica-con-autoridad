@@ -1,5 +1,8 @@
 export type MetaTemplateButton = { type?: string; text?: string; url?: string };
-export type MetaTemplateComponent = { type?: string; text?: string; buttons?: MetaTemplateButton[] };
+export type MetaTemplateComponent = {
+  type?: string; text?: string; buttons?: MetaTemplateButton[]; format?: string;
+  example?: { header_handle?: string[] };
+};
 
 function isStaticUrlButton(button: MetaTemplateButton) {
   if (button?.type !== "URL" || typeof button.text !== "string" || !button.text.trim() || typeof button.url !== "string" || /[{}]/.test(button.url)) return false;

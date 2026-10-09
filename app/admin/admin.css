@@ -373,6 +373,7 @@
 .admin-template-content { padding-block: 20px; font-size: 15px; line-height: 1.65; overflow-wrap: anywhere; }
 .admin-template-content > p { margin: 0; white-space: pre-wrap; }
 .admin-template-content .admin-template-header { font-weight: 600; margin-bottom: 12px; }
+.admin-template-image { width: 100%; height: auto; margin-bottom: 12px; border-radius: 6px; }
 .admin-template-content .admin-template-meta { margin-top: 12px; }
 .admin-template-buttons > div { display: grid; gap: 4px; overflow-wrap: anywhere; }
 .admin-template-card-footer { margin-top: auto; display: grid; gap: 16px; }

@@ -51,27 +51,18 @@ async function login(page: Page, account = email, pass = password) {
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
 }
 
-test("template sync invokes the function without saving settings, and rejects anonymous action replay", async ({ page, request }) => {
+test("WhatsApp overview is read-only and leaves catalog and settings intact", async ({ page }) => {
   await login(page);
   await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();
-  await page.goto("/admin/whatsapp");
-  const before = (await db.query("select enabled,template_id,revision from public.whatsapp_settings")).rows[0];
+  const before = (await db.query("select * from public.whatsapp_settings")).rows[0];
   const catalog = (await db.query("select * from public.whatsapp_templates where id=any($1) order by id", [[templateId, ...catalogIds]])).rows;
-  const submitted = page.waitForRequest((req) => req.method() === "POST" && !!req.headers()["next-action"]);
-  await page.getByRole("button", { name: "Sincronizar con Meta", exact: true }).click();
-  const actionRequest = await submitted;
-  // Local tests have no Meta credentials; the failure must be visible and leave the catalog intact.
-  await expect(page.locator(".admin-whatsapp-settings [role=status]")).toContainText(/no está configurada|No se pudo/, { timeout: 60000 });
-  await expect(page.getByRole("button", { name: "Sincronizar con Meta", exact: true })).toBeEnabled();
-  expect((await db.query("select enabled,template_id,revision from public.whatsapp_settings")).rows[0]).toEqual(before);
+  await page.goto("/admin/whatsapp");
+  await expect(page.locator(".admin-template-card")).toHaveCount(8);
+  await expect(page.locator(".admin-whatsapp-settings form, .admin-whatsapp-settings button, .admin-whatsapp-settings input")).toHaveCount(0);
+  expect((await db.query("select * from public.whatsapp_settings")).rows[0]).toEqual(before);
   expect((await db.query("select * from public.whatsapp_templates where id=any($1) order by id", [[templateId, ...catalogIds]])).rows).toEqual(catalog);
-  const unauthorized = await request.post("/admin/whatsapp", { headers: { "next-action": actionRequest.headers()["next-action"], "content-type": actionRequest.headers()["content-type"], origin: new URL(page.url()).origin }, data: actionRequest.postData()!, maxRedirects: 0 });
-  expect(unauthorized.headers()["x-action-redirect"]).toContain("/admin/login");
-  await page.setViewportSize({ width: 320, height: 844 });
-  await expect(page.getByRole("button", { name: "Sincronizar con Meta", exact: true })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
-  await page.screenshot({ path: "test-results/whatsapp-sync-mobile.png", fullPage: true });
 });
+
 test("guards pages, rejects non-admin users and invalid credentials, and revokes active sessions", async ({ page }) => {
   const publicAuth = createClient(status.API_URL, status.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const registration = await publicAuth.auth.signUp({ email: `blocked-${randomUUID()}@example.com`, password });

@@ -8,7 +8,7 @@ export function createFollowupHandler(env: Record<string, string | undefined>, r
   }, async (request, context) => {
     const rpc: FollowupRpc = rpcOverride ?? (async <T>(name: string, args: Record<string, unknown>): Promise<T> => {
       const { data, error } = await context.supabaseAdmin.rpc(name, args);
-      if (error || data === null) throw new Error("Followup operation failed");
+      if (error || (data === null && name !== "sync_whatsapp_templates")) throw new Error("Followup operation failed");
       return data as T;
     });
     return handleFollowupWorker(request, env, rpc);

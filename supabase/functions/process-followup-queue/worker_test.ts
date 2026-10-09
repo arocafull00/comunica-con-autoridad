@@ -20,6 +20,69 @@ const testEnv = { FOLLOWUP_WHATSAPP_TEST_ENABLED: "true", WHATSAPP_TEST_ACCESS_T
   WHATSAPP_TEST_PHONE_NUMBER_ID: "123", WHATSAPP_TEST_GRAPH_API_VERSION: "v99.0", WHATSAPP_TEST_RECIPIENT: message.phone };
 const testMessage: FollowupMessage = { ...message, channel: "whatsapp", testMode: true, templateName: "hello_world", templateLanguage: "en_US" };
 
+Deno.test("fixed Meta templates send their image and original language without copying text or static buttons", async () => {
+  const fetcher: typeof fetch = async (_url, init) => {
+    const payload = JSON.parse(String(init?.body));
+    assert.deepEqual(payload.template, { name: "reserva_menos_24hantes", language: { code: "en" }, components: [
+      { type: "header", parameters: [{ type: "image", image: { link: "https://example.com/header.png" } }] },
+    ] });
+    return Response.json({ messages: [{ id: "wamid.image" }] });
+  };
+  const result = await sendFollowup({ ...message, channel: "whatsapp", templateName: "reserva_menos_24hantes", templateLanguage: "en", body: "Different local copy", templateComponents: [
+    { type: "HEADER", format: "IMAGE", example: { header_handle: ["https://example.com/header.png"] } },
+    { type: "BODY", text: "Texto español aprobado en Meta" },
+    { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar", url: "https://example.com/book" }] },
+  ] }, config, fetcher);
+  assert.deepEqual(result, { outcome: "sent", providerId: "wamid.image" });
+});
+
+Deno.test("Meta body variables use the lead name or actual meeting URL and disappear for fixed text", async () => {
+  for (const parameter of ["name", "meetingUrl"] as const) {
+    const fetcher: typeof fetch = async (_url, init) => {
+      const payload = JSON.parse(String(init?.body));
+      assert.deepEqual(payload.template.components, [{ type: "body", parameters: [{ type: "text", text: message[parameter] }] }]);
+      return Response.json({ messages: [{ id: "wamid.variable" }] });
+    };
+    assert.equal((await sendFollowup({ ...message, channel: "whatsapp", parameter, templateComponents: [{ type: "BODY", text: "Texto Meta {{1}}" }] }, config, fetcher)).outcome, "sent");
+  }
+  assert.equal((await sendFollowup({ ...message, channel: "whatsapp", parameter: "name", templateComponents: [{ type: "BODY", text: "Sin variables" }] }, config, async (_url, init) => {
+    assert.equal(JSON.parse(String(init?.body)).template.components, undefined);
+    return Response.json({ messages: [{ id: "wamid.fixed" }] });
+  })).outcome, "sent");
+});
+
+Deno.test("periodic worker refreshes Meta catalog even while delivery is paused, without claiming jobs", async () => {
+  let synced = false;
+  const rpc: FollowupRpc = <T>(name: string, args: Record<string, unknown>) => {
+    assert.equal(name, "sync_whatsapp_templates");
+    const templates = args.p_templates as { name: string; meta_status: string }[];
+    assert.equal(templates[0].name, "15_minutos_antes");
+    assert.equal(templates[0].meta_status, "APPROVED");
+    synced = true;
+    return Promise.resolve(null as T);
+  };
+  const response = await handleFollowupWorker(request(), { WHATSAPP_ACCESS_TOKEN: "catalog-only", WHATSAPP_WABA_ID: "456", WHATSAPP_GRAPH_API_VERSION: "v99.0" }, rpc,
+    async (url, init) => {
+      assert.equal(new URL(String(url)).pathname, "/v99.0/456/message_templates");
+      assert.equal(init?.method, undefined);
+      return Response.json({ data: [{ name: "15_minutos_antes", language: "en", status: "APPROVED", components: [{ type: "BODY", text: "Nos vemos ahora" }] }] });
+    });
+  assert.equal(response.status, 200);
+  assert.equal(synced, true);
+});
+
+Deno.test("a catalog outage prevents real WhatsApp claims while preserving email processing", async () => {
+  const rpc: FollowupRpc = <T>(name: string, args: Record<string, unknown>) => {
+    assert.equal(name, "read_followup_jobs");
+    assert.deepEqual(args, { p_email: true, p_whatsapp: false });
+    return Promise.resolve([] as T);
+  };
+  const response = await handleFollowupWorker(request(), { ...env, FOLLOWUP_WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "real", WHATSAPP_PHONE_NUMBER_ID: "123", WHATSAPP_WABA_ID: "456", WHATSAPP_GRAPH_API_VERSION: "v99.0" }, rpc,
+    async () => Response.json({ error: { code: 190 } }, { status: 401 }));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).catalog.error, "meta_catalog_unavailable");
+});
+
 Deno.test("sandbox activation disables paid credentials even when both flags are set", () => {
   const loaded = loadFollowupConfig({ ...testEnv, FOLLOWUP_WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "paid",
     WHATSAPP_PHONE_NUMBER_ID: "999", WHATSAPP_GRAPH_API_VERSION: "v99.0" });

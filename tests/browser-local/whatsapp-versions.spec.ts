@@ -31,9 +31,9 @@ test("template management opens Meta without editing the active original in the 
   await expect(page.locator(".admin-template-card")).toHaveCount(8);
   await expect(page.getByRole("button", { name: "Crear nueva versión" })).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Gestionar en Meta" })).toHaveAttribute("href", /business\.facebook\.com\/latest\/whatsapp_manager\/message_templates/);
+  await expect(page.getByRole("link", { name: "Consultar en Meta" })).toHaveAttribute("href", /business\.facebook\.com\/latest\/whatsapp_manager\/message_templates/);
   await page.setViewportSize({ width: 320, height: 844 });
-  await expect(page.getByRole("link", { name: "Gestionar en Meta" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Consultar en Meta" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   expect((await db.query("select * from public.whatsapp_settings")).rows[0]).toEqual(settings);
 });

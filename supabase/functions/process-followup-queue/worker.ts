@@ -1,4 +1,6 @@
 import { signUnsubscribeToken } from "../_shared/email-unsubscribe.ts";
+import { fetchTemplates } from "../_shared/meta-templates.ts";
+import type { MetaTemplateComponent } from "../../../lib/whatsapp-template-compatibility.ts";
 
 // Stable aliases from templates/resend-templates.json. Resend serves the published HTML and text versions.
 const emailTemplates: Record<string, string> = {
@@ -17,6 +19,7 @@ export type FollowupMessage = {
   email: string; phone: string; name: string | null; time: string; meetingUrl: string | null;
   subject: string | null; body: string; parameter: "name" | "time" | "meetingUrl" | null;
   templateName: string | null; templateLanguage: string | null; testMode?: boolean;
+  templateComponents?: MetaTemplateComponent[];
 };
 type Claim = { action: "claimed"; claimToken: string; message: FollowupMessage } | { action: "skip" | "paused" | "busy" | "unknown" | "missing_template" | "missing_meeting_url" };
 export type FollowupRpc = <T>(name: string, args: Record<string, unknown>) => Promise<T>;
@@ -76,12 +79,25 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
     } else {
       if (!config.whatsapp || !message.templateName || !message.templateLanguage) return { outcome: "failed", error: "whatsapp_configuration_missing" };
       const parameter = message.parameter === "name" ? (message.name || "comunicador/a") : message.parameter ? message[message.parameter] : null;
-      if (message.parameter && !parameter) return { outcome: "failed", error: "template_parameter_missing" };
+      const components: object[] = [];
+      const header = message.templateComponents?.find((c) => c.type === "HEADER");
+      if (header?.format === "IMAGE") {
+        const link = header.example?.header_handle?.[0];
+        if (!link) return { outcome: "failed", error: "template_image_missing" };
+        components.push({ type: "header", parameters: [{ type: "image", image: { link } }] });
+      }
+      // Text, footer and fixed buttons are served by Meta. Only supply its required variables.
+      const body = message.templateComponents?.find((c) => c.type === "BODY")?.text;
+      const needsParameter = body === undefined ? !!message.parameter : body.includes("{{1}}");
+      if (needsParameter) {
+        if (!parameter) return { outcome: "failed", error: "template_parameter_missing" };
+        components.push({ type: "body", parameters: [{ type: "text", text: parameter }] });
+      }
       response = await fetcher(`https://graph.facebook.com/${config.whatsapp.version}/${config.whatsapp.phoneNumberId}/messages`, {
         method: "POST", headers: { Authorization: `Bearer ${config.whatsapp.token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ messaging_product: "whatsapp", to: message.phone.replace(/^\+/, ""), type: "template",
           template: { name: message.templateName, language: { code: message.templateLanguage },
-            ...(parameter ? { components: [{ type: "body", parameters: [{ type: "text", text: parameter }] }] } : {}) } }),
+            ...(components.length ? { components } : {}) } }),
         signal: AbortSignal.timeout(10_000),
       });
     }
@@ -131,9 +147,19 @@ export async function handleFollowupWorker(request: Request, env: Record<string,
   // Only the authenticated handler calls this processor.
   if (request.method !== "POST") return workerJson(405, { ok: false, error: "method_not_allowed" });
   const config = loadFollowupConfig(env);
-  if (!config.email && !config.whatsapp && !config.whatsappTest) return workerJson(503, { ok: false, error: "followups_disabled_or_unconfigured" });
   try {
-    const counts = await processFollowups(rpc, { ...config, whatsappTest: undefined }, fetcher);
+    const { WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_WABA_ID: wabaId, WHATSAPP_GRAPH_API_VERSION: version } = env;
+    const canSync = !!token && /^\d+$/.test(wabaId ?? "") && /^v\d+\.\d+$/.test(version ?? "");
+    let catalogUnavailable = !!config.whatsapp && !canSync;
+    if (canSync) {
+      try {
+        const templates = await fetchTemplates({ token: token!, wabaId: wabaId!, version: version! }, fetcher);
+        await rpc("sync_whatsapp_templates", { p_templates: templates });
+      } catch { catalogUnavailable = true; }
+    }
+    if (!config.email && !config.whatsapp && !config.whatsappTest) return workerJson(catalogUnavailable || !canSync ? 503 : 200, { ok: !catalogUnavailable, error: "followups_disabled_or_unconfigured" });
+    // A failed catalog refresh pauses WhatsApp for this run; emails remain independent.
+    const counts = await processFollowups(rpc, { ...config, whatsapp: catalogUnavailable ? null : config.whatsapp, whatsappTest: undefined }, fetcher);
     let testCounts;
     if (config.whatsappTest) {
       const test = config.whatsappTest;
@@ -147,6 +173,6 @@ export async function handleFollowupWorker(request: Request, env: Record<string,
       testCounts = await processFollowups(rpc, { email: null, whatsapp: test, whatsappTest: test }, fetcher);
     }
     console.log(JSON.stringify({ event: "followup_queue_processed", ...counts }));
-    return workerJson(counts.errors || testCounts?.errors ? 503 : 200, { ...counts, ...(testCounts ? { test: testCounts } : {}) });
+    return workerJson(counts.errors || testCounts?.errors || catalogUnavailable ? 503 : 200, { ...counts, ...(testCounts ? { test: testCounts } : {}), ...(catalogUnavailable ? { catalog: { error: "meta_catalog_unavailable" } } : {}) });
   } catch { console.error("followup_queue_unavailable"); return workerJson(503, { ok: false }); }
 }

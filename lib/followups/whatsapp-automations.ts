@@ -9,9 +9,21 @@ export const whatsappAutomations = [
   { key: "webinar_3d", title: "Cierre del seguimiento", group: "webinar", trigger: "3 días después · si no ha reservado ni respondido" },
 ] as const;
 
+export const fixedWhatsappTemplates = {
+  booking_confirmation: { name: "whatsapp_confirmacion_reserva", language: "es" },
+  booking_short_notice: { name: "reserva_menos_24hantes", language: "en" },
+  booking_24h: { name: "recordatorio_24hantes", language: "en" },
+  booking_2h: { name: "recordatorio_reunion_2h", language: "es" },
+  booking_15m: { name: "15_minutos_antes", language: "en" },
+  webinar_1h: { name: "seguimiento_webinar_1h", language: "es" },
+  webinar_1d: { name: "no_reservan_1dia_despues", language: "es" },
+  webinar_3d: { name: "seguimiento_no_reserva_3dia", language: "en" },
+} as const;
+
 export type WhatsappAutomation = {
   key: string; body: string; parameter: "name" | "meetingUrl" | null;
   template_name: string | null; language: string | null; meta_status: string | null; ready: boolean;
+  components: import("../whatsapp-template-compatibility").MetaTemplateComponent[];
 };
 
 export function whatsappJobStatus(status: string, error: string | null) {

@@ -1,11 +1,10 @@
 "use server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { getSupabaseSession } from "@/lib/supabase/session";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin/auth";
-import { loginSchema, passwordSchema, settingsSchema, tokenHashSchema } from "@/lib/admin/validation";
+import { loginSchema, passwordSchema, tokenHashSchema } from "@/lib/admin/validation";
 import { requestIpHash } from "@/lib/leads/request";
 
 export type ActionState = { message: string; success?: boolean };
@@ -69,19 +68,4 @@ export async function changePassword(_previous: ActionState, form: FormData): Pr
     if (updated.error) return { message: "No se pudo cambiar la contraseña." };
     return { message: "Contraseña actualizada.", success: true };
   } catch { return { message: "No se pudo cambiar la contraseña. Inténtalo de nuevo." }; }
-}
-export async function saveWhatsappSettings(_previous: ActionState, form: FormData): Promise<ActionState> {
-  const { db, user } = await requireAdmin();
-  // Templates are fixed by the automation. The panel only pauses or resumes delivery.
-  if (form.get("intent") !== "delivery") return { message: "Los mensajes de las automatizaciones son fijos y no se pueden cambiar desde el panel." };
-  if (!["on", "off"].includes(String(form.get("enabled")))) return { message: "El estado no es válido." };
-  const input = settingsSchema.safeParse({ revision: form.get("revision"), enabled: form.get("enabled") === "on", templateId: null });
-  if (!input.success) return { message: "La configuración no es válida." };
-  try {
-    const { data, error } = await db.rpc("set_whatsapp_delivery", { p_actor: user.id, p_revision: input.data.revision, p_enabled: input.data.enabled });
-    if (error) return { message: "No se pudo aplicar el cambio. Sincroniza las plantillas con Meta y vuelve a intentarlo." };
-    if (data.outcome === "conflict") return { message: "Otro administrador cambió la configuración. Recarga la página antes de continuar." };
-  } catch { return { message: "No se pudo aplicar el cambio. Inténtalo de nuevo." }; }
-  revalidatePath("/admin/whatsapp");
-  return { message: input.data.enabled ? "Envíos automáticos activados." : "Envíos automáticos desactivados.", success: true };
 }

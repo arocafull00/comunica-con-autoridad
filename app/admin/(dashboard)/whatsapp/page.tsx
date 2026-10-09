@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { cacheLife } from "next/cache";
 import { requireAdmin } from "@/lib/admin/auth";
-import { WhatsappForm } from "../../whatsapp-form";
+import { WhatsappOverview } from "../../whatsapp-form";
 import { type WhatsappAutomation, whatsappAutomations, whatsappJobStatus } from "@/lib/followups/whatsapp-automations";
 import { AdminLoading } from "../../loading-state";
 
@@ -20,7 +20,7 @@ async function Whatsapp() {
 
   return <div className="admin-page admin-whatsapp">
     <div className="admin-page-heading"><div><h1>WhatsApp</h1><p className="admin-muted">Mensajes fijos y envíos automáticos del webinar y las llamadas.</p></div></div>
-    <WhatsappForm automations={(templates.data ?? []) as WhatsappAutomation[]} settings={settings.data} />
+    <WhatsappOverview automations={(templates.data ?? []) as WhatsappAutomation[]} settings={settings.data} />
     <div className="admin-whatsapp-details">
       <details className="admin-whatsapp-disclosure">
         <summary>Actividad de los mensajes<span>{counts[3].count ? `${counts[3].count} fallidos` : "Estados de envío"}</span></summary>

@@ -19,7 +19,7 @@ Una dirección de email entra una sola vez en el webinar. Los reintentos conserv
 | Reserva en Cal.com | WhatsApp | Inmediato | Confirmación habitual con ≥24h; variante corta entre 2 y <24h |
 | Llamada | WhatsApp | −24 horas, −2 horas y −15 minutos | Permiso y reserva vigente |
 
-Los textos están en `public.followup_steps` y el original preparado en `lib/followups/messages.json`. Los dos emails rotulados «Email 4» en el documento corresponden a los pasos 3 y 4. El aviso de falta de confirmación indica **revisión manual**, según la decisión del usuario del 9 de octubre. Los mensajes son fijos y no se pueden editar o seleccionar en el panel. El original conserva la discrepancia Mateo/Álvaro y 35/45 minutos: revisar estos detalles de contenido antes de activar.
+Los originales de email están en `public.followup_steps` y `lib/followups/messages.json`; WhatsApp usa el contenido actual de sus plantillas fijas en Meta. Los dos emails rotulados «Email 4» en el documento corresponden a los pasos 3 y 4. Las cancelaciones por falta de confirmación se revisan manualmente, aunque el texto aprobado de Meta mencione liberación de plazas. Los mensajes son fijos y no se pueden editar o seleccionar en el panel. El original conserva la discrepancia Mateo/Álvaro y 35/45 minutos: revisar estos detalles de contenido antes de activar.
 
 No se recuperan recordatorios cuyo momento ya pasó al reservar. Con menos de dos horas de antelación solo se programa el recordatorio de 15 minutos, si su momento todavía no ha pasado; no se envía confirmación inmediata ni el recordatorio de dos horas. El resto de pasos queda `suppressed` con `not_needed_short_notice` y se muestra como «No ha hecho falta». Entre dos y menos de 24 horas se envía `booking_short_notice` en lugar de `booking_confirmation`. Los pasos de la otra variante y los horarios ya pasados se conservan como descartados, sin duplicar mensajes. Los recordatorios tienen una tolerancia máxima de 30 minutos y siempre caducan antes de empezar la llamada; los de webinar y emails caducan 6 horas después de su fecha. Un sistema pausado no enviará de golpe una secuencia antigua al reactivarse.
 
@@ -41,28 +41,28 @@ Documentación del proveedor: [webhooks de Cal.com](https://github.com/calcom/he
 
 ## WhatsApp
 
+**Decisión del 9 de octubre de 2026:** la configuración adicional de webhooks de WhatsApp queda aplazada. El propósito, el código preparado, el estado observado en Meta y los pasos para retomarla están en [whatsapp-webhooks-pendientes.md](whatsapp-webhooks-pendientes.md). Las indicaciones del siguiente párrafo quedan como referencia para esa futura implementación.
+
 Configurar el webhook de Meta en `https://TU-DOMINIO/api/webhooks/whatsapp` y suscribir `messages`. Next.js necesita `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`. El GET valida el challenge; los POST validan `X-Hub-Signature-256` y solo admiten el número de negocio configurado. Los identificadores de mensajes evitan procesar dos veces una respuesta. Las notificaciones de estado no cuentan como respuestas.
 
-Crear y aprobar en Meta las ocho plantillas del flujo con el cuerpo de cada paso en `followup_steps`. Los únicos parámetros posicionales son `{{1}}` para nombre (`webinar_1h`) y enlace (`booking_2h`); las otras plantillas no tienen parámetros. No añadir botones o cabeceras que requieran componentes adicionales.
+Las ocho asociaciones son fijas en `lib/followups/whatsapp-automations.ts` y en `20261009190000_fixed_meta_whatsapp_templates.sql`. El contenido se consulta en Meta; no se exige que coincida con `followup_steps.body` ni con `messages.json`.
 
-Configurar las credenciales de envío de WhatsApp en los **secretos de la Edge Function de Supabase**, además de las que utiliza el worker de bienvenida anterior. El servidor Next.js mantiene las credenciales necesarias para recibir y verificar webhooks. `FOLLOWUP_WHATSAPP_TEMPLATES` es un JSON de este formato, utilizando los nombres reales aprobados:
+| Trigger | Plantilla fija en Meta | Idioma de Meta | Variable |
+| --- | --- | --- | --- |
+| Confirmación de reserva | `whatsapp_confirmacion_reserva` | `es` | Ninguna; incluye imagen |
+| Reserva entre 2 y menos de 24h | `reserva_menos_24hantes` | `en` | Ninguna; incluye imagen |
+| Recordatorio −24h | `recordatorio_24hantes` | `en` | Ninguna |
+| Recordatorio −2h | `recordatorio_reunion_2h` | `es` | `{{1}}`: enlace real de Meet |
+| Recordatorio −15m | `15_minutos_antes` | `en` | Ninguna |
+| Seguimiento +1h | `seguimiento_webinar_1h` | `es` | `{{1}}`: nombre o «comunicador/a» |
+| Seguimiento +1 día | `no_reservan_1dia_despues` | `es` | Ninguna; botón con URL fija |
+| Seguimiento +3 días | `seguimiento_no_reserva_3dia` | `en` | Ninguna |
 
-```json
-{
-  "booking_confirmation": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "booking_short_notice": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "booking_24h": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "booking_2h": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "booking_15m": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "webinar_1h": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "webinar_1d": { "name": "NOMBRE_REAL_APROBADO", "language": "es" },
-  "webinar_3d": { "name": "NOMBRE_REAL_APROBADO", "language": "es" }
-}
-```
+El idioma `en` es el identificador real registrado en Meta para algunas plantillas cuyo texto está en español. Se conserva tal cual. Las imágenes se envían mediante el enlace de la cabecera que proporciona el catálogo de Meta; los botones con URL fija y los pies los resuelve Meta sin parámetros adicionales.
 
-La vía habitual es **Sincronizar con Meta** en el panel: la nueva migración vincula automáticamente una única coincidencia exacta en español y conserva después su nombre e idioma. Si no hay coincidencia única, no elige otra plantilla por aproximación. Como herramienta técnica para instalaciones anteriores se conserva `node --env-file=.env.local scripts/sync-followup-templates.mjs`, con los ocho nombres reales del JSON anterior. Este script **solo consulta plantillas aprobadas** y verifica su cuerpo contra cada paso; no crea plantillas, envía mensajes ni activa el sistema. Repetir la sincronización si cambian o se retiran plantillas; el catálogo local no detecta una retirada de aprobación hasta la próxima sincronización.
+El worker `process-followup-queue` consulta el catálogo completo y actualiza estados y contenido en cada ejecución del cron, incluso con los envíos pausados. Necesita los secretos de Supabase `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_WABA_ID` y `WHATSAPP_GRAPH_API_VERSION`, con permiso para leer plantillas. Una consulta fallida conserva el catálogo anterior y pausa WhatsApp durante esa ejecución, mientras continúa procesando email. El dashboard muestra el último catálogo sincronizado y no permite sincronizar, editar, escoger plantillas ni activar o desactivar envíos.
 
-Para habilitar el flujo hacen falta `FOLLOWUP_WHATSAPP_SEND_ENABLED=true` y el interruptor del panel WhatsApp activado. El interruptor comprueba mensajes fijos aprobados, sin exigir seleccionar una bienvenida adicional. El interruptor del panel también pausa este flujo. La selección de bienvenida existente permanece para clientes antiguos de la API: un formulario completo ya no envía esa bienvenida adicional.
+Para una actualización operativa puntual existe `node --env-file=.env.local scripts/sync-followup-templates.mjs`: consulta el catálogo completo sin mapas configurables, envíos ni activación. Para habilitar los envíos reales el servicio requiere `WHATSAPP_PHONE_NUMBER_ID`, `FOLLOWUP_WHATSAPP_SEND_ENABLED=true`, `FOLLOWUP_WHATSAPP_TEST_ENABLED=false`, `whatsapp_settings.enabled=true` y el cron activo. Estas opciones se gestionan operativamente fuera del dashboard. Solo los pasos cuya plantilla esté `APPROVED` en Meta pueden enviarse; los pendientes esperan dentro de su horario válido. La bienvenida antigua no se genera además de estos seguimientos.
 
 ## Prueba de conexión con el número gratuito de Meta
 
@@ -141,6 +141,6 @@ select uid,email,start_time from public.call_bookings where registration_id is n
 
 ## Actualización del flujo fijo (9 de octubre de 2026)
 
-Aplicar `20261009170000_fixed_whatsapp_automations.sql` antes de publicar la nueva pantalla. No reinicia secuencias ni reprograma trabajos anteriores. Los reintentos WhatsApp cuyo cuerpo o contrato de variables ya no coincide con el mensaje fijo se suprimen como `automation_content_changed`; no se reinterpretan con la nueva plantilla. No se reintentan resultados inciertos de Meta.
+Aplicar las migraciones pendientes hasta `20261009190000_fixed_meta_whatsapp_templates.sql`, desplegar `process-followup-queue` y publicar el frontend. La nueva migración sustituye la vinculación por texto exacto por nombres fijos de Meta, elimina la configuración manual de asociaciones y aporta al worker los componentes reales de la plantilla. No activa envíos, reinicia secuencias ni reprograma trabajos. Los reintentos conservan su snapshot y los resultados inciertos siguen requiriendo revisión manual.
 
 La liberación automática de plazas queda fuera de esta iteración por decisión expresa del usuario. El administrador cancela manualmente en Cal.com y el webhook retira los recordatorios pendientes. La confirmación automática de asistencia permanece pausada.

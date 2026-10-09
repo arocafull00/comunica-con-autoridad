@@ -59,35 +59,17 @@ Crear un token de Vercel con el acceso mínimo disponible al proyecto/equipo cor
 
 Si la conexión falta, falla, el formato no es compatible o el período no está disponible, muestra visitas no disponibles, conservando el informe de solicitudes. No inventa cero visitantes ante un fallo. La conversión solicitudes/visitantes es orientativa; una persona puede enviar varias solicitudes y los bloqueadores pueden impedir medir visitas. Los eventos personalizados no son necesarios para el recuento fiable de solicitudes en este panel.
 
-## Configuración del mensaje de WhatsApp
+## Consulta de WhatsApp
 
-El panel muestra ocho mensajes fijos en tarjetas: cuatro por fila en escritorio, dos en tablet y una en móvil. Se organizan en «Si reservan la llamada» y «Si no reservan la llamada». Cada tarjeta muestra el trigger, el texto completo, las variables y el estado de Meta arriba a la derecha. No hay selección de plantillas, guardado de mensajes ni editor de versiones.
+El panel muestra ocho plantillas fijas en tarjetas: cuatro por fila en escritorio, dos en tablet y una en móvil, agrupadas en «Si reservan la llamada» y «Si no reservan la llamada». Cada tarjeta muestra el trigger, el contenido actual de Meta, su imagen o botón cuando corresponda, las variables y el estado de aprobación. No hay formularios ni controles para seleccionar, editar, sincronizar o activar envíos. «Consultar en Meta» abre el WhatsApp Manager de Nacho Roa.
 
-**Gestionar en Meta** abre el WhatsApp Manager indicado por el usuario en otra pestaña. **Sincronizar con Meta** actualiza el catálogo y comprueba la vinculación de cada mensaje fijo. La primera vinculación requiere una única plantilla española con el cuerpo exacto y un único componente BODY. Las variables del nombre y del enlace de Meet se sustituyen por `{{1}}` en Meta. Una vez vinculada, se conserva su nombre e idioma: las sincronizaciones posteriores no la sustituyen por otra. Si su texto cambia, no está aprobada o deja de estar disponible, ese paso no puede enviarse. El texto mostrado en el panel siempre es el del flujo fijo, no un mensaje editable de Meta.
+Los nombres e idiomas de las plantillas están fijados en el código y la nueva migración. El worker actualiza el catálogo automáticamente antes de procesar la cola; la única condición de aprobación es el estado `APPROVED` de Meta, sin comparaciones de texto ni restricciones de idioma o número de componentes. El nombre del contacto y el enlace de Meet se rellenan para sus respectivos triggers. La correspondencia completa y los secretos del servicio están en [seguimiento.md](seguimiento.md#whatsapp).
 
-**Activar envíos** o **Desactivar envíos** pide confirmación y cambia únicamente el interruptor general. Para activar debe haber al menos un mensaje del flujo aprobado y vinculado; los demás esperan a estar listos. No requiere seleccionar una bienvenida adicional ni modifica `template_id` del flujo antiguo. Siguen siendo necesarias las credenciales y la programación del worker. Las métricas y los últimos mensajes se consultan en desplegables; los descartados por antelación insuficiente se muestran como «No ha hecho falta».
+Las métricas y los últimos mensajes siguen disponibles para consulta. Los descartados por antelación insuficiente se muestran como «No ha hecho falta». El estado general refleja `whatsapp_settings.enabled`; el envío efectivo también requiere las credenciales, el cron y los flags del worker. No se modifica este estado desde el panel.
 
-«CONFIRMO» permanece pausado. El administrador revisa las respuestas y cancela manualmente en Cal.com. Reservar a menos de dos horas solo programa el aviso de 15 minutos, si su momento no ha pasado, y registra los demás como innecesarios. No hay cancelación automática.
+«CONFIRMO» y la configuración adicional de webhooks permanecen aplazados. El administrador revisa respuestas y cancela manualmente en Cal.com. Reservar a menos de dos horas solo programa el aviso de 15 minutos, si su momento no ha pasado.
 
-Para sincronizar, un administrador pulsa **Sincronizar con Meta** en `/admin/whatsapp`. El botón llama desde el servidor a la Edge Function `sync-whatsapp-templates` con la sesión del usuario. La función verifica esa sesión con Supabase Auth y comprueba que la cuenta de administrador siga activa antes de consultar Meta.
-
-Configurar estos Secrets en Supabase (nunca en el navegador ni en Next.js):
-
-```dotenv
-WHATSAPP_ACCESS_TOKEN=
-WHATSAPP_WABA_ID=
-WHATSAPP_GRAPH_API_VERSION=
-```
-
-El token necesita acceso para leer las plantillas de esa cuenta de WhatsApp Business (`whatsapp_business_management`). `WHATSAPP_WABA_ID` identifica la cuenta; no es el identificador del número. Supabase proporciona las credenciales de su propio servidor a la función.
-
-```powershell
-pnpm exec supabase functions deploy sync-whatsapp-templates
-```
-
-La función consulta todas las páginas del catálogo de Meta antes de llamar a `sync_whatsapp_templates`. La migración `20261009170000_fixed_whatsapp_automations.sql` mantiene el catálogo y las vinculaciones fijas en una sola transacción. Una consulta fallida conserva el estado anterior. La sincronización es manual y no crea plantillas, activa envíos ni reinicia trabajos.
-
-Para desplegar este flujo, aplicar primero la nueva migración y después publicar el frontend. El handler `sync-whatsapp-templates` y el worker de seguimiento utilizan los mismos RPC existentes; no cambia el contrato del envío. `read_whatsapp_automation_catalog` y `set_whatsapp_delivery` son RPC exclusivos del servidor (`service_role`), tras verificar al administrador. No aplicar ni modificar migraciones históricas.
+Para desplegar, aplicar las migraciones pendientes hasta `20261009190000_fixed_meta_whatsapp_templates.sql`, desplegar `process-followup-queue` y publicar el frontend. El catálogo conserva sus permisos de servidor y las consultas del dashboard requieren una cuenta de administrador activa. La migración no activa envíos ni reprograma trabajos. No modificar migraciones históricas.
 
 La selección de bienvenida del flujo antiguo se conserva para clientes antiguos de la API, pero ya no se puede editar desde esta pantalla. Las inscripciones al webinar usan los mensajes fijos de `followup_steps` y no generan una bienvenida adicional.
 

@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, afterEach, afterAll, describe, it, expect } from "vitest";
 import pg from "pg";
 import messages from "../../lib/followups/messages.json";
-import { whatsappAutomations } from "../../lib/followups/whatsapp-automations";
+import { fixedWhatsappTemplates, whatsappAutomations } from "../../lib/followups/whatsapp-automations";
+import type { MetaTemplateComponent } from "../../lib/whatsapp-template-compatibility";
 
 const target = process.env.TEST_SUPABASE_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:55322/postgres";
 if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(target).hostname)) throw new Error("Local DB only");
@@ -23,22 +24,23 @@ async function book(hours: number) {
   await db.query("select public.record_cal_booking($1)", [JSON.stringify(event)]);
   return { uid, registration, event };
 }
-function provider(key: keyof typeof messages, name = key as string, status = "APPROVED") {
+function provider(key: keyof typeof fixedWhatsappTemplates, name: string = fixedWhatsappTemplates[key].name, status = "APPROVED") {
   const body = messages[key].body.replace("{{name}}", "{{1}}").replace("{{meetingUrl}}", "{{1}}");
-  return { name, language: "es", body, meta_status: status, approved: status === "APPROVED", category: "MARKETING", components: [{ type: "BODY", text: body }] };
+  return { name, language: fixedWhatsappTemplates[key].language, body, meta_status: status, approved: status === "APPROVED", category: "MARKETING", components: [{ type: "BODY", text: body }] as MetaTemplateComponent[] };
 }
 async function sync(templates: ReturnType<typeof provider>[]) {
   await db.query("select public.sync_whatsapp_templates($1)", [JSON.stringify(templates)]);
 }
 
 describe("fixed WhatsApp triggers", () => {
-  it("stores exactly the eight messages shown in the panel, with only name and Meet variables", async () => {
+  it("fixes eight provider identities with only name and Meet variables", async () => {
     const rows = (await db.query("select key,body,parameter from public.followup_steps where channel='whatsapp'")).rows;
     expect(rows).toHaveLength(8);
     for (const definition of whatsappAutomations) {
       const row = rows.find((r) => r.key === definition.key);
-      expect(row.body).toBe(messages[definition.key].body);
       expect(row.parameter).toBe(definition.key === "webinar_1h" ? "name" : definition.key === "booking_2h" ? "meetingUrl" : null);
+      const binding = (await db.query("select name,language from private.followup_templates where step=$1", [definition.key])).rows[0];
+      expect(binding).toEqual(fixedWhatsappTemplates[definition.key]);
     }
   });
   it.each([
@@ -72,34 +74,42 @@ describe("fixed WhatsApp triggers", () => {
     await db.query("select public.record_cal_booking($1)", [JSON.stringify({ ...event, event: "BOOKING_CANCELLED", eventAt: new Date(Date.now() + 1000).toISOString() })]);
     expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1 and status='pending'", [uid])).rows[0].n).toBe(0);
   });
-  it("suppresses an earlier retry payload rather than sending it with changed variables", async () => {
+  it("uses Meta content and preserves its claimed components across retries despite local copy changes", async () => {
+    await sync([{ ...provider("booking_confirmation"), body: "Texto en Meta", components: [{ type: "HEADER", format: "IMAGE", example: { header_handle: ["https://example.com/header.png"] } }, { type: "BODY", text: "Texto en Meta" }], approved: false }]);
+    await db.query("update public.whatsapp_settings set enabled=true where singleton");
     const { uid } = await book(48);
-    const job = (await db.query("update public.followup_jobs set payload=$2::jsonb where booking_uid=$1 and step='booking_24h' returning id", [uid, JSON.stringify({ body: "Mañana a las {{time}}", parameter: "time" })])).rows[0];
-    expect((await db.query("select public.claim_followup_job($1,true,true) as result", [job.id])).rows[0].result.action).toBe("skip");
-    expect((await db.query("select status,last_error from public.followup_jobs where id=$1", [job.id])).rows[0]).toEqual({ status: "suppressed", last_error: "automation_content_changed" });
+    const job = (await db.query("select id from public.followup_jobs where booking_uid=$1 and step='booking_confirmation'", [uid])).rows[0];
+    const claim = (await db.query("select public.claim_followup_job($1,true,true) as result", [job.id])).rows[0].result;
+    expect(claim.action).toBe("claimed");
+    expect(claim.message.body).toBe("Texto en Meta");
+    expect(claim.message.templateComponents[0].format).toBe("IMAGE");
+    await db.query("select public.finish_followup_job($1,$2,'retry',null,'meta_429')", [job.id, claim.claimToken]);
+    await db.query("update public.followup_jobs set scheduled_at=now()-interval '1 second' where id=$1", [job.id]);
+    await db.query("update public.followup_steps set body='Otro texto local' where key='booking_confirmation'");
+    const retry = (await db.query("select public.claim_followup_job($1,true,true) as result", [job.id])).rows[0].result;
+    expect(retry.action).toBe("claimed");
+    expect(retry.message).toEqual(claim.message);
   });
 });
 
 describe("automatic fixed-template bindings", () => {
   beforeEach(async () => { await db.query("delete from private.followup_templates"); });
-  it("binds exact copy, retains pending status and never swaps to another matching name", async () => {
-    await sync([provider("booking_24h", "fixed_reminder", "PENDING")]);
+  it("binds only the fixed name and original language, independent of Meta text", async () => {
+    await sync([{ ...provider("booking_24h", undefined, "PENDING"), body: "Texto distinto aprobado por Meta" }]);
     let rows = (await db.query("select * from public.read_whatsapp_automation_catalog() where key='booking_24h'")).rows;
-    expect(rows[0]).toMatchObject({ template_name: "fixed_reminder", meta_status: "PENDING", ready: false });
-    await sync([provider("booking_24h", "fixed_reminder")]);
+    expect(rows[0]).toMatchObject({ template_name: "recordatorio_24hantes", language: "en", body: "Texto distinto aprobado por Meta", meta_status: "PENDING", ready: false });
+    await sync([provider("booking_24h")]);
     expect((await db.query("select approved from private.followup_templates where step='booking_24h'")).rows[0].approved).toBe(true);
     await sync([provider("booking_24h", "replacement")]);
     rows = (await db.query("select * from public.read_whatsapp_automation_catalog() where key='booking_24h'")).rows;
-    expect(rows[0]).toMatchObject({ template_name: "fixed_reminder", meta_status: "UNAVAILABLE", ready: false });
+    expect(rows[0]).toMatchObject({ template_name: "recordatorio_24hantes", meta_status: "UNAVAILABLE", ready: false });
   });
-  it("does not bind duplicate candidates or approve an edited body or additional components", async () => {
+  it("ignores matching copies with other names and accepts images and static buttons in the fixed template", async () => {
     await sync([provider("webinar_1h", "first"), provider("webinar_1h", "second")]);
-    expect((await db.query("select * from private.followup_templates where step='webinar_1h'")).rows).toHaveLength(0);
-    await sync([provider("webinar_1h", "first")]);
-    await sync([{ ...provider("webinar_1h", "first"), body: "Otro mensaje" }]);
-    expect((await db.query("select approved from private.followup_templates where step='webinar_1h'")).rows[0].approved).toBe(false);
-    await sync([{ ...provider("webinar_1h", "first"), components: [{ type: "BODY", text: provider("webinar_1h").body }, { type: "HEADER", text: "Cabecera" }] }]);
-    expect((await db.query("select approved from private.followup_templates where step='webinar_1h'")).rows[0].approved).toBe(false);
+    expect((await db.query("select name,approved from private.followup_templates where step='webinar_1h'")).rows[0]).toEqual({ name: "seguimiento_webinar_1h", approved: false });
+    const components = [{ type: "HEADER", format: "IMAGE", example: { header_handle: ["https://example.com/header.png"] } }, { type: "BODY", text: "Otro mensaje" }, { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar", url: "https://example.com/book" }] }];
+    await sync([{ ...provider("booking_confirmation"), body: "Otro mensaje", approved: false, components }]);
+    expect((await db.query("select body,components,ready from public.read_whatsapp_automation_catalog() where key='booking_confirmation'")).rows[0]).toEqual({ body: "Otro mensaje", components, ready: true });
   });
   it("activates fixed automation without selecting a welcome and rejects stale revisions", async () => {
     await sync([provider("booking_15m")]);

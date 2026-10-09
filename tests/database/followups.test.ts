@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import pg from "pg";
+import { fixedWhatsappTemplates } from "../../lib/followups/whatsapp-automations";
 
 const target = process.env.TEST_SUPABASE_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:55322/postgres";
 if (!["localhost","127.0.0.1","[::1]"].includes(new URL(target).hostname)) throw new Error("Local database only");
@@ -32,7 +33,10 @@ async function enableTemplates() {
   const template = (await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true) returning id",[`test_${randomUUID().replaceAll("-","")}`])).rows[0].id;
   await db.query("update public.whatsapp_settings set enabled=true,template_id=$1",[template]);
   const steps=(await db.query("select key as step,replace(body,'{{'||coalesce(parameter,'')||'}}','{{1}}') as body from public.followup_steps where channel='whatsapp'")).rows;
-  await db.query("select public.sync_followup_templates($1)",[JSON.stringify(steps.map(s=>({...s,name:`test_${s.step}`,language:"es"})))]);
+  await db.query("select public.sync_whatsapp_templates($1)",[JSON.stringify(steps.map(s=>({
+    ...fixedWhatsappTemplates[s.step as keyof typeof fixedWhatsappTemplates], body: s.body,
+    meta_status: "APPROVED", approved: true, components: [{ type: "BODY", text: s.body }],
+  })))]);
 }
 async function reply(text: string, at = new Date(Date.now()+1000).toISOString(), id = randomUUID()) {
   await db.query("select public.record_whatsapp_replies($1)",[JSON.stringify([{id,phone:"+34612345678",receivedAt:at,confirms:text==="CONFIRMO",optsOut:text==="BAJA"}])]);
@@ -185,7 +189,7 @@ describe("responses and durable claims",()=>{
     expect((await db.query("select last_error from public.followup_jobs where id=$1",[job])).rows[0].last_error).toBe("schedule_expired");
   });
   it.each(["anon","authenticated"])("denies followup data and functions to %s",async(role)=>{
-    for(const sql of ["select * from public.followup_jobs","select * from public.call_bookings","select * from public.webinar_registrations","select public.read_followup_jobs(true,true)","select public.record_cal_booking('{}')","select public.sync_followup_templates('[]')"]){
+    for(const sql of ["select * from public.followup_jobs","select * from public.call_bookings","select * from public.webinar_registrations","select public.read_followup_jobs(true,true)","select public.record_cal_booking('{}')","select public.sync_whatsapp_templates('[]')"]){
       await db.query("savepoint denied");await db.query(`set local role ${role}`);await expect(db.query(sql)).rejects.toThrow(/permission denied/);await db.query("rollback to savepoint denied");
     }
   });

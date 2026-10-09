@@ -28,9 +28,14 @@ test.beforeAll(async () => {
   await db.query("delete from private.followup_templates");
   for (const [index, definition] of whatsappAutomations.entries()) {
     const step = (await db.query("select body,parameter from public.followup_steps where key=$1", [definition.key])).rows[0];
-    const body = step.parameter ? step.body.replace(`{{${step.parameter}}}`, "{{1}}") : step.body;
+    const body = index === 0 ? "Contenido real del catálogo de Meta, distinto de la copia interna." : step.parameter ? step.body.replace(`{{${step.parameter}}}`, "{{1}}") : step.body;
     const name = `${prefix}_${definition.key}`;
-    await db.query("insert into public.whatsapp_templates(name,language,body,approved,meta_status,category,components) values($1,'es',$2,$3,$4,'MARKETING',$5)", [name, body, statuses[index] === "APPROVED", statuses[index], JSON.stringify([{ type: "BODY", text: body }])]);
+    const components = [
+      ...(index === 0 ? [{ type: "HEADER", format: "IMAGE", example: { header_handle: ["http://127.0.0.1:3100/next.svg"] } }] : []),
+      { type: "BODY", text: body },
+      ...(index === 6 ? [{ type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar sesión", url: "https://example.com/book" }] }] : []),
+    ];
+    await db.query("insert into public.whatsapp_templates(name,language,body,approved,meta_status,category,components) values($1,'es',$2,$3,$4,'MARKETING',$5)", [name, body, statuses[index] === "APPROVED", statuses[index], JSON.stringify(components)]);
     await db.query("insert into private.followup_templates(step,name,language,approved) values($1,$2,'es',$3)", [definition.key, name, statuses[index] === "APPROVED"]);
   }
 });
@@ -60,19 +65,22 @@ test.beforeEach(async ({ page }) => {
 test("shows eight fixed triggers and Meta statuses with no template selection or editing", async ({ page }) => {
   const before = (await db.query("select * from public.whatsapp_settings")).rows[0];
   await expect(page.locator(".admin-template-card")).toHaveCount(8);
-  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await expect(page.locator(".admin-whatsapp-settings form, .admin-whatsapp-settings button, .admin-whatsapp-settings input, .admin-whatsapp-settings select, .admin-whatsapp-settings textarea")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Guardar plantilla" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Usar para bienvenida" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Crear nueva versión" })).toHaveCount(0);
   await expect(page.locator('[data-automation="booking_confirmation"]')).toContainText("Aprobada");
+  await expect(page.locator('[data-automation="booking_confirmation"]')).toContainText("Contenido real del catálogo de Meta");
+  await expect(page.getByRole("img", { name: "Imagen de Confirmación de reserva" })).toBeVisible();
+  await expect(page.locator('[data-automation="webinar_1d"]')).toContainText("Botón: Reservar sesión");
   await expect(page.locator('[data-automation="booking_short_notice"]')).toContainText("Pendiente de aprobación");
   await expect(page.locator('[data-automation="booking_24h"]')).toContainText("Rechazada");
   await expect(page.locator('[data-automation="webinar_1d"]')).toContainText("Pausada");
   await expect(page.locator('[data-automation="webinar_1h"]')).toContainText("[Nombre del registro]");
   await expect(page.locator('[data-automation="booking_2h"]')).toContainText("[Enlace de Meet]");
   await expect(page.getByText("El administrador revisa las respuestas y cancela las plazas manualmente en Cal.com.", { exact: false })).toBeVisible();
-  const meta = page.getByRole("link", { name: "Gestionar en Meta" });
+  const meta = page.getByRole("link", { name: "Consultar en Meta" });
   const url = new URL((await meta.getAttribute("href"))!);
   expect(url.hostname).toBe("business.facebook.com");
   expect(url.searchParams.get("business_id")).toBe("1102523378841182");
@@ -89,32 +97,4 @@ test("shows eight fixed triggers and Meta statuses with no template selection or
     await page.screenshot({ path: `.vercel/whatsapp-fixed-automations-${width}.png`, fullPage: true });
   }
   expect((await db.query("select * from public.whatsapp_settings")).rows[0]).toEqual(before);
-});
-
-test("switches delivery independently of fixed messages, retains revision checks and rejects anonymous replay", async ({ page, request }) => {
-  const confirmation = page.getByRole("alertdialog");
-  await page.getByRole("button", { name: "Activar envíos", exact: true }).click();
-  await expect(confirmation).toContainText("cuando se cumpla su trigger");
-  await expect(confirmation.getByRole("button", { name: "Cancelar" })).toBeFocused();
-  await confirmation.getByRole("button", { name: "Cancelar" }).click();
-  expect((await db.query("select enabled from public.whatsapp_settings")).rows[0].enabled).toBe(false);
-  await page.getByRole("button", { name: "Activar envíos", exact: true }).click();
-  const submitted = page.waitForRequest((req) => req.method() === "POST" && !!req.headers()["next-action"]);
-  await confirmation.getByRole("button", { name: "Activar envíos", exact: true }).click();
-  const actionRequest = await submitted;
-  await expect(confirmation).not.toBeVisible();
-  await expect(page.locator(".admin-delivery-status")).toContainText("Activados en el panel");
-  expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: true, template_id: null });
-  const unauthorized = await request.post("/admin/whatsapp", { headers: { "next-action": actionRequest.headers()["next-action"], "content-type": actionRequest.headers()["content-type"], origin: new URL(page.url()).origin }, data: actionRequest.postData()!, maxRedirects: 0 });
-  expect(unauthorized.headers()["x-action-redirect"]).toContain("/admin/login");
-  await db.query("update public.whatsapp_settings set revision=revision+1 where singleton");
-  await page.getByRole("button", { name: "Desactivar envíos", exact: true }).click();
-  await confirmation.getByRole("button", { name: "Desactivar envíos", exact: true }).click();
-  await expect(confirmation.getByRole("alert")).toContainText("Otro administrador");
-  expect((await db.query("select enabled from public.whatsapp_settings")).rows[0].enabled).toBe(true);
-  await page.reload();
-  await page.getByRole("button", { name: "Desactivar envíos", exact: true }).click();
-  await confirmation.getByRole("button", { name: "Desactivar envíos", exact: true }).click();
-  await expect(confirmation).not.toBeVisible();
-  expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: false, template_id: null });
 });
