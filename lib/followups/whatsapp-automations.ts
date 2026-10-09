@@ -4,9 +4,9 @@ export const whatsappAutomations = [
   { key: "booking_24h", title: "Recordatorio de 24 horas", group: "booking", trigger: "24 horas antes de la llamada" },
   { key: "booking_2h", title: "Recordatorio de 2 horas", group: "booking", trigger: "2 horas antes · incluye el enlace de Meet" },
   { key: "booking_15m", title: "Recordatorio de 15 minutos", group: "booking", trigger: "15 minutos antes · también para reservas a menos de 2 horas" },
-  { key: "webinar_1h", title: "Seguimiento de la clase", group: "webinar", trigger: "1 hora después de apuntarse · si no ha reservado" },
-  { key: "webinar_1d", title: "Invitación a reservar", group: "webinar", trigger: "1 día después de apuntarse · si no ha reservado" },
-  { key: "webinar_3d", title: "Cierre del seguimiento", group: "webinar", trigger: "3 días después · si no ha reservado ni respondido" },
+  { key: "webinar_1h", title: "Seguimiento de la clase", group: "webinar", trigger: "1 minuto después de apuntarse · si no ha reservado" },
+  { key: "webinar_1d", title: "Invitación a reservar", group: "webinar", trigger: "3 minutos después de apuntarse · si no ha reservado" },
+  { key: "webinar_3d", title: "Cierre del seguimiento", group: "webinar", trigger: "5 minutos después · si no ha reservado ni respondido" },
 ] as const;
 
 export const fixedWhatsappTemplates = {

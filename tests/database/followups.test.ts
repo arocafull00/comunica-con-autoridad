@@ -1,7 +1,8 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import pg from "pg";
 import { fixedWhatsappTemplates } from "../../lib/followups/whatsapp-automations";
+import { handleWhatsappWebhook } from "../../lib/followups/whatsapp";
 
 const target = process.env.TEST_SUPABASE_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:55322/postgres";
 if (!["localhost","127.0.0.1","[::1]"].includes(new URL(target).hostname)) throw new Error("Local database only");
@@ -43,6 +44,20 @@ async function reply(text: string, at = new Date(Date.now()+1000).toISOString(),
   return id;
 }
 
+async function webhookReply(body: string, id = randomUUID(), at = Date.now()+2000) {
+  const secret = "local-database-meta-secret-at-least-32-characters";
+  const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ changes: [{ field: "messages", value: {
+    metadata: { phone_number_id: "123" }, messages: [{ id, from: "34612345678", timestamp: Math.floor(at/1000).toString(), type: "text", text: { body } }],
+  } }] }] });
+  const request = new Request("http://localhost/api/webhooks/whatsapp", { method: "POST", body: raw, headers: {
+    "Content-Type": "application/json", "x-hub-signature-256": `sha256=${createHmac("sha256",secret).update(raw).digest("hex")}`,
+  } });
+  expect((await handleWhatsappWebhook(request, { secret, phoneNumberId: "123", save: async messages => {
+    await db.query("select public.record_whatsapp_replies($1)",[JSON.stringify(messages)]);
+  } })).status).toBe(200);
+  return id;
+}
+
 describe("webinar registration and consent", () => {
   it("does not enroll on contact save, and records seven jobs only once on granting access", async () => {
     const l=await lead();
@@ -52,8 +67,10 @@ describe("webinar registration and consent", () => {
     const duplicate=await lead(l.email); expect(await register(duplicate.key)).toBe(id);
     const {rows}=await db.query("select j.step,extract(epoch from j.scheduled_at-r.registered_at)::int as seconds from public.followup_jobs j join public.webinar_registrations r on r.id=j.registration_id where r.id=$1 order by j.scheduled_at",[id]);
     expect(rows).toHaveLength(7);
-    expect(rows.find(row=>row.step==="email_1").seconds).toBe(1800);
-    expect(rows.find(row=>row.step==="webinar_3d").seconds).toBe(259200);
+    expect(Object.fromEntries(rows.map(row=>[row.step,row.seconds]))).toEqual({
+      webinar_1h:60,webinar_1d:180,webinar_3d:300,
+      email_1:60,email_2:180,email_3:300,email_4:420,
+    });
   });
   it.each([[false,false,0],[true,false,3],[false,true,4]])("enrolls only consented channels wa=%s email=%s",async(wa,email,count)=>{
     const l=await lead(undefined,wa,email); const id=await register(l.key);
@@ -109,6 +126,30 @@ describe("booking lifecycle",()=>{
 });
 
 describe("responses and durable claims",()=>{
+  it("persists signed CONFIRMO once through the webhook and keeps consent",async()=>{
+    const l=await lead();await register(l.key);const {event}=await booking(l.email);
+    const id=await webhookReply("¡confirmo!");
+    const confirmed=(await db.query("select confirmed_at from public.call_bookings where uid=$1",[event.uid])).rows[0].confirmed_at;
+    expect(confirmed).toBeInstanceOf(Date);
+    await webhookReply("CONFIRMO",id,Date.now()+3000);
+    expect((await db.query("select confirmed_at from public.call_bookings where uid=$1",[event.uid])).rows[0].confirmed_at).toEqual(confirmed);
+    expect((await db.query("select count(*)::int as n from private.followup_replies where provider_id=$1",[id])).rows[0].n).toBe(1);
+    expect((await db.query("select whatsapp_consent from public.leads where email=$1",[l.email])).rows[0].whatsapp_consent).toBe(true);
+  });
+  it.each(["baja", "STOP!"])("withdraws WhatsApp consent through signed %s and blocks a pending send",async body=>{
+    const l=await lead();const registration=await register(l.key);await enableTemplates();
+    const job=await due(registration,"webinar_1h");await webhookReply(body);
+    expect((await db.query("select whatsapp_consent,communications_consent from public.leads where email=$1",[l.email])).rows[0]).toEqual({whatsapp_consent:false,communications_consent:true});
+    expect((await claim(job)).action).toBe("skip");
+  });
+  it("does not associate signed CONFIRMO with an ambiguous or newer booking",async()=>{
+    const l=await lead();await register(l.key);const first=await booking(l.email);const second=await booking(l.email);
+    await webhookReply("CONFIRMO");
+    expect((await db.query("select confirmed_at from public.call_bookings where uid=any($1::text[])",[[first.event.uid,second.event.uid]])).rows.every(row=>row.confirmed_at===null)).toBe(true);
+    await booking(l.email,{...second.event,event:"BOOKING_CANCELLED",eventAt:new Date(Date.now()+1000).toISOString()});
+    await webhookReply("CONFIRMO",randomUUID(),Date.now()-60_000);
+    expect((await db.query("select confirmed_at from public.call_bookings where uid=$1",[first.event.uid])).rows[0].confirmed_at).toBeNull();
+  });
   it("marks CONFIRMO exactly once and stops only the final unbooked message on a response",async()=>{
     const l=await lead(); const id=await register(l.key); const at=new Date(Date.now()+1000).toISOString();
     const replyId=await reply("Hola",at); await reply("Hola",at,replyId);

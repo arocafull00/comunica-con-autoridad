@@ -67,7 +67,7 @@ Los nombres e idiomas de las plantillas están fijados en el código y la nueva 
 
 Las métricas y los últimos mensajes siguen disponibles para consulta. Los descartados por antelación insuficiente se muestran como «No ha hecho falta». El estado general refleja `whatsapp_settings.enabled`; el envío efectivo también requiere las credenciales, el cron y los flags del worker. No se modifica este estado desde el panel.
 
-«CONFIRMO» y la configuración adicional de webhooks permanecen aplazados. El administrador revisa respuestas y cancela manualmente en Cal.com. Reservar a menos de dos horas solo programa el aviso de 15 minutos, si su momento no ha pasado.
+El webhook detecta «CONFIRMO» para registrar asistencia en el panel ante una única reserva futura asociada al teléfono; «BAJA» y «STOP» retiran el consentimiento de WhatsApp. La recepción real desde Meta en producción sigue pendiente de verificar. El administrador revisa respuestas ambiguas y cancela manualmente en Cal.com. Reservar a menos de dos horas solo programa el aviso de 15 minutos, si su momento no ha pasado.
 
 Para desplegar, aplicar las migraciones pendientes hasta `20261009190000_fixed_meta_whatsapp_templates.sql`, desplegar `process-followup-queue` y publicar el frontend. El catálogo conserva sus permisos de servidor y las consultas del dashboard requieren una cuenta de administrador activa. La migración no activa envíos ni reprograma trabajos. No modificar migraciones históricas.
 

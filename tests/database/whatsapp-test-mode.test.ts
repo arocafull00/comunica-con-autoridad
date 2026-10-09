@@ -35,13 +35,13 @@ async function book(email: string, meetingUrl: string | null = "https://meet.goo
   return event;
 }
 
-it("accelerates only WhatsApp jobs for the configured recipient; repeated registration does not duplicate them", async () => {
+it("marks only WhatsApp jobs for the configured test recipient; repeated registration does not duplicate them", async () => {
   const a = await register(); const b = await register("+34699999999");
   await db.query("select public.register_webinar($1)", [a.key]);
   const jobs = (await db.query("select j.step,j.test_mode,extract(epoch from j.scheduled_at-r.registered_at)::int as delay from public.followup_jobs j join public.webinar_registrations r on r.id=j.registration_id where r.id=$1", [a.id])).rows;
   expect(jobs).toHaveLength(7);
   expect(jobs.filter(j => j.test_mode).map(j => j.delay).sort((a, b) => a - b)).toEqual([60, 180, 300]);
-  expect(jobs.find(j => j.step === "email_1")).toMatchObject({ test_mode: false, delay: 1800 });
+  expect(jobs.find(j => j.step === "email_1")).toMatchObject({ test_mode: false, delay: 60 });
   expect((await db.query("select bool_or(test_mode) as any_test from public.followup_jobs where registration_id=$1", [b.id])).rows[0].any_test).toBe(false);
 });
 

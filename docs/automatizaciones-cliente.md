@@ -29,19 +29,19 @@ El encargo original pedía liberar la plaza automáticamente. El 9 de octubre el
 
 El 8 de octubre el usuario solicita aceptar directamente la plaza al recibir «CONFIRMO». Está pendiente concretar si esa aceptación debe reflejarse también en Cal.com o únicamente en el panel.
 
-El 9 de octubre el usuario deja en pausa la confirmación automática de asistencia. La detección de «CONFIRMO» queda comentada en `lib/followups/whatsapp.ts` para retomarla en una futura iteración: tanto los mensajes de texto como los botones se registran con `confirms: false` y no actualizan `confirmed_at`. Se mantienen el registro de respuestas y las bajas «BAJA»/«STOP».
+El 9 de octubre el usuario solicita reimplementar los webhooks para detectar «CONFIRMO», «BAJA» y «STOP», sustituyendo la pausa anterior. `lib/followups/whatsapp.ts` detecta las respuestas completas por texto y botones, sin distinguir mayúsculas y admitiendo espacios o puntuación alrededor. «CONFIRMO» activa `confirms: true`; «BAJA» y «STOP» activan `optsOut: true` y tienen prioridad ante un botón contradictorio.
 
-La lógica conservada en la base de datos permite registrar asistencia cuando hay una única reserva futura asociada al teléfono y el mensaje es posterior a su creación o cambio. Actualmente no acepta reservas por la API de Cal.com ni cancela automáticamente por falta de respuesta. Antes de reactivar la detección, revisar el destino de la confirmación y probar el recorrido completo.
+La lógica en la base de datos registra asistencia en el panel cuando hay una única reserva futura asociada al teléfono y el mensaje es posterior a su creación o cambio. Actualmente no acepta reservas por la API de Cal.com ni cancela automáticamente por falta de respuesta. El despliegue y el recorrido real desde Meta siguen pendientes de verificar.
 
 ## Si no reserva una llamada: WhatsApp
 
 | Mensaje | Cuándo desde la inscripción | Condición del cliente | Variables | Clave preparada |
 | --- | --- | --- | --- | --- |
-| Pregunta sobre la clase | 1 hora | No ha reservado llamada. Preguntar qué busca mejorar en su comunicación. | Nombre del registro | `webinar_1h` |
-| Invitación a reservar | 1 día | No ha reservado llamada. Enviar el enlace de Cal.com. | Enlace fijo de reserva | `webinar_1d` |
-| Cierre de seguimiento | 3 días | No ha reservado llamada y no ha respondido. | Ninguna | `webinar_3d` |
+| Pregunta sobre la clase | 1 minuto | No ha reservado llamada. Preguntar qué busca mejorar en su comunicación. | Nombre del registro | `webinar_1h` |
+| Invitación a reservar | 3 minutos | No ha reservado llamada. Enviar el enlace de Cal.com. | Enlace fijo de reserva | `webinar_1d` |
+| Cierre de seguimiento | 5 minutos | No ha reservado llamada y no ha respondido. | Ninguna | `webinar_3d` |
 
-La reserva debe detener los WhatsApp de captación pendientes. Una respuesta por WhatsApp debe detener el mensaje de cierre de los tres días. El encargo solo condiciona ese último mensaje a no haber respondido; no establece esa condición para el de un día.
+La reserva debe detener los WhatsApp de captación pendientes. Una respuesta por WhatsApp debe detener el mensaje de cierre de los cinco minutos. El encargo solo condiciona ese último mensaje a no haber respondido; no establece esa condición para el de tres minutos.
 
 Enlace de reserva indicado por el cliente:
 
@@ -53,10 +53,12 @@ https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion
 
 | Orden | Cuándo desde la inscripción | Asunto original | Variables | Clave preparada |
 | --- | --- | --- | --- | --- |
-| 1 | 30 minutos | Quédate con esta idea de la masterclass que has visto. | Enlace fijo de reserva | `email_1` |
-| 2 | 1 día | Te presento a Santiago, Maria y Mateo. | Nombre y enlace fijo de reserva | `email_2` |
-| 3 | 2 días | Esto es lo que me dice la mayoría de la gente: | Enlace fijo de reserva | `email_3` |
-| 4 | 3 días | Transferencia recibida. | Enlace fijo de reserva | `email_4` |
+| 1 | 1 minuto | Quédate con esta idea de la masterclass que has visto. | Enlace fijo de reserva | `email_1` |
+| 2 | 3 minutos | Te presento a Santiago, Maria y Mateo. | Nombre y enlace fijo de reserva | `email_2` |
+| 3 | 5 minutos | Esto es lo que me dice la mayoría de la gente: | Enlace fijo de reserva | `email_3` |
+| 4 | 7 minutos | Transferencia recibida. | Enlace fijo de reserva | `email_4` |
+
+El 9 de octubre de 2026 el usuario reduce los tiempos a 1, 3 y 5 minutos para WhatsApp, y a 1, 3, 5 y 7 minutos para email. Aplicar `20261009200000_followup_minute_schedule.sql` para nuevas inscripciones; los trabajos ya programados conservan su fecha. El anexo conserva los tiempos del encargo original.
 
 La secuencia continúa aunque se reserve una llamada. Requiere consentimiento de comunicaciones por email y termina ante una baja. El encargo no incluye un email inmediato de bienvenida ni un email de reserva enviado por Resend; las notificaciones propias de Cal.com son independientes.
 
@@ -64,13 +66,13 @@ El original llama «Email 4» tanto al mensaje de dos días como al de tres día
 
 ## Diferencias y decisiones pendientes
 
-- **Aceptación con «CONFIRMO»:** en pausa por decisión del usuario el 9 de octubre; código conservado para una futura iteración. Concretar la aceptación de la reserva en Cal.com y verificar el recorrido completo antes de reactivarla.
+- **Aceptación con «CONFIRMO»:** detección reactivada en el código para registrar asistencia en el panel. La aceptación por la API de Cal.com requiere implementación adicional; la recepción real desde Meta sigue pendiente de verificar.
 - **Liberación automática:** descartada por el usuario el 9 de octubre. El administrador cancela manualmente en Cal.com.
 - **Reservas con menos de 24 horas:** variante `booking_short_notice` preparada entre 2 y menos de 24 horas. Con menos de dos horas solo se programa el aviso de 15 minutos y el resto queda como «No ha hecho falta»; si el horario de 15 minutos ya pasó, tampoco se recupera ese aviso.
 - **Duración de la llamada:** los WhatsApp dicen 45 minutos y el último email dice 35 minutos. Confirmar una duración y compararla con el evento de Cal.com.
 - **Testimonio Mateo/Álvaro:** el título del segundo email dice Mateo, pero el párrafo habla de Álvaro. Confirmar el nombre antes de cambiar el texto.
 - **Inicio de los tiempos:** confirmar que «entrar/apuntarse al webinar» significa completar el formulario, tal como está preparado actualmente.
-- **Redacción:** el mensaje de una hora conserva «dime un una cosa» del original. Los avisos de falta de confirmación indican revisión manual, según la última instrucción del usuario. El anexo conserva el texto del cliente sin estos cambios.
+- **Redacción:** el primer mensaje conserva «dime un una cosa» del original. Los avisos de falta de confirmación indican revisión manual, según la última instrucción del usuario. El anexo conserva el texto del cliente sin estos cambios.
 
 ## Estado de conexión comprobado en esta conversación
 
@@ -86,7 +88,7 @@ Estado a 8 de octubre de 2026; revisar de nuevo al activar los envíos:
 - [ ] Registrar un contacto nuevo y comprobar que los tiempos parten de esa inscripción.
 - [ ] Reservar con el mismo email y comprobar que se relaciona con el contacto.
 - [ ] Probar la confirmación habitual y la variante de menos de 24 horas, sin duplicarlas.
-- [ ] Mientras siga en pausa, responder «CONFIRMO» y comprobar que se registra la respuesta sin confirmar asistencia. Al reactivar, comprobar la aceptación en el destino acordado.
+- [ ] Responder «CONFIRMO» desde un contacto autorizado y comprobar la asistencia en el panel para una única reserva futura. Probar «BAJA» y «STOP» y verificar que se bloquean futuros WhatsApps.
 - [ ] Comprobar que una respuesta ambigua no acepta varias reservas.
 - [ ] Verificar la cancelación manual en Cal.com y la retirada de sus recordatorios.
 - [ ] Probar los recordatorios de 24 horas, 2 horas y 15 minutos, con el enlace real de la llamada.

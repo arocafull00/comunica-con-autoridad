@@ -51,7 +51,7 @@ export function WhatsappOverview({ automations, settings }: { automations: Whats
         })}
       </div>
     </section>)}
-    <p className="admin-context-note">La confirmación automática con «CONFIRMO» está pausada. El administrador revisa las respuestas y cancela las plazas manualmente en Cal.com.</p>
+    <p className="admin-context-note">Al recibir «CONFIRMO» por el webhook se registra la asistencia en el panel si hay una única llamada futura asociada al teléfono. «BAJA» o «STOP» retiran el consentimiento de WhatsApp. El administrador revisa las respuestas ambiguas y gestiona las cancelaciones en Cal.com.</p>
     <div className="admin-delivery-bar">
       <div>
         <h2>Envíos automáticos</h2>

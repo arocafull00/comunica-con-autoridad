@@ -6,7 +6,7 @@ import pg from "pg";
 import { fillMasterclass } from "../browser/masterclass-helper";
 import { unsubscribeToken } from "../../lib/followups/unsubscribe";
 
-test("real form consents, signed booking and unsubscribe persist while CONFIRMO remains paused",async({page,request})=>{
+test("real form consents, signed booking, CONFIRMO and unsubscribe persist",async({page,request})=>{
   const db=new pg.Client({connectionString:"postgresql://postgres:postgres@127.0.0.1:55322/postgres"});await db.connect();
   const email=`flow-${randomUUID()}@example.com`;const uid=randomUUID();const replyId=`wamid.${randomUUID()}`;
   const sign=(value:string,secret:string)=>createHmac("sha256",secret).update(value).digest("hex");
@@ -27,12 +27,12 @@ test("real form consents, signed booking and unsubscribe persist while CONFIRMO 
     const headers={"Content-Type":"application/json","x-cal-signature-256":sign(raw,"local-browser-cal-secret-at-least-32-characters")};
     expect((await request.post("/api/webhooks/cal",{headers,data:raw})).status()).toBe(200);
     expect((await request.post("/api/webhooks/cal",{headers,data:raw})).status()).toBe(200);
-    expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1",[uid])).rows[0].n).toBe(4);
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1 and status='pending'",[uid])).rows[0].n).toBe(4);
     // Use the next complete second so the provider timestamp follows this booking envelope.
     await page.waitForTimeout(1100);
     const incoming=JSON.stringify({object:"whatsapp_business_account",entry:[{changes:[{field:"messages",value:{metadata:{phone_number_id:"123456789"},messages:[{id:replyId,from:"34612345678",timestamp:Math.floor(Date.now()/1000).toString(),type:"text",text:{body:"CONFIRMO"}}]}}]}]});
     expect((await request.post("/api/webhooks/whatsapp",{headers:{"Content-Type":"application/json","x-hub-signature-256":`sha256=${sign(incoming,"local-browser-meta-secret-at-least-32-characters")}`},data:incoming})).status()).toBe(200);
-    expect((await db.query("select confirmed_at from public.call_bookings where uid=$1",[uid])).rows[0].confirmed_at).toBeNull();
+    expect((await db.query("select confirmed_at from public.call_bookings where uid=$1",[uid])).rows[0].confirmed_at).toBeInstanceOf(Date);
     const token=unsubscribeToken(saved.id,"local-browser-unsubscribe-secret-at-least-32-characters");
     await page.goto(`/api/followups/unsubscribe?token=${token}`);
     expect((await db.query("select email_unsubscribed_at from public.webinar_registrations where id=$1",[saved.id])).rows[0].email_unsubscribed_at).toBeNull();

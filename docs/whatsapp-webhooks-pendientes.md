@@ -1,8 +1,8 @@
-# Webhooks de WhatsApp: implementación aplazada
+# Webhooks de WhatsApp: recepción y palabras clave
 
-Decisión del usuario: **9 de octubre de 2026**. Por ahora no configurar ni activar nuevas suscripciones de webhooks de WhatsApp. Este documento conserva el conocimiento para una futura implementación. No afecta a los webhooks de Cal.com.
+Decisión actual del usuario: **9 de octubre de 2026**, reimplementar la detección de `CONFIRMO`, `BAJA` y `STOP`. Sustituye la pausa anterior de la detección. El receptor está implementado; el despliegue y la recepción real desde la cuenta de Meta requieren verificación.
 
-Documentar esta decisión no desactiva configuraciones que ya existan en Meta ni modifica el código, los secretos o los interruptores de envío.
+Esta implementación registra asistencia en el panel y bajas de WhatsApp. La aceptación de reservas por la API de Cal.com y la cancelación automática no están implementadas.
 
 ## Para qué los necesitaríamos
 
@@ -12,12 +12,14 @@ Los webhooks son avisos que Meta envía a nuestro servidor cuando sucede un even
 | --- | --- | --- |
 | Una persona responde | Registrar la llegada de la respuesta y evitar el cierre de captación de tres días cuando ya haya respondido. No detiene por sí sola todos los mensajes. | Preparado; recepción real del número de producción pendiente de verificar. |
 | Respuesta `BAJA` o `STOP` | Retirar el consentimiento de WhatsApp para impedir futuros envíos que dependan de ese consentimiento. | Preparado; recorrido real pendiente de verificar. |
-| Respuesta `CONFIRMO` | Posible confirmación de asistencia a una llamada. | Pausado por decisión del usuario: actualmente se registra con `confirms: false`. |
+| Respuesta `CONFIRMO` | Registrar asistencia en el panel para una única reserva futura asociada al teléfono, posterior a su creación o cambio. | Detección activa en el código; recepción real pendiente de verificar. |
 | Estado de un mensaje: enviado, entregado, leído o fallido | Mostrar entrega real y diagnosticar fallos. | El receptor actual no persiste estos estados; requiere implementación adicional. |
 
 No necesitamos webhooks para ejecutar un envío puntual desde el dashboard de Meta o mediante la API. Sí los necesitamos para que nuestra aplicación conozca y procese las respuestas automáticamente. La falta de esta recepción deja sin efecto las reglas que dependen de detectar respuestas o bajas por este canal.
 
 Recibir una respuesta no implica contestarla automáticamente: el receptor actual no implementa un chatbot ni guarda el texto completo de la conversación.
+
+Se admiten respuestas completas `CONFIRMO`, `BAJA` y `STOP`, sin distinguir mayúsculas, con espacios y puntuación alrededor (por ejemplo, `¡confirmo!`). No se infieren instrucciones de frases como `no confirmo` o `confirmo mañana`. Se comprueban el texto de los mensajes, el texto/payload de botones de plantilla y el título/identificador de botones interactivos. Si un botón contiene tanto confirmación como baja, la baja tiene prioridad. Otras respuestas se registran sin activar estas palabras clave.
 
 ## Código que ya existe
 
@@ -50,13 +52,13 @@ El selector «De» del formulario de envío de Meta se observó vacío. Su enlac
 
 ## Al retomar la implementación
 
-1. Confirmar qué funciones se quieren activar: respuestas, bajas, estados de entrega o confirmación de asistencia. `CONFIRMO` sigue pausado; tampoco hay autorización para cancelar plazas automáticamente.
+1. El alcance actual incluye respuestas, bajas y confirmación de asistencia en el panel. Los estados de entrega y la aceptación por la API de Cal.com requieren implementación adicional.
 2. Consultar otra vez el estado de la empresa, aplicación y número mediante `whatsapp_business_tools`. Usar la consulta específica del número para verificar la suscripción de su cuenta real.
 3. Comprobar el endpoint público desplegado y sus variables, incluido que `WHATSAPP_PHONE_NUMBER_ID` corresponda al número real y no al de pruebas. Verificar el GET challenge y la validación de firmas.
 4. Revisar el callback existente antes de cambiarlo. Configurar `messages` y suscribir la cuenta real a la aplicación correcta; son dos pasos distintos. Respetar las confirmaciones que exijan las herramientas para estas escrituras.
 5. Revisar los requisitos de publicación de Meta. Un callback configurado, una suscripción guardada o un challenge correcto no prueban la recepción de respuestas reales.
 6. Probar con un contacto autorizado: recepción y persistencia de una respuesta, duplicados, filtrado de otro número, supresión del cierre de tres días y baja con `BAJA`/`STOP`.
-7. Si se retoma `CONFIRMO`, acordar si la aceptación debe reflejarse solo en el panel o también en Cal.com. Probar reservas ambiguas, reprogramaciones y respuestas antiguas antes de activarlo.
+7. Probar `CONFIRMO` con una única reserva futura y comprobar `confirmed_at` en el panel. Verificar duplicados, reservas ambiguas, reprogramaciones y respuestas antiguas. La aceptación por la API de Cal.com sigue fuera del alcance implementado.
 8. Si se añaden estados de entrega, implementar su persistencia por identificador de mensaje y probar eventos duplicados o fuera de orden. `sent` en los workers actuales significa aceptación por el proveedor, no entrega al teléfono. Mantener los resultados `delivery_unknown` para revisión manual, sin reenvíos automáticos.
 
 ## Referencias

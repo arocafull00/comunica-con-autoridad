@@ -47,7 +47,7 @@ La plantilla de un día sí funcionó en el envío manual. Su botón fijo no req
 
 Para seguir el contrato actual hay que preparar versiones de Meta que coincidan con los mensajes fijados, obtener aprobación y sincronizar. Si se decide conservar otros contenidos, botones o imágenes, primero hay que definir ese nuevo contrato e implementar la vinculación y los componentes necesarios; no marcar plantillas como compatibles a ciegas ni emparejarlas solo por su nombre.
 
-No reutilizar como promesa de funcionamiento los textos que anuncian cancelación automática: esa función no existe y fue descartada por el usuario. `CONFIRMO` sigue pausado.
+No reutilizar como promesa de funcionamiento los textos que anuncian cancelación automática: esa función no existe y fue descartada por el usuario. La detección de `CONFIRMO` se ha reactivado en el código para registrar asistencia en el panel; la recepción real desde Meta sigue pendiente de verificar.
 
 ## Recorrido y triggers preparados
 

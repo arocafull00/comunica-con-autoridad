@@ -68,22 +68,53 @@ const inbound = { object: "whatsapp_business_account", entry: [{ changes: [{ fie
 describe("WhatsApp replies", () => {
   it.each([
     { type: "text", text: { body: "  confirmo  " } },
+    { type: "text", text: { body: "¡Confirmo! ✅" } },
     { type: "button", button: { text: "CONFIRMO" } },
+    { type: "button", button: { text: "Confirmar asistencia", payload: "CONFIRMO" } },
     { type: "interactive", interactive: { button_reply: { title: "CONFIRMO" } } },
-  ])("keeps attendance confirmation paused for $type replies", async reply => {
+    { type: "interactive", interactive: { button_reply: { title: "Confirmar asistencia", id: "CONFIRMO" } } },
+  ])("confirms attendance for $type replies", async reply => {
     const value = { object: inbound.object, entry: [{ changes: [{ field: "messages", value: {
       metadata: { phone_number_id: "123" }, messages: [{ id: "wamid.reply", from: "34612345678", timestamp, ...reply }],
     } }] }] };
     const save = vi.fn();
     expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
-    expect(save).toHaveBeenCalledWith([expect.objectContaining({ id: "wamid.reply", phone: "+34612345678", confirms: false, optsOut: false })]);
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ id: "wamid.reply", phone: "+34612345678", confirms: true, optsOut: false })]);
   });
-  it("counts nontext replies and recognizes BAJA without logging their content", async () => {
+  it.each(["BAJA", "  baja  ", "¡Baja!", "STOP", " stop. "])("opts out with %s without persisting message content", async body => {
     const value = structuredClone(inbound);
-    value.entry[0].changes[0].value.messages[0].text.body = "BAJA";
+    value.entry[0].changes[0].value.messages[0].text.body = body;
     const save = vi.fn();
     await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save });
     expect(save).toHaveBeenCalledWith([expect.objectContaining({ confirms: false, optsOut: true })]);
+    expect(save.mock.calls[0][0][0]).not.toHaveProperty("text");
+  });
+  it.each(["no confirmo", "confirmo mañana", "confirmado", "bajada", "stopping", "", "Hola"])("does not infer a command from %s", async body => {
+    const value = structuredClone(inbound);
+    value.entry[0].changes[0].value.messages[0].text.body = body;
+    const save = vi.fn();
+    await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save });
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ confirms: false, optsOut: false })]);
+  });
+  it.each([
+    { type: "image" },
+    { type: "button", button: { text: "Dejar de recibir mensajes", payload: "STOP" } },
+    { type: "interactive", interactive: { button_reply: { title: "Confirmo", id: "BAJA" } } },
+  ])("records $type replies and gives opt-out priority over confirmation", async reply => {
+    const value = structuredClone(inbound);
+    value.entry[0].changes[0].value.messages = [{ id: "wamid.reply", from: "34612345678", timestamp, text: { body: "CONFIRMO" }, ...reply }];
+    const save = vi.fn();
+    expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ confirms: false, optsOut: reply.type !== "image" })]);
+  });
+  it("rejects invalid signatures, missing configuration and future timestamps", async () => {
+    const save = vi.fn();
+    expect((await handleWhatsappWebhook(signed(inbound, "x-hub-signature-256", "sha256=", "wrong"), { secret, phoneNumberId: "123", save })).status).toBe(401);
+    expect((await handleWhatsappWebhook(signed(inbound, "x-hub-signature-256", "sha256="), { secret, save })).status).toBe(503);
+    const value = structuredClone(inbound);
+    value.entry[0].changes[0].value.messages[0].timestamp = Math.floor(Date.now() / 1000 + 600).toString();
+    expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(400);
+    expect(save).not.toHaveBeenCalled();
   });
   it("ignores messages to another business phone and status notifications", async () => {
     const save = vi.fn();

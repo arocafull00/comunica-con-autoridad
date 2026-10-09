@@ -5,7 +5,7 @@ export async function fillMasterclass(page: Page, email = "adrian@example.com") 
   await page.getByRole("button", { name: "ACCEDER GRATIS A LA MASTERCLASS" }).click();
   await page.getByLabel("Email", { exact: true }).fill(email);
   await expect(page.locator(".iti__selected-dial-code")).toHaveText("+34");
-  await page.getByLabel("Móvil / WhatsApp", { exact: true }).fill("612345678");
+  await page.getByLabel("Número de teléfono", { exact: true }).fill("612345678");
 }
 export async function fillQualification(page: Page) {
   await page.getByRole("button", { name: "Reservar llamada" }).click();

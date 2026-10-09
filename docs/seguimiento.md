@@ -12,10 +12,10 @@ Una dirección de email entra una sola vez en el webinar. Los reintentos conserv
 
 | Evento | Canal | Momento | Condición |
 | --- | --- | --- | --- |
-| Formulario completo | WhatsApp | +1 hora | Permiso y ninguna reserva registrada |
-| Formulario completo | WhatsApp | +1 día | Permiso y ninguna reserva registrada |
-| Formulario completo | WhatsApp | +3 días | Permiso, ninguna reserva y ninguna respuesta por WhatsApp |
-| Formulario completo | Resend | +30 minutos, +1, +2 y +3 días | Permiso de comunicaciones; continúa si reserva |
+| Formulario completo | WhatsApp | +1 minuto | Permiso y ninguna reserva registrada |
+| Formulario completo | WhatsApp | +3 minutos | Permiso y ninguna reserva registrada |
+| Formulario completo | WhatsApp | +5 minutos | Permiso, ninguna reserva y ninguna respuesta por WhatsApp |
+| Formulario completo | Resend | +1, +3, +5 y +7 minutos | Permiso de comunicaciones; continúa si reserva |
 | Reserva en Cal.com | WhatsApp | Inmediato | Confirmación habitual con ≥24h; variante corta entre 2 y <24h |
 | Llamada | WhatsApp | −24 horas, −2 horas y −15 minutos | Permiso y reserva vigente |
 
@@ -23,7 +23,7 @@ Los originales de email están en `public.followup_steps` y `lib/followups/messa
 
 No se recuperan recordatorios cuyo momento ya pasó al reservar. Con menos de dos horas de antelación solo se programa el recordatorio de 15 minutos, si su momento todavía no ha pasado; no se envía confirmación inmediata ni el recordatorio de dos horas. El resto de pasos queda `suppressed` con `not_needed_short_notice` y se muestra como «No ha hecho falta». Entre dos y menos de 24 horas se envía `booking_short_notice` en lugar de `booking_confirmation`. Los pasos de la otra variante y los horarios ya pasados se conservan como descartados, sin duplicar mensajes. Los recordatorios tienen una tolerancia máxima de 30 minutos y siempre caducan antes de empezar la llamada; los de webinar y emails caducan 6 horas después de su fecha. Un sistema pausado no enviará de golpe una secuencia antigua al reactivarse.
 
-`CONFIRMO` permanece pausado en el receptor de WhatsApp: la respuesta se registra con `confirms: false`. El código de detección está comentado para una futura iteración. La lógica interna conservada solo registra asistencia cuando el teléfono tiene una única reserva futura asociada y la respuesta es posterior a su creación o cambio, pero actualmente el receptor no la activa. Si hay varias llamadas futuras para ese teléfono o una respuesta llega antes de su webhook, la respuesta queda registrada para revisión; no se confirman varias llamadas por inferencia. No se cancelan llamadas por falta de respuesta. Cancelarlas manualmente en Cal.com retira los recordatorios al recibir su webhook. Después de una cancelación no se reinicia automáticamente la secuencia de captación.
+`CONFIRMO` activa el registro de asistencia en el panel cuando el teléfono tiene una única reserva futura asociada y la respuesta es posterior a su creación o cambio. Se admiten texto y botones, sin distinguir mayúsculas y con espacios o puntuación alrededor de la palabra completa. `BAJA` y `STOP` retiran el consentimiento de WhatsApp. Si hay varias llamadas futuras para ese teléfono o una respuesta llega antes de su webhook, la respuesta queda registrada para revisión; no se confirman varias llamadas por inferencia. La aceptación de la reserva por la API de Cal.com no está implementada. No se cancelan llamadas por falta de respuesta. Cancelarlas manualmente en Cal.com retira los recordatorios al recibir su webhook. Después de una cancelación no se reinicia automáticamente la secuencia de captación.
 
 ## Cal.com
 
@@ -54,9 +54,11 @@ Las ocho asociaciones son fijas en `lib/followups/whatsapp-automations.ts` y en 
 | Recordatorio −24h | `recordatorio_24hantes` | `en` | Ninguna |
 | Recordatorio −2h | `recordatorio_reunion_2h` | `es` | `{{1}}`: enlace real de Meet |
 | Recordatorio −15m | `15_minutos_antes` | `en` | Ninguna |
-| Seguimiento +1h | `seguimiento_webinar_1h` | `es` | `{{1}}`: nombre o «comunicador/a» |
-| Seguimiento +1 día | `no_reservan_1dia_despues` | `es` | Ninguna; botón con URL fija |
-| Seguimiento +3 días | `seguimiento_no_reserva_3dia` | `en` | Ninguna |
+| Seguimiento +1 minuto | `seguimiento_webinar_1h` | `es` | `{{1}}`: nombre o «comunicador/a» |
+| Seguimiento +3 minutos | `no_reservan_1dia_despues` | `es` | Ninguna; botón con URL fija |
+| Seguimiento +5 minutos | `seguimiento_no_reserva_3dia` | `en` | Ninguna |
+
+La migración `20261009200000_followup_minute_schedule.sql` cambia los tiempos para nuevas inscripciones. Los trabajos existentes conservan su fecha. Las claves de los pasos y los nombres de las plantillas de Meta se mantienen aunque mencionen horas o días; el cron procesa los mensajes cada minuto.
 
 El idioma `en` es el identificador real registrado en Meta para algunas plantillas cuyo texto está en español. Se conserva tal cual. Las imágenes se envían mediante el enlace de la cabecera que proporciona el catálogo de Meta; los botones con URL fija y los pies los resuelve Meta sin parámetros adicionales.
 
@@ -143,4 +145,4 @@ select uid,email,start_time from public.call_bookings where registration_id is n
 
 Aplicar las migraciones pendientes hasta `20261009190000_fixed_meta_whatsapp_templates.sql`, desplegar `process-followup-queue` y publicar el frontend. La nueva migración sustituye la vinculación por texto exacto por nombres fijos de Meta, elimina la configuración manual de asociaciones y aporta al worker los componentes reales de la plantilla. No activa envíos, reinicia secuencias ni reprograma trabajos. Los reintentos conservan su snapshot y los resultados inciertos siguen requiriendo revisión manual.
 
-La liberación automática de plazas queda fuera de esta iteración por decisión expresa del usuario. El administrador cancela manualmente en Cal.com y el webhook retira los recordatorios pendientes. La confirmación automática de asistencia permanece pausada.
+La liberación automática de plazas queda fuera de esta iteración por decisión expresa del usuario. El administrador cancela manualmente en Cal.com y el webhook retira los recordatorios pendientes. La detección de `CONFIRMO` está reactivada en el código; falta verificar la recepción real desde Meta en producción.
