@@ -4,7 +4,7 @@ type MetaTemplate = {
 };
 export type CatalogTemplate = { name: string; language: string; body: string; meta_status: string; approved: boolean; category: string; meta_id: string | null; components: NonNullable<MetaTemplate["components"]> };
 
-// The welcome worker supplies exactly one positional name parameter, and no media or buttons.
+// Welcome sends support fixed text or one positional name parameter, and no media or buttons.
 export function catalogTemplates(templates: MetaTemplate[]): CatalogTemplate[] {
   return templates.map((template) => {
     if (!template || !/^[a-z0-9_]{1,512}$/.test(template.name ?? "") || !/^[a-z]{2,3}(?:_[A-Z]{2})?$/.test(template.language ?? "") ||
@@ -14,7 +14,7 @@ export function catalogTemplates(templates: MetaTemplate[]): CatalogTemplate[] {
     // `approved` retains the existing worker contract: approved AND usable for welcome sends.
     const approved = template.status === "APPROVED" && template.parameter_format !== "NAMED" &&
       template.components.length === 1 && template.components[0]?.type === "BODY" &&
-      JSON.stringify(body.match(/\{\{[^}]+\}\}/g)) === JSON.stringify(["{{1}}"]);
+      body.trim().length > 0 && body.length <= 4096 && !/[{}]/.test(body.replace("{{1}}", ""));
     return { name: template.name!, language: template.language!, body, meta_status: template.status!, approved, components: template.components,
       category: template.category ?? "UNKNOWN", meta_id: template.id ?? null };
   });

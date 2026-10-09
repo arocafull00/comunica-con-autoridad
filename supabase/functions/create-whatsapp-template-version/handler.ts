@@ -45,7 +45,8 @@ export function createTemplateVersionHandler(env: Record<string, string | undefi
       if (catalog.some((t) => t.name === input.name)) return json(409, { error: "version_name_exists" });
       if (input.body === source.body) return json(400, { error: "body_unchanged" });
     } catch { return json(502, { error: "meta_catalog_unavailable" }); }
-    const components = [{ type: "BODY", text: input.body, example: { body_text: [["María"]] } }];
+    const components = [{ type: "BODY", text: input.body,
+      ...(input.body.includes("{{1}}") ? { example: { body_text: [["María"]] } } : {}) }];
     let result;
     try {
       // A NEW named template only. Do not POST to an existing template ID, and never retry an uncertain POST.

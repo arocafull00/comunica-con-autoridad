@@ -58,7 +58,7 @@ test("shows non-approved and incompatible templates with status labels without a
     await selector.selectOption(catalogIds[index]);
     const preview = page.getByRole("region", { name: "Vista previa del mensaje" });
     await expect(preview.locator("[data-slot=badge]").filter({ hasText: label })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Guardar plantilla", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Guardar plantilla", exact: true })).toBeDisabled();
   }
   await page.setViewportSize({ width: 320, height: 844 });
   await expect(page.getByText("No compatible con bienvenida", { exact: true })).toBeVisible();

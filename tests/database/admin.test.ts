@@ -54,10 +54,23 @@ describe("admin protection and settings", () => {
   });
 });
 describe("worker consumes dashboard configuration", () => {
+  it("saves and claims fixed text, preserving zero parameters after switching templates on retry", async () => {
+    await db.query("update public.whatsapp_templates set body='Gracias, hemos recibido tu solicitud.' where id=$1", [templateId]);
+    const queued = await job();
+    await save();
+    const first = await claim(queued.queue_id);
+    expect(first).toMatchObject({ action: "claimed", template_parameter_count: 0 });
+    expect((await db.query("select template_parameter_count from public.whatsapp_messages where id=$1", [queued.id])).rows[0].template_parameter_count).toBe(0);
+    await db.query("select public.finish_whatsapp_job($1,$2,$3,'retry',null,'meta_130429')", [queued.queue_id, queued.id, first.claim_token]);
+    const other = (await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true) returning id", [`other_${actor.replaceAll("-", "")}`])).rows[0].id;
+    await save(1,true,other);
+    await db.query("update public.whatsapp_messages set scheduled_at=now()-interval '1 second' where id=$1", [queued.id]);
+    expect(await claim(queued.queue_id)).toMatchObject({ action: "claimed", template_name: first.template_name, template_parameter_count: 0 });
+  });
   it("pauses without consuming attempts; enabled settings snapshot the approved template", async () => {
     const queued = await job(); expect(await claim(queued.queue_id)).toEqual({ action: "paused" });
     expect((await db.query("select status,attempts from public.whatsapp_messages where id=$1", [queued.id])).rows[0]).toEqual({ status: "pending", attempts: 0 });
-    await save(); expect(await claim(queued.queue_id)).toMatchObject({ action: "claimed", template_language: "es", graph_api_version: "v99.0" });
+    await save(); expect(await claim(queued.queue_id)).toMatchObject({ action: "claimed", template_language: "es", graph_api_version: "v99.0", template_parameter_count: 1 });
   });
   it("keeps the first template on retry after an administrator changes selection", async () => {
     const queued = await job(); await save(); const first = await claim(queued.queue_id);

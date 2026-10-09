@@ -13,6 +13,7 @@ const password = `Local-${randomBytes(18).toString("hex")}`;
 let adminId: string;
 let templateId: string;
 let draftId: string;
+let fixedId: string;
 let original: { enabled: boolean; template_id: string | null; revision: number; updated_at: string; updated_by: string | null };
 
 test.beforeAll(async () => {
@@ -24,6 +25,7 @@ test.beforeAll(async () => {
   await db.query("insert into public.admin_accounts(user_id) values($1)", [adminId]);
   const templates = await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}, bienvenida.',true),($2,'es','Hola {{1}}, otra plantilla.',true) returning id", [`fixture_${randomUUID().replaceAll("-", "")}`, `fixture_${randomUUID().replaceAll("-", "")}`]);
   [templateId, draftId] = templates.rows.map((row) => row.id);
+  fixedId = (await db.query("insert into public.whatsapp_templates(name,language,body,approved,category,components) values($1,'es','Gracias, hemos recibido tu solicitud.',true,'UTILITY',$2) returning id", [`fixture_${randomUUID().replaceAll("-", "")}`, JSON.stringify([{ type: "BODY", text: "Gracias, hemos recibido tu solicitud." }])])).rows[0].id;
   await db.query("update public.whatsapp_settings set enabled=false,template_id=null,revision=revision+1 where singleton");
 });
 test.afterAll(async () => {
@@ -32,8 +34,44 @@ test.afterAll(async () => {
     await db.query("delete from public.admin_audit where actor_id=$1", [adminId]);
     await auth.auth.admin.deleteUser(adminId);
   }
-  if (templateId) await db.query("delete from public.whatsapp_templates where id=any($1::uuid[])", [[templateId, draftId]]);
+  if (templateId) await db.query("delete from public.whatsapp_templates where id=any($1::uuid[])", [[templateId, draftId, fixedId]]);
   await db.end();
+});
+
+test.beforeEach(async () => {
+  await db.query("update public.whatsapp_settings set enabled=false,template_id=null,revision=revision+1 where singleton");
+});
+
+test("fixed text can be previewed and saved before separately confirming activation", async ({ page }) => {
+  await page.goto("/admin/login");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/whatsapp");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const save = page.getByRole("button", { name: "Guardar plantilla", exact: true });
+  await expect(save).toBeVisible();
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Plantillas de Meta").selectOption(fixedId);
+  const preview = page.getByRole("region", { name: "Vista previa del mensaje" });
+  await expect(preview).toContainText("Gracias, hemos recibido tu solicitud.");
+  await expect(preview).not.toContainText("Nombre de ejemplo");
+  await expect(save).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Crear nueva versión", exact: true })).toBeVisible();
+  await save.click();
+  await expect(page.locator(".admin-whatsapp-form [role=status]")).toContainText("Plantilla guardada");
+  await expect(save).toBeDisabled();
+  expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: false, template_id: fixedId });
+  await page.getByRole("button", { name: "Activar envíos", exact: true }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toContainText("Se usará la plantilla guardada");
+  await dialog.getByRole("button", { name: "Activar envíos", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".admin-delivery-status")).toContainText("Activados en el panel");
+  expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: true, template_id: fixedId });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: "test-results/whatsapp-fixed-text-mobile.png", fullPage: true });
 });
 
 test("welcome hierarchy reveals a preview and independently saves confirmed delivery changes", async ({ page, request }) => {
@@ -47,7 +85,7 @@ test("welcome hierarchy reveals a preview and independently saves confirmed deli
   const selector = page.getByLabel("Plantillas de Meta");
   const confirmation = page.getByRole("alertdialog");
   await expect(page.locator(".admin-preview")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Guardar plantilla" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guardar plantilla" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Activar envíos", exact: true })).toBeDisabled();
   await expect(page.locator(".admin-message-stats")).not.toBeVisible();
   await page.screenshot({ path: "test-results/whatsapp-empty-desktop.png", fullPage: true });
@@ -59,7 +97,7 @@ test("welcome hierarchy reveals a preview and independently saves confirmed deli
   await page.getByRole("button", { name: "Guardar plantilla", exact: true }).click();
   const actionRequest = await submitted;
   await expect(page.locator(".admin-whatsapp-form [role=status]")).toContainText("Plantilla guardada");
-  await expect(page.getByRole("button", { name: "Guardar plantilla" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guardar plantilla" })).toBeDisabled();
   expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: false, template_id: templateId });
   const unauthorized = await request.post("/admin/whatsapp", { headers: { "next-action": actionRequest.headers()["next-action"], "content-type": actionRequest.headers()["content-type"], origin: new URL(page.url()).origin }, data: actionRequest.postData()!, maxRedirects: 0 });
   expect(unauthorized.headers()["x-action-redirect"]).toContain("/admin/login");
@@ -112,7 +150,8 @@ test("welcome hierarchy reveals a preview and independently saves confirmed deli
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     const selectBounds = await selector.boundingBox();
     const syncBounds = await page.getByRole("button", { name: "Sincronizar con Meta", exact: true }).boundingBox();
-    expect(Math.abs(selectBounds!.y - syncBounds!.y)).toBeLessThan(2);
+    if (width > 480) expect(Math.abs(selectBounds!.y - syncBounds!.y)).toBeLessThan(2);
+    else expect(syncBounds!.y).toBeGreaterThanOrEqual(selectBounds!.y + selectBounds!.height);
     const previewBounds = await page.locator(".admin-preview").boundingBox();
     const saveBounds = await page.getByRole("button", { name: "Guardar plantilla", exact: true }).boundingBox();
     expect(previewBounds!.y + previewBounds!.height).toBeLessThan(saveBounds!.y);

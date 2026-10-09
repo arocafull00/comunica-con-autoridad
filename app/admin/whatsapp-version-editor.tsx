@@ -15,7 +15,7 @@ export function WhatsappVersionEditor(props: EditorProps) {
   const [open, setOpen] = useState(false);
   const supported = ["UTILITY", "MARKETING"].includes(source.category) && source.meta_status !== "UNAVAILABLE" &&
     source.components.length === 1 && source.components[0]?.type === "BODY" && validWelcomeBody(source.body);
-  if (!supported) return <p className="admin-muted">{source.category === "UNKNOWN" ? "Sincroniza con Meta para cargar los datos necesarios para crear una nueva versión." : "El editor de bienvenida admite texto con una única variable {{1}}, sin cabeceras, pies ni botones."}</p>;
+  if (!supported) return <p className="admin-muted">{source.category === "UNKNOWN" ? "Sincroniza con Meta para cargar los datos necesarios para crear una nueva versión." : "El editor de bienvenida admite texto fijo o una única variable {{1}} para el nombre, sin cabeceras, pies ni botones."}</p>;
   if (!open) return <Button type="button" variant="outline" disabled={busy} onClick={() => setOpen(true)}><Copy size={16} aria-hidden="true" />Crear nueva versión</Button>;
   return <VersionForm {...props} onClose={() => setOpen(false)} />;
 }
@@ -39,7 +39,7 @@ function VersionForm({ source, templates, busy, onPendingChange, onClose }: Edit
         <p id="whatsapp-version-name-note" className="admin-muted">{duplicate ? "Este nombre ya existe. Elige uno distinto." : "Minúsculas, números y guiones bajos. El nombre debe ser distinto al de la plantilla original."}</p>
         <Label htmlFor="whatsapp-version-body">Mensaje de la nueva versión</Label>
         <textarea id="whatsapp-version-body" className="admin-version-body" name="body" value={body} onChange={(e) => setBody(e.target.value)} maxLength={1024} rows={5} required aria-describedby="whatsapp-version-body-note" />
-        <p id="whatsapp-version-body-note" className="admin-muted">{body.length}/1024 caracteres · conserva una única variable {"{{1}}"} para el nombre.</p>
+        <p id="whatsapp-version-body-note" className="admin-muted">{body.length}/1024 caracteres · texto fijo o una única variable {"{{1}}"} para el nombre.</p>
         <div className="admin-message" aria-label="Vista previa de la nueva versión"><p>{body.replace("{{1}}", "María")}</p></div>
         <Button type="submit" disabled={!valid || pending}><Send size={16} aria-hidden="true" />{pending ? "Enviando a Meta…" : "Enviar nueva versión a Meta"}</Button>
       </fieldset>

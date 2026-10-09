@@ -1,6 +1,6 @@
 export function validWelcomeBody(body: string) {
   return body.trim().length > 0 && body.length <= 1024 &&
-    body.split("{{1}}").length === 2 && !/[{}]/.test(body.replace("{{1}}", ""));
+    !/[{}]/.test(body.replace("{{1}}", ""));
 }
 
 export function validVersionInput(input: unknown): input is { sourceId: string; name: string; body: string } {

@@ -9,7 +9,7 @@ export async function createWhatsappTemplateVersion(_previous: ActionState, form
   void _previous;
   const { session } = await requireAdmin();
   const input = { sourceId: form.get("sourceId"), name: form.get("name"), body: form.get("body") };
-  if (!validVersionInput(input)) return { message: "Usa un nombre con minúsculas, números y guiones bajos, y un mensaje de hasta 1024 caracteres con una única variable {{1}}." };
+  if (!validVersionInput(input)) return { message: "Usa un nombre con minúsculas, números y guiones bajos, y un mensaje de hasta 1024 caracteres con texto fijo o una única variable {{1}} para el nombre." };
   try {
     const { data, error } = await session.auth.getSession();
     if (error || !data.session) return { message: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
@@ -22,9 +22,9 @@ export async function createWhatsappTemplateVersion(_previous: ActionState, form
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) return { message: "No se pudo verificar tu acceso. Vuelve a iniciar sesión." };
       const errors: Record<string, string> = {
-        invalid_version: "El nombre o el mensaje no son válidos. Conserva una única variable {{1}} para el nombre.",
+        invalid_version: "El nombre o el mensaje no son válidos. Usa texto fijo o una única variable {{1}} para el nombre.",
         sync_not_configured: "La creación de versiones aún no está configurada.",
-        unsupported_source: "Solo se pueden versionar mensajes de texto con una variable de nombre, sin cabeceras, pies ni botones.",
+        unsupported_source: "Solo se pueden versionar mensajes de texto fijo o con una variable de nombre, sin cabeceras, pies ni botones.",
         source_unavailable: "La plantilla original ya no está disponible en Meta. Sincroniza el catálogo.",
         version_name_exists: "Ese nombre ya existe en Meta. Elige un nombre distinto para la nueva versión.",
         body_unchanged: "Modifica el mensaje antes de enviarlo como una nueva versión.",

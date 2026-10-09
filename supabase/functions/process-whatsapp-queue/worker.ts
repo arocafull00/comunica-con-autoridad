@@ -2,7 +2,7 @@ export type Rpc = <T>(name: string, args?: Record<string, unknown>) => Promise<T
 export type WorkerConfig = { accessToken: string; phoneNumberId: string; graphApiVersion: string };
 type Claim = { action: "skip" | "busy" | "unknown" | "paused" } | {
   action: "claimed"; message_id: string; claim_token: string; name: string; phone: string;
-  template_name: string; template_language: string; graph_api_version: string;
+  template_name: string; template_language: string; graph_api_version: string; template_parameter_count?: 0 | 1;
 };
 export type SendResult = { outcome: "sent"; providerId: string } | { outcome: "retry" | "failed" | "unknown"; error: string };
 
@@ -31,7 +31,9 @@ export async function sendWelcome(claim: Extract<Claim, { action: "claimed" }>, 
       method: "POST", headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ messaging_product: "whatsapp", to: claim.phone.replace(/^\+/, ""), type: "template",
         template: { name: claim.template_name, language: { code: claim.template_language },
-          components: [{ type: "body", parameters: [{ type: "text", text: claim.name }] }] } }),
+          ...(claim.template_parameter_count === 0 ? {} : {
+            components: [{ type: "body", parameters: [{ type: "text", text: claim.name }] }],
+          }) } }),
       signal: AbortSignal.timeout(10_000),
     });
     const body = await response.json().catch(() => null);

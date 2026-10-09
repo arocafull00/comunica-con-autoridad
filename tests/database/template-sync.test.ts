@@ -14,7 +14,7 @@ it("syncs the catalog under safeupdate without changing settings and rolls back 
   try {
     await db.query("begin");
     const prefix = `sync_${randomUUID().replaceAll("-", "")}`;
-    const kept = `${prefix}_kept`; const withdrawn = `${prefix}_withdrawn`; const added = `${prefix}_added`;
+    const kept = `${prefix}_kept`; const withdrawn = `${prefix}_withdrawn`; const added = `${prefix}_added`; const fixed = `${prefix}_fixed`;
     const pending = `${prefix}_pending`; const rejected = `${prefix}_rejected`; const incompatible = `${prefix}_incompatible`;
     const keptId = (await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true) returning id", [kept])).rows[0].id;
     await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true)", [withdrawn]);
@@ -27,6 +27,7 @@ it("syncs the catalog under safeupdate without changing settings and rolls back 
     await db.query("select public.sync_whatsapp_templates($1)", [JSON.stringify([
       { name: kept, language: "es", body: "Gracias {{1}}, recibimos tu solicitud." },
       { name: added, language: "es", body: "Bienvenido {{1}}" },
+      { name: fixed, language: "es", body: "Gracias, recibimos tu solicitud.", meta_status: "APPROVED", approved: true, components: [{ type: "BODY", text: "Gracias, recibimos tu solicitud." }] },
       { name: pending, language: "es", body: "Hola {{1}} {{2}}", meta_status: "PENDING", approved: false },
       { name: rejected, language: "es", body: "", meta_status: "REJECTED", approved: false, components: [{ type: "HEADER", format: "IMAGE" }] },
       { name: incompatible, language: "es", body: "Hola", meta_status: "APPROVED", approved: false },
@@ -37,6 +38,7 @@ it("syncs the catalog under safeupdate without changing settings and rolls back 
       { name: withdrawn, approved: false, body: "Hola {{1}}" },
     ]);
     expect((await db.query("select id from public.whatsapp_templates where name=$1", [kept])).rows[0].id).toBe(keptId);
+    expect((await db.query("select approved,body from public.whatsapp_templates where name=$1", [fixed])).rows[0]).toEqual({ approved: true, body: "Gracias, recibimos tu solicitud." });
     expect((await db.query("select * from public.whatsapp_settings")).rows).toEqual(settings);
     expect((await db.query("select name,meta_status,approved from public.whatsapp_templates where name=any($1) order by name", [[pending, rejected, incompatible]])).rows).toEqual([
       { name: incompatible, meta_status: "APPROVED", approved: false },

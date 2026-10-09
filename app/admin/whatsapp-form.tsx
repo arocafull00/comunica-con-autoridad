@@ -44,7 +44,7 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
           {settings.enabled ? <Check size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
           {settings.enabled ? "Activados en el panel" : "Desactivados en el panel"}
         </p>
-        {!settings.enabled && !savedTemplate ? <p className="admin-muted">Guarda una plantilla para poder activar los envíos.</p> : null}
+        {!settings.enabled && !savedTemplate ? <p className="admin-muted">Selecciona una plantilla aprobada y compatible y pulsa «Guardar plantilla». Después podrás activar los envíos.</p> : null}
       </div>
       <AlertDialog.Root open={confirmOpen} onOpenChange={(open) => { if (!changingDelivery) setConfirmOpen(open); }}>
         <AlertDialog.Trigger asChild>
@@ -90,7 +90,7 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
             <Button type="submit" form="whatsapp-template-sync" variant="outline"><RefreshCw size={16} aria-hidden="true" />{syncing ? "Sincronizando…" : "Sincronizar con Meta"}</Button>
           </div>
           {syncState.message ? <p role="status" className={syncState.success ? "admin-success" : "admin-error"}>{syncState.message}</p> : null}
-          {!templates.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas sincronizadas. Sincroniza con Meta para actualizar el catálogo.</AlertDescription></Alert> : !approved.length ? <Alert className="admin-notice"><AlertDescription>Puedes revisar todas las plantillas. Para los envíos de bienvenida hace falta una aprobada y compatible.</AlertDescription></Alert> : null}
+          {!templates.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas sincronizadas. Sincroniza con Meta para actualizar el catálogo.</AlertDescription></Alert> : !approved.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas listas para la bienvenida. Se admite texto fijo o una única variable {"{{1}}"} para el nombre, sin cabeceras, pies ni botones. Sincroniza con Meta para actualizar su disponibilidad.</AlertDescription></Alert> : null}
         </div>
         {template ? <section key={template.id} className="admin-preview t-panel-slide" data-open="true" aria-label="Vista previa del mensaje">
           <div className="admin-preview-header"><MessageCircle size={18} aria-hidden="true" /><h3>Vista previa</h3></div>
@@ -99,13 +99,13 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
             {template.meta_status === "APPROVED" && !template.approved ? <Badge variant="secondary">No compatible con bienvenida</Badge> : null}
           </div>
           <div className="admin-message"><p>{template.body ? template.approved ? template.body.replace("{{1}}", "María") : template.body : "Esta plantilla no tiene cuerpo de texto."}</p></div>
-          <p className="admin-muted">{template.approved ? "Nombre de ejemplo: María · " : ""}Idioma: {template.language}</p>
-          {!template.approved ? <p className="admin-muted">{template.meta_status === "APPROVED" ? "Este formato necesita parámetros o componentes que el envío de bienvenida todavía no admite." : "Esta plantilla no se puede usar para enviar la bienvenida mientras no esté aprobada por Meta."}</p> : null}
+          <p className="admin-muted">{template.approved && template.body.includes("{{1}}") ? "Nombre de ejemplo: María · " : ""}Idioma: {template.language}</p>
+          {!template.approved ? <p className="admin-muted">{template.meta_status === "APPROVED" ? "Meta la ha aprobado, pero la bienvenida solo admite texto fijo o una única variable {{1}} para el nombre, sin cabeceras, pies ni botones." : "Esta plantilla no se puede usar para enviar la bienvenida mientras no esté aprobada por Meta."}</p> : null}
         </section> : null}
-        {changed ? <div className="admin-template-save">
-          <p className="admin-muted">{settings.enabled ? "Esta plantilla se usará en los próximos envíos al guardarla." : "Guardar la plantilla no activa los envíos."}</p>
-          <Button type="submit" disabled={busy}><Save size={16} aria-hidden="true" />{pending ? "Guardando…" : "Guardar plantilla"}</Button>
-        </div> : null}
+        <div className="admin-template-save">
+          <p id="whatsapp-save-note" className="admin-muted">{!template ? "Selecciona una plantilla para poder guardarla." : !template.approved ? "Para guardarla, debe estar aprobada por Meta y ser compatible con la bienvenida." : !changed ? "Esta plantilla ya está guardada para la bienvenida." : settings.enabled ? "Esta plantilla se usará en los próximos envíos al guardarla." : "Guardar la plantilla no activa los envíos."}</p>
+          <Button type="submit" disabled={busy || !changed} aria-describedby="whatsapp-save-note"><Save size={16} aria-hidden="true" />{pending ? "Guardando…" : "Guardar plantilla"}</Button>
+        </div>
       </fieldset>
       {state.message ? <p role="status" className={state.success ? "admin-success" : "admin-error"}>{state.message}</p> : null}
     </form>

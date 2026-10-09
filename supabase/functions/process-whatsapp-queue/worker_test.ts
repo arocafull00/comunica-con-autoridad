@@ -40,6 +40,14 @@ Deno.test("confirmed transient Meta rejection retries", async () => {
   assert.deepEqual(await sendWelcome(claim, config, fetchJson({ error: { code: 130429 } }, 429)), { outcome: "retry", error: "meta_130429_http_429" });
   assert.equal((await sendWelcome(claim, config, fetchJson({ error: { code: 131000, is_transient: true } }, 500))).outcome, "retry");
 });
+Deno.test("fixed text templates omit all dynamic parameters", async () => {
+  const result = await sendWelcome({ ...claim, template_parameter_count: 0 }, config, async (_input, init) => {
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(body.template, { name: "welcome", language: { code: "es" } });
+    return Response.json({ messages: [{ id: "wamid.fixed" }] });
+  });
+  assert.deepEqual(result, { outcome: "sent", providerId: "wamid.fixed" });
+});
 Deno.test("permanent Meta rejection fails without exposing provider messages", async () => {
   assert.deepEqual(await sendWelcome(claim, config, fetchJson({ error: { code: 132001, message: "private detail" } }, 400)), { outcome: "failed", error: "meta_132001_http_400" });
 });

@@ -63,6 +63,11 @@ Deno.test("invalid inputs, duplicate names, unchanged bodies and unsupported com
     assert.equal(test.posts.length, 0); assert.equal(test.writes.length, 0);
   }
 });
+Deno.test("fixed text versions omit parameter examples when submitted to Meta", async () => {
+  const test = fixture(); const body = "Gracias, hemos recibido tu solicitud.";
+  assert.equal((await test.handler(request({ ...input, body }))).status, 200);
+  assert.deepEqual((test.posts[0] as { components: object[] }).components, [{ type: "BODY", text: body }]);
+});
 Deno.test("creation errors do not retry an uncertain POST or expose credentials", async () => {
   for (const [options, error] of [[{ createTimeout: true }, "create_unknown"], [{ createFailure: 500 }, "create_unknown"], [{ createFailure: 400 }, "meta_create_rejected"]] as const) {
     const test = fixture(options); const response = await test.handler(request());

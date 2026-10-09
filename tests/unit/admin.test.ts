@@ -62,6 +62,15 @@ describe("complete WhatsApp catalog", () => {
   it("rejects malformed catalogs rather than withdrawing existing entries after a partial import", () => {
     expect(() => catalogTemplates([template, { ...template, name: "Bad name" }])).toThrow();
   });
+  it("accepts fixed text without accepting empty bodies, repeated variables or extra components", () => {
+    const fixed = { ...template, components: [{ type: "BODY", text: "En 15 minutos empezamos. Nos vemos ahora. 😁" }] };
+    const catalog = catalogTemplates([fixed, { ...fixed, status: "PENDING" },
+      { ...fixed, components: [{ type: "BODY", text: " " }] },
+      { ...fixed, components: [{ type: "BODY", text: "Hola {{1}} {{1}}" }] },
+      { ...fixed, components: [...fixed.components, { type: "BUTTONS" }] },
+      { ...fixed, components: [...fixed.components, { type: "FOOTER", text: "Pie" }] }]);
+    expect(catalog.map((t) => t.approved)).toEqual([true, false, false, false, false, false]);
+  });
   it("paginates only against Meta with authorization in headers", async () => {
     let calls = 0;
     const result = await fetchTemplates({ token: "secret", wabaId: "123", version: "v99.0" }, async (input: URL | RequestInfo) => {

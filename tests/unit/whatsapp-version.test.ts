@@ -15,7 +15,8 @@ describe("template version editor", () => {
   });
   it("validates the name parameter, length and source identity", () => {
     expect(validVersionInput(input)).toBe(true);
-    for (const body of ["Hola", "Hola {{1}} {{2}}", "Hola {{1}} {{1}}", "Hola {1}", `{{1}}${"x".repeat(1024)}`]) expect(validVersionInput({ ...input, body })).toBe(false);
+    expect(validVersionInput({ ...input, body: "Hola, bienvenida." })).toBe(true);
+    for (const body of ["", "   ", "Hola {{1}} {{2}}", "Hola {{1}} {{1}}", "Hola {1}", `{{1}}${"x".repeat(1024)}`]) expect(validVersionInput({ ...input, body })).toBe(false);
     expect(validVersionInput({ ...input, sourceId: "bad" })).toBe(false);
   });
   it("rejects unauthorized actions before calling the function", async () => {
