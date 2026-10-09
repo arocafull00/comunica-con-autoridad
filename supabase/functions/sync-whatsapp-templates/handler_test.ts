@@ -4,6 +4,10 @@ import { createTemplateSyncHandler } from "./handler.ts";
 const userId = "00000000-0000-4000-8000-000000000001";
 const env = { SUPABASE_URL: "https://db.example.com", SUPABASE_SERVICE_ROLE_KEY: "private-db-key", WHATSAPP_ACCESS_TOKEN: "private-meta-token", WHATSAPP_WABA_ID: "123", WHATSAPP_GRAPH_API_VERSION: "v25.0" };
 const template = { name: "welcome", language: "es", status: "APPROVED", components: [{ type: "BODY", text: "Hola {{1}}, recibimos tu solicitud." }] };
+const booking = { ...template, name: "booking", components: [{ type: "BODY", text: "Puedes reservar aquí." },
+  { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar Sesión Gratuita", url: "https://cal.com/example/reserva" }] }] };
+const dynamicBooking = { ...booking, name: "dynamic_booking", components: [booking.components[0],
+  { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar", url: "https://cal.com/example/{{1}}" }] }] };
 const request = (token = "user-token", method = "POST") => new Request("https://db.example.com/functions/v1/sync-whatsapp-templates", { method, headers: token ? { Authorization: `Bearer ${token}` } : {} });
 
 function fixture({ active = true, invalidUser = false, metaFailure = false, saveFailure = false, empty = false, failLaterPage = false } = {}) {
@@ -28,7 +32,7 @@ function fixture({ active = true, invalidUser = false, metaFailure = false, save
       if (metaFailure || (failLaterPage && metaCalls === 2)) return Response.json({ error: "private-meta-token" }, { status: 403 });
       if (metaCalls === 1) return Response.json({ data: [], paging: { next: "https://attacker.invalid", cursors: { after: "cursor" } } });
       assert.equal(url.searchParams.get("after"), "cursor");
-      return Response.json({ data: empty ? [] : [template, { ...template, name: "pending", status: "PENDING" }, { ...template, name: "with_header", components: [...template.components, { type: "HEADER" }] }] });
+      return Response.json({ data: empty ? [] : [template, { ...template, name: "pending", status: "PENDING" }, { ...template, name: "with_header", components: [...template.components, { type: "HEADER" }] }, booking, dynamicBooking] });
     }
     assert.equal(url.pathname, "/rest/v1/rpc/sync_whatsapp_templates");
     assert.equal(init?.method, "POST");
@@ -54,11 +58,13 @@ Deno.test("catalog sync paginates against Meta and stores every template with st
   const test = fixture();
   const response = await test.handler(request());
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { count: 3 });
+  assert.deepEqual(await response.json(), { count: 5 });
   assert.deepEqual(test.writes, [{ p_templates: [
     { name: template.name, language: template.language, body: template.components[0].text, meta_status: "APPROVED", approved: true, components: template.components, category: "UNKNOWN", meta_id: null },
     { name: "pending", language: "es", body: template.components[0].text, meta_status: "PENDING", approved: false, components: template.components, category: "UNKNOWN", meta_id: null },
     { name: "with_header", language: "es", body: template.components[0].text, meta_status: "APPROVED", approved: false, components: [...template.components, { type: "HEADER" }], category: "UNKNOWN", meta_id: null },
+    { name: "booking", language: "es", body: "Puedes reservar aquí.", meta_status: "APPROVED", approved: true, components: booking.components, category: "UNKNOWN", meta_id: null },
+    { name: "dynamic_booking", language: "es", body: "Puedes reservar aquí.", meta_status: "APPROVED", approved: false, components: dynamicBooking.components, category: "UNKNOWN", meta_id: null },
   ] }]);
 });
 

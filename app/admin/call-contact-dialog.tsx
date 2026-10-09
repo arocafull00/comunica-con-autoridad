@@ -4,11 +4,13 @@ import { Dialog } from "radix-ui";
 import { X } from "lucide-react";
 
 export type CallContact = {
-  name: string;
+  name: string | null;
   phone: string;
   profession: string | null;
   situation: string | null;
   goal: string | null;
+  commitment?: string | null;
+  investment?: string | null;
 };
 
 export function CallContactDialog({ email, contact, registered, timeZone }: {
@@ -32,7 +34,7 @@ export function CallContactDialog({ email, contact, registered, timeZone }: {
         </div>
         <Dialog.Description className="admin-muted">Datos del contacto que ha reservado la llamada.</Dialog.Description>
         <dl className="admin-contact-details">
-          {contact ? <div><dt>Nombre</dt><dd>{contact.name}</dd></div> : null}
+          {contact?.name ? <div><dt>Nombre</dt><dd>{contact.name}</dd></div> : null}
           <div><dt>Correo</dt><dd><a href={`mailto:${email}`}>{email}</a></dd></div>
           {contact ? <div><dt>Teléfono</dt><dd><a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">{contact.phone}</a></dd></div> : null}
           <div><dt>Formulario de la masterclass</dt><dd>{registered ? "Formulario asociado a este email." : "Sin formulario asociado a este email."}</dd></div>
@@ -40,6 +42,8 @@ export function CallContactDialog({ email, contact, registered, timeZone }: {
           {contact?.profession ? <div><dt>Profesión</dt><dd>{contact.profession}</dd></div> : null}
           {contact?.situation ? <div><dt>Situación</dt><dd>{contact.situation}</dd></div> : null}
           {contact?.goal ? <div><dt>Quiere mejorar</dt><dd>{contact.goal}</dd></div> : null}
+          {contact?.commitment ? <div><dt>Compromiso</dt><dd>{contact.commitment}</dd></div> : null}
+          {contact?.investment ? <div><dt>Inversión</dt><dd>{contact.investment}</dd></div> : null}
         </dl>
         {!registered ? <p className="admin-notice">Puede haber reservado directamente en Cal.com o haber usado otro email en el formulario. Hasta que se vincule una inscripción, no se envían los mensajes automáticos de seguimiento de esta llamada.</p> : null}
       </Dialog.Content>

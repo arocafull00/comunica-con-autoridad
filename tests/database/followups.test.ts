@@ -61,10 +61,10 @@ describe("webinar registration and consent", () => {
     expect((await db.query(l.sql,l.args)).rows[0].result.outcome).toBe("replayed");
     expect((await db.query(l.sql,[...l.args.slice(0,4),false])).rows[0].result.outcome).toBe("conflict");
   });
-  it("rejects incomplete historical contacts instead of manufacturing webinar access",async()=>{
+  it("registers captured contacts before the qualification questions",async()=>{
     const key=randomUUID();
     await db.query("select public.submit_lead($1,'Prueba','+34612345678','test@example.com',false,'v1',repeat('a',64))",[key]);
-    await expect(register(key)).rejects.toThrow("Completed form required");
+    expect(await register(key)).toMatch(/^[0-9a-f-]{36}$/);
   });
 });
 

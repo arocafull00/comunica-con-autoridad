@@ -15,7 +15,7 @@ export function WhatsappVersionEditor(props: EditorProps) {
   const [open, setOpen] = useState(false);
   const supported = ["UTILITY", "MARKETING"].includes(source.category) && source.meta_status !== "UNAVAILABLE" &&
     source.components.length === 1 && source.components[0]?.type === "BODY" && validWelcomeBody(source.body);
-  if (!supported) return <p className="admin-muted">{source.category === "UNKNOWN" ? "Sincroniza con Meta para cargar los datos necesarios para crear una nueva versión." : "El editor de bienvenida admite texto fijo o una única variable {{1}} para el nombre, sin cabeceras, pies ni botones."}</p>;
+  if (!supported) return <p className="admin-muted">{source.category === "UNKNOWN" ? "Sincroniza con Meta para cargar los datos necesarios para crear una nueva versión." : "Para crear una nueva versión de una plantilla con cabeceras, pies o botones, utiliza el administrador de Meta. El editor del panel solo permite crear versiones de texto."}</p>;
   if (!open) return <Button type="button" variant="outline" disabled={busy} onClick={() => setOpen(true)}><Copy size={16} aria-hidden="true" />Crear nueva versión</Button>;
   return <VersionForm {...props} onClose={() => setOpen(false)} />;
 }

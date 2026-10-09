@@ -20,7 +20,7 @@ async function Contacts({ searchParams }: { searchParams: Promise<{ start?: stri
   const range = dateRange(params.start, params.end);
   const page = Math.max(1, Math.min(100000, Math.floor(Number(params.page) || 1)));
   const email = (params.email ?? "").trim().slice(0, 254);
-  let query = db.from("leads").select("id,name,email,phone,created_at,whatsapp_consent,utm_source,utm_campaign,profession,situation,goal", { count: "exact" }).eq("source", "web").gte("created_at", madridMidnight(range.start)).lt("created_at", madridMidnight(range.end));
+  let query = db.from("leads").select("id,name,email,phone,created_at,whatsapp_consent,utm_source,utm_campaign,profession,situation,goal,commitment,investment", { count: "exact" }).eq("source", "web").gte("created_at", madridMidnight(range.start)).lt("created_at", madridMidnight(range.end));
   if (email) query = query.ilike("email", `%${email.replace(/[\\%_]/g, "\\$&")}%`);
   const { data, error, count } = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).range((page - 1) * 25, page * 25 - 1);
   if (error) throw new Error("No se pudieron consultar los contactos.");
@@ -46,14 +46,14 @@ async function Contacts({ searchParams }: { searchParams: Promise<{ start?: stri
           <TableHead scope="col">Confirmación</TableHead>
         </TableRow></TableHeader>
         <TableBody>{data.map((lead) => <TableRow key={lead.id}>
-          <TableCell data-label="Nombre"><strong>{lead.name}</strong></TableCell>
+          <TableCell data-label="Nombre"><strong>{lead.name || "Sin nombre"}</strong></TableCell>
           <TableCell data-label="Solicitud">
             <time dateTime={lead.created_at}>{new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "medium", timeStyle: "short" }).format(new Date(lead.created_at))}</time>
             <p>{lead.utm_source ?? "Sin fuente"} · {lead.utm_campaign ?? "Sin campaña"}</p>
-            {lead.profession ? <details><summary>Respuestas de la masterclass</summary><p><strong>Profesión:</strong> {lead.profession}</p><p><strong>Situación:</strong> {lead.situation}</p><p><strong>Quiere mejorar:</strong> {lead.goal}</p></details> : null}
+            {lead.profession ? <details><summary>Respuestas de la masterclass</summary><p><strong>Profesión:</strong> {lead.profession}</p>{lead.situation ? <p><strong>Situación:</strong> {lead.situation}</p> : null}<p><strong>Quiere mejorar:</strong> {lead.goal}</p>{lead.commitment ? <p><strong>Compromiso:</strong> {lead.commitment}</p> : null}{lead.investment ? <p><strong>Inversión:</strong> {lead.investment}</p> : null}</details> : null}
           </TableCell>
           <TableCell data-label="Teléfono">
-            <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola, ${lead.name}. ¿Cómo estás?`)}`} target="_blank" rel="noopener noreferrer" title={`Abrir WhatsApp con ${lead.name}`}>{lead.phone}</a>
+            <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(lead.name ? `Hola, ${lead.name}. ¿Cómo estás?` : "Hola. ¿Cómo estás?")}`} target="_blank" rel="noopener noreferrer" title={`Abrir WhatsApp con ${lead.name || lead.email}`}>{lead.phone}</a>
             <p>WhatsApp</p>
           </TableCell>
           <TableCell data-label="Correo"><a href={`mailto:${lead.email}`}>{lead.email}</a></TableCell>

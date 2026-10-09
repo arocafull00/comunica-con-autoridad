@@ -14,7 +14,7 @@ function workerJson(status: number, body: object) {
 
 export type FollowupMessage = {
   id: string; registrationId: string; channel: "email" | "whatsapp"; step: string;
-  email: string; phone: string; name: string; time: string; meetingUrl: string | null;
+  email: string; phone: string; name: string | null; time: string; meetingUrl: string | null;
   subject: string | null; body: string; parameter: "name" | "time" | "meetingUrl" | null;
   templateName: string | null; templateLanguage: string | null; testMode?: boolean;
 };
@@ -71,11 +71,11 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
         method: "POST", headers: { Authorization: `Bearer ${config.email.key}`, "Content-Type": "application/json", "Idempotency-Key": `followup/${message.id}` },
         body: JSON.stringify({ from: config.email.from, to: [message.email], subject: message.subject,
           template: { id: templateId, variables: { EMAIL_UNSUBSCRIBE_URL: unsubscribe.href,
-            ...(message.step === "email_2" ? { LEAD_NAME: escapeHtml(message.name) } : {}) } } }), signal: AbortSignal.timeout(10_000),
+            ...(message.step === "email_2" ? { LEAD_NAME: escapeHtml(message.name || "comunicador/a") } : {}) } } }), signal: AbortSignal.timeout(10_000),
       });
     } else {
       if (!config.whatsapp || !message.templateName || !message.templateLanguage) return { outcome: "failed", error: "whatsapp_configuration_missing" };
-      const parameter = message.parameter ? message[message.parameter] : null;
+      const parameter = message.parameter === "name" ? (message.name || "comunicador/a") : message.parameter ? message[message.parameter] : null;
       if (message.parameter && !parameter) return { outcome: "failed", error: "template_parameter_missing" };
       response = await fetcher(`https://graph.facebook.com/${config.whatsapp.version}/${config.whatsapp.phoneNumberId}/messages`, {
         method: "POST", headers: { Authorization: `Bearer ${config.whatsapp.token}`, "Content-Type": "application/json" },

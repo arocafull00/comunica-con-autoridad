@@ -1,0 +1,73 @@
+import { test, expect } from "@playwright/test";
+import { fillMasterclass, fillQualification } from "./masterclass-helper";
+import { BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL } from "../../lib/leads/masterclass";
+
+test.beforeEach(async ({ page }) => {
+  await page.route("https://fast.wistia.com/**", route => route.abort());
+  await page.route("**/api/leads/access", route => route.fulfill({ status: 201, json: { ok: true, accessToken: "signed-test-reference" } }));
+});
+
+test("contact opens video, then four questions unlock Cal.com and survive reload", async ({ page }, info) => {
+  let requests = 0;
+  await page.route("**/api/leads/qualification", route => {
+    requests++;
+    expect(route.request().headers().authorization).toBe("Bearer signed-test-reference");
+    expect(route.request().postDataJSON()).toEqual({ profession: "Dirección", goal: BOOKING_GOALS[0], commitment: COMMITMENTS[0], investment: INVESTMENTS[1] });
+    return route.fulfill({ json: { ok: true, bookingUrl: CAL_BOOKING_URL } });
+  });
+  await page.goto("/"); await fillMasterclass(page);
+  await expect(page.getByLabel("Profesión / actividad")).toHaveCount(0);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.locator("#video1-wrap")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
+  await page.reload();
+  await fillQualification(page);
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveAttribute("href", CAL_BOOKING_URL);
+  expect(requests).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `test-results/qualified-${info.project.name}.png`, fullPage: true });
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toBeVisible();
+  await page.getByRole("button", { name: "Realizar otra inscripción" }).click();
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
+  expect(await page.evaluate(() => localStorage.getItem("webinar_qualified_token_v1"))).toBeNull();
+});
+
+test("requires each answer, keeps selections when going back, and retries failed persistence", async ({ page }) => {
+  let requests = 0;
+  await page.route("**/api/leads/qualification", route => {
+    requests++;
+    return route.fulfill({ status: requests === 1 ? 503 : 200, json: requests === 1 ? { ok: false, message: "No hemos podido confirmar el guardado." } : { ok: true, bookingUrl: CAL_BOOKING_URL } });
+  });
+  await page.goto("/"); await fillMasterclass(page); await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("button", { name: "Reservar llamada" }).click();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByText("Completa esta pregunta para continuar.", { exact: true })).toBeVisible();
+  await page.getByLabel("Profesión / actividad").fill("Dirección"); await page.getByRole("button", { name: "Continuar" }).click();
+  for (const option of [BOOKING_GOALS[0], COMMITMENTS[0]]) {
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(page.getByText("Completa esta pregunta para continuar.", { exact: true })).toBeVisible();
+    await page.getByRole("radio", { name: option, exact: true }).check(); await page.getByRole("button", { name: "Continuar" }).click();
+  }
+  await page.getByRole("radio", { name: INVESTMENTS[1], exact: true }).check();
+  await page.getByRole("button", { name: "Atrás" }).click();
+  await expect(page.getByRole("radio", { name: COMMITMENTS[0], exact: true })).toBeChecked();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("radio", { name: INVESTMENTS[1], exact: true })).toBeChecked();
+  await page.screenshot({ path: "test-results/investment-question.png", fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByText("No hemos podido confirmar el guardado.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toBeVisible();
+  expect(requests).toBe(2);
+});
+
+test("older saved access asks for contact details before booking", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("webinar_access_granted_v3", "1"));
+  await page.goto("/");
+  await page.getByRole("button", { name: "Reservar llamada" }).click();
+  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
+});

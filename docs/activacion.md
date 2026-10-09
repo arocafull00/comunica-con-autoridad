@@ -62,7 +62,7 @@ Las migraciones activan RLS y revocan acceso a visitantes y usuarios autenticado
 
 ## Meta y plantilla
 
-Configurar la cuenta de WhatsApp Business, su número y un token de sistema con permiso de mensajería. Crear y obtener aprobación para una plantilla con un único parámetro de texto en el cuerpo, sin cabecera ni botones que requieran parámetros:
+Configurar la cuenta de WhatsApp Business, su número y un token de sistema con permiso de mensajería. Crear y obtener aprobación para una plantilla de texto fijo o con una única variable `{{1}}` para el nombre en el cuerpo. Se admiten botones de enlace con URL estática, sin cabeceras ni pies ni botones que requieran parámetros:
 
 > Hola {{1}}, hemos recibido tu solicitud en Comunica con Autoridad. Nos pondremos en contacto contigo próximamente.
 

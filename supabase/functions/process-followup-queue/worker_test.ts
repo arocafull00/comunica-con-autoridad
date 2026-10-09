@@ -144,6 +144,18 @@ Deno.test("unknown email steps never send an unintended template", async () => {
   }
 });
 
+Deno.test("contacts without a name use a neutral greeting in both channels", async () => {
+  for (const channel of ["email", "whatsapp"] as const) {
+    const fetcher: typeof fetch = async (_url, init) => {
+      const payload = JSON.parse(String(init?.body));
+      if (channel === "email") assert.equal(payload.template.variables.LEAD_NAME, "comunicador/a");
+      else assert.equal(payload.template.components[0].parameters[0].text, "comunicador/a");
+      return channel === "email" ? Response.json({ id: "email-id" }) : Response.json({ messages: [{ id: "wamid.sent" }] });
+    };
+    assert.equal((await sendFollowup({ ...message, name: null, channel, parameter: channel === "whatsapp" ? "name" : null }, config, fetcher)).outcome, "sent");
+  }
+});
+
 for (const parameter of [null, "meetingUrl", "time", "name"] as const) {
   Deno.test(`followups preserve WhatsApp template parameter ${parameter}`, async () => {
     const fetcher: typeof fetch = async (_url, init) => {

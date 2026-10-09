@@ -11,7 +11,7 @@ Este documento recoge el encargo, las diferencias con lo preparado y los puntos 
 3. Si no reserva, entra en la secuencia de captación por WhatsApp.
 4. Recibe la secuencia de cuatro emails, tanto si reserva la llamada como si no. Esta es la interpretación de trabajo de «tanto si se apuntan como si no»; confirmar que el cliente se refiere a reservar la llamada.
 
-Los tiempos de captación y email se cuentan desde la inscripción al webinar; los recordatorios de llamada se cuentan desde su hora de inicio. Actualmente la inscripción ocurre tras completar el formulario, guardar los datos y confirmar la copia en Google Sheets: no exige ver el vídeo entero. No se envían comunicaciones a quien no haya aceptado el canal correspondiente.
+Los tiempos de captación y email se cuentan desde la inscripción al webinar; los recordatorios de llamada se cuentan desde su hora de inicio. Actualmente la inscripción ocurre tras guardar WhatsApp y email y confirmar la copia en Google Sheets; las preguntas para reservar se completan después: no exige ver el vídeo entero. No se envían comunicaciones a quien no haya aceptado el canal correspondiente.
 
 ## Si reserva una llamada: WhatsApp
 

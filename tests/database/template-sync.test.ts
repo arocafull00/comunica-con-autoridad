@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, it } from "vitest";
 import pg from "pg";
+import { catalogTemplates } from "../../supabase/functions/_shared/meta-templates";
 
 const target = process.env.TEST_SUPABASE_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:55322/postgres";
 if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(target).hostname)) throw new Error("Local DB only");
@@ -14,7 +15,8 @@ it("syncs the catalog under safeupdate without changing settings and rolls back 
   try {
     await db.query("begin");
     const prefix = `sync_${randomUUID().replaceAll("-", "")}`;
-    const kept = `${prefix}_kept`; const withdrawn = `${prefix}_withdrawn`; const added = `${prefix}_added`; const fixed = `${prefix}_fixed`;
+    const kept = `${prefix}_kept`; const withdrawn = `${prefix}_withdrawn`; const added = `${prefix}_added`; const fixed = `${prefix}_fixed`; const booking = `${prefix}_booking`;
+    const bookingComponents = [{ type: "BODY", text: "Puedes reservar aquí." }, { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar", url: "https://cal.com/example/reserva" }] }];
     const pending = `${prefix}_pending`; const rejected = `${prefix}_rejected`; const incompatible = `${prefix}_incompatible`;
     const keptId = (await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true) returning id", [kept])).rows[0].id;
     await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true)", [withdrawn]);
@@ -31,6 +33,7 @@ it("syncs the catalog under safeupdate without changing settings and rolls back 
       { name: pending, language: "es", body: "Hola {{1}} {{2}}", meta_status: "PENDING", approved: false },
       { name: rejected, language: "es", body: "", meta_status: "REJECTED", approved: false, components: [{ type: "HEADER", format: "IMAGE" }] },
       { name: incompatible, language: "es", body: "Hola", meta_status: "APPROVED", approved: false },
+      ...catalogTemplates([{ name: booking, language: "es", status: "APPROVED", components: bookingComponents }]),
     ])]);
     expect((await db.query("select name,approved,body from public.whatsapp_templates where name=any($1) order by name", [[kept, withdrawn, added]])).rows).toEqual([
       { name: added, approved: true, body: "Bienvenido {{1}}" },
@@ -39,6 +42,7 @@ it("syncs the catalog under safeupdate without changing settings and rolls back 
     ]);
     expect((await db.query("select id from public.whatsapp_templates where name=$1", [kept])).rows[0].id).toBe(keptId);
     expect((await db.query("select approved,body from public.whatsapp_templates where name=$1", [fixed])).rows[0]).toEqual({ approved: true, body: "Gracias, recibimos tu solicitud." });
+    expect((await db.query("select approved,body,components from public.whatsapp_templates where name=$1", [booking])).rows[0]).toEqual({ approved: true, body: "Puedes reservar aquí.", components: bookingComponents });
     expect((await db.query("select * from public.whatsapp_settings")).rows).toEqual(settings);
     expect((await db.query("select name,meta_status,approved from public.whatsapp_templates where name=any($1) order by name", [[pending, rejected, incompatible]])).rows).toEqual([
       { name: incompatible, meta_status: "APPROVED", approved: false },

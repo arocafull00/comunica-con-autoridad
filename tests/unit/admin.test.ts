@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dateRange, passwordSchema, settingsSchema } from "../../lib/admin/validation";
 import { madridMidnight, queryTraffic } from "../../lib/admin/traffic";
 import { catalogTemplates, fetchTemplates } from "../../supabase/functions/_shared/meta-templates";
+import { welcomeIncompatibility, staticUrlButtons } from "../../lib/whatsapp-template-compatibility";
 
 describe("admin dates and configuration", () => {
   it("uses Madrid calendar days even when UTC is the previous day", () => {
@@ -70,6 +71,33 @@ describe("complete WhatsApp catalog", () => {
       { ...fixed, components: [...fixed.components, { type: "BUTTONS" }] },
       { ...fixed, components: [...fixed.components, { type: "FOOTER", text: "Pie" }] }]);
     expect(catalog.map((t) => t.approved)).toEqual([true, false, false, false, false, false]);
+  });
+  it("accepts static booking links with fixed text or a single name and preserves the exact buttons", () => {
+    const buttons = { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar Sesión Gratuita", url: "https://cal.com/example/reserva" }] };
+    for (const body of ["Puedes reservar aquí.", "Hola {{1}}, puedes reservar aquí."]) {
+      const [result] = catalogTemplates([{ ...template, components: [{ type: "BODY", text: body }, buttons] }]);
+      expect(result.approved).toBe(true);
+      expect(result.components).toEqual([{ type: "BODY", text: body }, buttons]);
+      expect(staticUrlButtons(result.components)).toEqual(buttons.buttons);
+    }
+  });
+  it("rejects dynamic and unsupported buttons with an actionable reason", () => {
+    for (const button of [
+      { type: "URL", text: "Reservar", url: "https://cal.com/reserva/{{1}}" },
+      { type: "URL", text: "Reservar", url: "javascript:alert(1)" },
+      { type: "URL", text: "Reservar", url: "invalid" },
+      { type: "QUICK_REPLY", text: "Reservar" },
+      { type: "PHONE_NUMBER", text: "Llamar" },
+      { type: "URL", url: "https://cal.com/reserva" },
+    ]) {
+      const [result] = catalogTemplates([{ ...template, components: [...template.components, { type: "BUTTONS", buttons: [button] }] }]);
+      expect(result.approved).toBe(false);
+      expect(welcomeIncompatibility(result)).toBeTruthy();
+      expect(staticUrlButtons(result.components)).toEqual([]);
+    }
+    expect(welcomeIncompatibility({ body: template.components[0].text, components: [...template.components,
+      { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar", url: "https://cal.com/reserva/{{1}}" }] }],
+    })).toContain("URL variable");
   });
   it("paginates only against Meta with authorization in headers", async () => {
     let calls = 0;

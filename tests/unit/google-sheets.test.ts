@@ -23,11 +23,17 @@ describe("Google Sheets copy", () => {
       "form-name": "webinar-leads", submission_id: key, nombre: "Adrián", a_que_te_dedicas: "Dirección",
       situacion_actual: SITUATIONS[2], que_quiere_mejorar: GOALS[0], email: "adrian@example.com",
       telefono: "+33612345678", telefono_pais: "FR", telefono_prefijo: "+33",
+      nivel_compromiso: "", rango_inversion: "",
     });
   });
   it("accepts the Apps Script duplicate acknowledgement on a retry", async () => {
     const send = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, duplicate: true, reason: "email_or_phone" }));
     await expect(saveLeadToGoogleSheets(lead, key, GOOGLE_SHEETS_ENDPOINT, send)).resolves.toBeUndefined();
+  });
+  it("requires an explicit update acknowledgement for the second phase", async () => {
+    const qualified = { ...lead, commitment: "Alto", investment: "Menos de 500€" };
+    await expect(saveLeadToGoogleSheets(qualified, key, GOOGLE_SHEETS_ENDPOINT, vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, duplicate: true })))).rejects.toThrow("qualification update");
+    await expect(saveLeadToGoogleSheets(qualified, key, GOOGLE_SHEETS_ENDPOINT, vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, updated: true })))).resolves.toBeUndefined();
   });
   it.each([
     () => Response.json({ success: false }),

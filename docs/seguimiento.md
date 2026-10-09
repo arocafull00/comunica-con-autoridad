@@ -2,7 +2,7 @@
 
 El encargo del cliente, sus textos originales y las diferencias pendientes están documentados en [automatizaciones-cliente.md](automatizaciones-cliente.md).
 
-La inscripción se registra cuando se guardan las seis respuestas del formulario, se confirma la copia en Google Sheets y el servidor concede acceso al vídeo. No se exige reproducir o terminar el vídeo. La marca de acceso de localStorage no inscribe contactos antiguos automáticamente.
+La inscripción se registra cuando se guardan WhatsApp y email, se confirma la copia en Google Sheets y el servidor concede acceso al vídeo. Las cuatro preguntas para reservar se guardan después, en la misma inscripción (ver `formulario-masterclass.md`). No se exige reproducir o terminar el vídeo. La marca de acceso de localStorage no inscribe contactos antiguos automáticamente.
 
 `POST /api/leads` guarda por separado el consentimiento opcional de WhatsApp y el de comunicaciones por email, con fecha y versión del texto. Las casillas empiezan desmarcadas. La falta de permiso no impide acceder al vídeo. Cada email admite baja; WhatsApp admite `BAJA` y `STOP`.
 

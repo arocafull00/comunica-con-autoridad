@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { AlertDialog } from "radix-ui";
-import { Check, MessageCircle, Pause, Play, RefreshCw, Save } from "lucide-react";
+import { Check, ExternalLink, MessageCircle, Pause, Play, RefreshCw, Save } from "lucide-react";
+import { staticUrlButtons, welcomeIncompatibility, type MetaTemplateComponent } from "@/lib/whatsapp-template-compatibility";
 import { saveWhatsappSettings } from "./actions";
 import { syncWhatsappTemplates } from "./whatsapp-sync-action";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { WhatsappVersionEditor } from "./whatsapp-version-editor";
 
-export type Template = { id: string; name: string; language: string; body: string; approved: boolean; meta_status: string; verified_at: string; category: string; components: { type?: string }[] };
+export type Template = { id: string; name: string; language: string; body: string; approved: boolean; meta_status: string; verified_at: string; category: string; components: MetaTemplateComponent[] };
 
 function templateStatus(status: string) {
   const labels: Record<string, string> = { APPROVED: "Aprobada", PENDING: "Pendiente de aprobación", REJECTED: "Rechazada", PAUSED: "Pausada", DISABLED: "Deshabilitada", IN_APPEAL: "En revisión de recurso", PENDING_DELETION: "Pendiente de eliminación", DELETED: "Eliminada", UNAVAILABLE: "Ya no está en Meta" };
@@ -33,6 +34,8 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
   const [syncState, syncAction, syncing] = useActionState(syncWhatsappTemplates, { message: "" });
   const template = templates.find((t) => t.id === selected);
   const savedTemplate = approved.find((t) => t.id === settings.template_id);
+  const buttons = template ? staticUrlButtons(template.components) : [];
+  const incompatibility = template ? welcomeIncompatibility(template) : null;
   const changed = !!template?.approved && template.id !== settings.template_id;
   const busy = pending || syncing || changingDelivery || creatingVersion;
 
@@ -90,7 +93,7 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
             <Button type="submit" form="whatsapp-template-sync" variant="outline"><RefreshCw size={16} aria-hidden="true" />{syncing ? "Sincronizando…" : "Sincronizar con Meta"}</Button>
           </div>
           {syncState.message ? <p role="status" className={syncState.success ? "admin-success" : "admin-error"}>{syncState.message}</p> : null}
-          {!templates.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas sincronizadas. Sincroniza con Meta para actualizar el catálogo.</AlertDescription></Alert> : !approved.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas listas para la bienvenida. Se admite texto fijo o una única variable {"{{1}}"} para el nombre, sin cabeceras, pies ni botones. Sincroniza con Meta para actualizar su disponibilidad.</AlertDescription></Alert> : null}
+          {!templates.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas sincronizadas. Sincroniza con Meta para actualizar el catálogo.</AlertDescription></Alert> : !approved.length ? <Alert className="admin-notice"><AlertDescription>No hay plantillas listas para la bienvenida. Se admite texto fijo o una única variable {"{{1}}"} para el nombre, con botones de enlace fijo y sin cabeceras ni pies. Sincroniza con Meta para actualizar su disponibilidad.</AlertDescription></Alert> : null}
         </div>
         {template ? <section key={template.id} className="admin-preview t-panel-slide" data-open="true" aria-label="Vista previa del mensaje">
           <div className="admin-preview-header"><MessageCircle size={18} aria-hidden="true" /><h3>Vista previa</h3></div>
@@ -98,9 +101,15 @@ export function WhatsappForm({ templates, settings }: { templates: Template[]; s
             <Badge variant={template.meta_status === "REJECTED" ? "destructive" : "outline"}>{templateStatus(template.meta_status)}</Badge>
             {template.meta_status === "APPROVED" && !template.approved ? <Badge variant="secondary">No compatible con bienvenida</Badge> : null}
           </div>
-          <div className="admin-message"><p>{template.body ? template.approved ? template.body.replace("{{1}}", "María") : template.body : "Esta plantilla no tiene cuerpo de texto."}</p></div>
+          <div className="admin-message">
+            <p>{template.body ? template.approved ? template.body.replace("{{1}}", "María") : template.body : "Esta plantilla no tiene cuerpo de texto."}</p>
+            {buttons.length ? <div className="admin-template-buttons">{buttons.map((button, index) => <a key={index} href={button.url} target="_blank" rel="noopener noreferrer">
+              <span><ExternalLink size={16} aria-hidden="true" />{button.text}</span>
+              <small>{button.url}</small>
+            </a>)}</div> : null}
+          </div>
           <p className="admin-muted">{template.approved && template.body.includes("{{1}}") ? "Nombre de ejemplo: María · " : ""}Idioma: {template.language}</p>
-          {!template.approved ? <p className="admin-muted">{template.meta_status === "APPROVED" ? "Meta la ha aprobado, pero la bienvenida solo admite texto fijo o una única variable {{1}} para el nombre, sin cabeceras, pies ni botones." : "Esta plantilla no se puede usar para enviar la bienvenida mientras no esté aprobada por Meta."}</p> : null}
+          {!template.approved ? <p className="admin-muted">{template.meta_status === "APPROVED" ? incompatibility ?? "Sincroniza con Meta para actualizar la compatibilidad de esta plantilla." : "Esta plantilla no se puede usar para enviar la bienvenida mientras no esté aprobada por Meta."}</p> : null}
         </section> : null}
         <div className="admin-template-save">
           <p id="whatsapp-save-note" className="admin-muted">{!template ? "Selecciona una plantilla para poder guardarla." : !template.approved ? "Para guardarla, debe estar aprobada por Meta y ser compatible con la bienvenida." : !changed ? "Esta plantilla ya está guardada para la bienvenida." : settings.enabled ? "Esta plantilla se usará en los próximos envíos al guardarla." : "Guardar la plantilla no activa los envíos."}</p>

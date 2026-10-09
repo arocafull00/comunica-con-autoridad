@@ -14,6 +14,15 @@ Deno.test("worker is disabled unless enabled and fully configured", () => {
   assert.equal(loadConfig(() => undefined), null);
   assert.equal(loadConfig((name) => name === "WHATSAPP_SEND_ENABLED" ? "true" : undefined), null);
 });
+
+Deno.test("contacts captured without a name send a neutral greeting", async () => {
+  const fetcher: typeof fetch = async (_url, init) => {
+    const payload = JSON.parse(String(init?.body));
+    assert.equal(payload.template.components[0].parameters[0].text, "comunicador/a");
+    return Response.json({ messages: [{ id: "wamid.sent" }] });
+  };
+  assert.equal((await sendWelcome({ ...claim, name: null }, config, fetcher)).outcome, "sent");
+});
 Deno.test("dashboard pause skips sends and template configuration is read atomically from Postgres", async () => {
   assert.ok(loadConfig((name) => ({ WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "test", WHATSAPP_PHONE_NUMBER_ID: "123", WHATSAPP_GRAPH_API_VERSION: "v99.0" })[name]));
   const rpc: Rpc = <T>(name: string, args?: Record<string, unknown>): Promise<T> => {

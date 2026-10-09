@@ -16,7 +16,7 @@ test("real form consents, signed booking and unsubscribe persist while CONFIRMO 
     await page.setViewportSize({width:390,height:900});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await page.screenshot({path:"test-results/flow-consents-mobile.png",fullPage:true});
-    await page.getByRole("button",{name:"DESBLOQUEAR MASTERCLASS"}).click();
+    await page.getByRole("button",{name:"Continuar"}).click();
     await expect(page.locator("#webinar-content")).toBeVisible();
     const saved=(await db.query("select l.whatsapp_consent,l.communications_consent,r.id from public.leads l join public.webinar_registrations r on r.lead_id=l.id where l.email=$1",[email])).rows[0];
     expect(saved).toMatchObject({whatsapp_consent:true,communications_consent:true});
@@ -43,6 +43,8 @@ test("real form consents, signed booking and unsubscribe persist while CONFIRMO 
     expect((await db.query("select sum(attempts)::int as attempts from public.followup_jobs where registration_id=$1",[saved.id])).rows[0].attempts).toBe(0);
   } finally{
     await db.query("delete from public.call_bookings where email=$1",[email]);
+    await db.query("delete from pgmq.q_whatsapp_outbound q using public.whatsapp_messages m,public.leads l where q.message->>'messageId'=m.id::text and m.lead_id=l.id and l.email=$1",[email]);
+    await db.query("delete from public.whatsapp_messages m using public.leads l where m.lead_id=l.id and l.email=$1",[email]);
     await db.query("delete from public.leads where email=$1",[email]);
     await db.query("delete from private.followup_replies where provider_id=$1",[replyId]);await db.end();
   }

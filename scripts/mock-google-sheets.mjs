@@ -18,7 +18,7 @@ export async function startMockGoogleSheets() {
     const data = Object.fromEntries(new URLSearchParams(body));
     const duplicate = submissions.has(data.submission_id);
     submissions.set(data.submission_id, data);
-    response.end(JSON.stringify({ success: true, duplicate }));
+    response.end(JSON.stringify({ success: true, duplicate, updated: true }));
   });
   await new Promise((resolve, reject) => {
     server.once("error", reject);

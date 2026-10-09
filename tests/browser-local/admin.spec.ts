@@ -27,6 +27,10 @@ test.beforeAll(async () => {
   for (const [suffix, metaStatus, body] of [["pending", "PENDING", "Pendiente {{1}}"], ["rejected", "REJECTED", "Rechazada {{1}}"], ["multiple", "APPROVED", "Hola {{1}} {{2}}"]]) {
     catalogIds.push((await db.query("insert into public.whatsapp_templates(name,language,body,approved,meta_status) values($1,'es',$2,false,$3) returning id", [`${fixtureName}_${suffix}`, body, metaStatus])).rows[0].id);
   }
+  for (const [suffix, approved, url] of [["booking", true, "https://cal.com/example/reserva"], ["dynamic_booking", false, "https://cal.com/example/{{1}}"]] as const) {
+    const components = [{ type: "BODY", text: "Puedes reservar aquí." }, { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar Sesión Gratuita", url }] }];
+    catalogIds.push((await db.query("insert into public.whatsapp_templates(name,language,body,approved,meta_status,components,category) values($1,'es','Puedes reservar aquí.',$2,'APPROVED',$3,'MARKETING') returning id", [`${fixtureName}_${suffix}`, approved, JSON.stringify(components)])).rows[0].id);
+  }
   await db.query("update public.whatsapp_settings set enabled=false, template_id=null where singleton");
   leadId = (await db.query("insert into public.leads(name,email,phone,utm_source,utm_campaign) values('Contacto de prueba',$1,'+34612345678','instagram','campana_de_prueba') returning id", [`contact-${adminId}@example.com`])).rows[0].id;
 });
@@ -67,6 +71,37 @@ test("shows non-approved and incompatible templates with status labels without a
   await page.screenshot({ path: ".vercel/whatsapp-all-templates-mobile.png", fullPage: true });
   expect((await db.query("select * from public.whatsapp_settings")).rows[0]).toEqual(before);
 });
+test("previews and saves static booking buttons without enabling delivery, and explains dynamic URLs", async ({ page }) => {
+  await login(page);
+  await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();
+  await page.goto("/admin/whatsapp");
+  const before = (await db.query("select * from public.whatsapp_settings")).rows[0];
+  try {
+    const selector = page.getByLabel("Plantillas de Meta");
+    const preview = page.getByRole("region", { name: "Vista previa del mensaje" });
+    await selector.selectOption(catalogIds[4]);
+    await expect(preview).toContainText("El botón tiene una URL variable");
+    await expect(page.getByRole("button", { name: "Guardar plantilla", exact: true })).toBeDisabled();
+    await selector.selectOption(catalogIds[3]);
+    await expect(preview.getByText("No compatible con bienvenida", { exact: true })).toHaveCount(0);
+    const bookingLink = preview.getByRole("link", { name: /Reservar Sesión Gratuita/ });
+    await expect(bookingLink).toHaveAttribute("href", "https://cal.com/example/reserva");
+    await expect(bookingLink).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(preview).toContainText("Puedes reservar aquí.");
+    await page.screenshot({ path: ".vercel/whatsapp-static-button-desktop.png", fullPage: true });
+    await page.setViewportSize({ width: 320, height: 844 });
+    await expect(bookingLink).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await page.screenshot({ path: ".vercel/whatsapp-static-button-mobile.png", fullPage: true });
+    await page.getByRole("button", { name: "Guardar plantilla", exact: true }).click();
+    await expect(page.locator(".admin-whatsapp-form [role=status]")).toContainText("Plantilla guardada.");
+    expect((await db.query("select enabled,template_id from public.whatsapp_settings")).rows[0]).toEqual({ enabled: false, template_id: catalogIds[3] });
+    await expect(page.getByRole("button", { name: "Activar envíos", exact: true })).toBeEnabled();
+  } finally {
+    await db.query("update public.whatsapp_settings set enabled=$1,template_id=$2,revision=$3,updated_at=$4,updated_by=$5 where singleton", [before.enabled, before.template_id, before.revision, before.updated_at, before.updated_by]);
+  }
+});
+
 test("template sync invokes the function without saving settings, and rejects anonymous action replay", async ({ page, request }) => {
   await login(page);
   await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();

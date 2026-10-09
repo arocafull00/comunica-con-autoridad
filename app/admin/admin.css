@@ -102,6 +102,12 @@
 .admin-preview-header h2 { color: var(--admin-ink); margin: 0; font-size: 16px; }
 .admin-message { background: #30271c; padding: 18px; border-radius: 0 8px 8px 8px; margin: 24px 0 16px; }
 .admin-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-template-buttons { display: grid; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--admin-line); }
+.admin-template-buttons a { display: grid; gap: 4px; color: var(--admin-accent); text-decoration: none; overflow-wrap: anywhere; }
+.admin-template-buttons a:hover { text-decoration: underline; }
+.admin-template-buttons a > span { display: flex; align-items: center; gap: 8px; }
+.admin-template-buttons svg { flex-shrink: 0; }
+.admin-template-buttons small { font-size: 13px; color: var(--admin-muted); }
 .admin-preview .admin-muted { font-size: 14px; margin-bottom: 0; }
 .admin-whatsapp-form [data-slot=button] { width: auto; margin-top: 24px; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 15px; }

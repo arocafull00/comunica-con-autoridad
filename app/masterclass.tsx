@@ -3,9 +3,13 @@
 import { createElement, useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { LeadForm } from "./lead-form";
+import { QualificationForm } from "./qualification-form";
+import { CAL_BOOKING_URL } from "@/lib/leads/masterclass";
 
 const ACCESS_KEY = "webinar_access_granted_v3";
 const COMPLETED_KEY = "webinar_intro_completed_v1";
+const TOKEN_KEY = "webinar_access_token_v1";
+const QUALIFIED_KEY = "webinar_qualified_token_v1";
 
 function readFlag(key: string) {
   try { return localStorage.getItem(key) === "1"; } catch { return false; }
@@ -22,6 +26,10 @@ export function Masterclass() {
   const [completed, setCompleted] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingUrl, setBookingUrl] = useState("");
+  const bookingArea = useRef<HTMLDivElement>(null);
   const intro = useRef<HTMLElement>(null);
   const replay = useRef<HTMLDivElement>(null);
   const webinar = useRef<HTMLDivElement>(null);
@@ -32,6 +40,11 @@ export function Masterclass() {
     const timer = setTimeout(() => {
       setAccess(readFlag(ACCESS_KEY));
       setCompleted(readFlag(COMPLETED_KEY));
+      try {
+        const token = localStorage.getItem(TOKEN_KEY) ?? "";
+        setAccessToken(token);
+        if (token && localStorage.getItem(QUALIFIED_KEY) === token) setBookingUrl(CAL_BOOKING_URL);
+      } catch { /* Access still works without browser storage. */ }
     }, 0);
     return () => clearTimeout(timer);
   }, []);
@@ -50,7 +63,9 @@ export function Masterclass() {
     return () => player.removeEventListener("ended", unlock);
   }, [access]);
 
-  function grantAccess() {
+  function grantAccess(token: string) {
+    setAccessToken(token);
+    try { localStorage.setItem(TOKEN_KEY, token); } catch { /* Keep token in memory. */ }
     writeFlag(ACCESS_KEY);
     setAccess(true);
     requestAnimationFrame(() => webinar.current?.scrollIntoView({
@@ -61,6 +76,11 @@ export function Masterclass() {
   function startAnotherRegistration() {
     clearFlag(ACCESS_KEY);
     clearFlag(COMPLETED_KEY);
+    clearFlag(TOKEN_KEY);
+    clearFlag(QUALIFIED_KEY);
+    setAccessToken("");
+    setBookingUrl("");
+    setBookingOpen(false);
     setAccess(false);
     setCompleted(false);
     setFormOpen(true);
@@ -105,7 +125,20 @@ export function Masterclass() {
         <div className="wrap"><div className="after-card">
           <h2>¿Quieres que analicemos tu caso?</h2>
           <p>Reserva una sesión gratuita.</p>
-          <a className="cta" href="https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion" target="_blank" rel="noopener noreferrer">RESERVAR SESIÓN GRATUITA →</a>
+          {bookingUrl ? <a className="cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">Reservar llamada →</a>
+            : <button className="cta" type="button" onClick={() => {
+              setBookingOpen(true);
+              requestAnimationFrame(() => bookingArea.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" }));
+            }}>Reservar llamada →</button>}
+          <div ref={bookingArea}>
+            {bookingOpen && !bookingUrl ? accessToken
+              ? <QualificationForm accessToken={accessToken} onExpired={() => { setAccessToken(""); clearFlag(TOKEN_KEY); }} onSuccess={url => {
+                setBookingUrl(url);
+                try { localStorage.setItem(QUALIFIED_KEY, accessToken); } catch { /* Keep result in memory. */ }
+                requestAnimationFrame(() => document.querySelector<HTMLAnchorElement>("#after .cta")?.focus());
+              }} />
+              : <LeadForm onSuccess={grantAccess} /> : null}
+          </div>
           <div className="micro">Sesión gratuita · Sin compromiso</div>
           <button className="another-registration-btn" type="button" onClick={startAnotherRegistration}>Realizar otra inscripción</button>
         </div></div>
