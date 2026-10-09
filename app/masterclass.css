@@ -38,9 +38,10 @@
 .webinar-page .access-btn:hover { transform: translateY(-2px); filter: brightness(1.04); background: linear-gradient(180deg,var(--copper2),var(--copper)); }
 .webinar-page #lead-form-wrap { margin-top: 22px; padding: 28px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.035); text-align: left; }
 .webinar-page label { display: block; margin: 0 0 7px; color: #d8d0c6; font-size: 13px; font-weight: 700; }
-.webinar-page input { width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #111214; color: var(--ink); padding: 0 14px; font: inherit; outline: none; min-height: 50px; }
-.webinar-page input::placeholder { color: #757575; opacity: 1; }
-.webinar-page input:focus { border-color: rgba(216,148,85,.7); box-shadow: 0 0 0 3px rgba(184,111,54,.12); outline: none; }
+.webinar-page :is(input,textarea) { width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #111214; color: var(--ink); padding: 0 14px; font: inherit; outline: none; min-height: 50px; }
+.webinar-page textarea { padding-block: 14px; resize: vertical; line-height: 1.5; }
+.webinar-page :is(input,textarea)::placeholder { color: #757575; opacity: 1; }
+.webinar-page :is(input,textarea):focus { border-color: rgba(216,148,85,.7); box-shadow: 0 0 0 3px rgba(184,111,54,.12); outline: none; }
 .webinar-page :is(button,a):focus-visible { outline: 2px solid var(--copper2); outline-offset: 4px; }
 .webinar-page .form-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
 .webinar-page .step-count { white-space: nowrap; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #d8b18e; }

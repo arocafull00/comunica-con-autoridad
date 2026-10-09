@@ -76,7 +76,7 @@ export function LeadForm({ onSuccess }: { onSuccess: (accessToken: string) => vo
         <div className="form-step active">
           <h3>Accede gratis a la masterclass</h3><p>Completa tu WhatsApp y correo para ver el vídeo.</p>
           <div className="contact-field">
-            <label htmlFor="telefono_visible">Móvil / WhatsApp</label>
+            <label htmlFor="telefono_visible">Número de teléfono</label>
             <PhoneInput ref={phoneRef} initOptions={PHONE_OPTIONS} disabled={pending} inputProps={{ id: "telefono_visible", type: "tel", inputMode: "tel", autoComplete: "tel-national", placeholder: "600 000 000", required: true, onChange: clearPhoneError, "aria-invalid": !!errors.phone, "aria-describedby": errors.phone ? "phone-error phone-hint" : "phone-hint" }} />
             {error("phone")}
             <div className="phone-hint" id="phone-hint">Selecciona tu país y escribe tu móvil.</div>

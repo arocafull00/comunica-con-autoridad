@@ -11,6 +11,8 @@ export type CallContact = {
   goal: string | null;
   commitment?: string | null;
   investment?: string | null;
+  application_reasons?: string | null;
+  admission_decision?: string | null;
 };
 
 export function CallContactDialog({ email, contact, registered, timeZone }: {
@@ -44,6 +46,8 @@ export function CallContactDialog({ email, contact, registered, timeZone }: {
           {contact?.goal ? <div><dt>Quiere mejorar</dt><dd>{contact.goal}</dd></div> : null}
           {contact?.commitment ? <div><dt>Compromiso</dt><dd>{contact.commitment}</dd></div> : null}
           {contact?.investment ? <div><dt>Inversión</dt><dd>{contact.investment}</dd></div> : null}
+          {contact?.application_reasons ? <div><dt>Razones para reservar</dt><dd>{contact.application_reasons}</dd></div> : null}
+          {contact?.admission_decision ? <div><dt>Decisión</dt><dd>{contact.admission_decision}</dd></div> : null}
         </dl>
         {!registered ? <p className="admin-notice">Puede haber reservado directamente en Cal.com o haber usado otro email en el formulario. Hasta que se vincule una inscripción, no se envían los mensajes automáticos de seguimiento de esta llamada.</p> : null}
       </Dialog.Content>

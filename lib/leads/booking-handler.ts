@@ -51,7 +51,8 @@ export async function handleBookingForm(request: Request, stage: "access" | "qua
     } else {
       const answers = qualificationSchema.parse(parsed.data);
       args = { p_submission_id: id, p_profession: answers.profession, p_goal: answers.goal,
-        p_commitment: answers.commitment, p_investment: answers.investment };
+        p_commitment: answers.commitment, p_investment: answers.investment,
+        p_application_reasons: answers.applicationReasons, p_admission_decision: answers.admissionDecision };
     }
     const result = await dependencies.persist(args);
     if (result.outcome === "conflict") return json(409, { ok: false, message: "Esta inscripción ya contiene otros datos. Realiza otra inscripción si necesitas cambiarlos." });

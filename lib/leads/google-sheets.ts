@@ -9,6 +9,7 @@ export type ValidatedLead = z.infer<typeof leadSchema>;
 export type SheetsLead = Pick<AccessContact, "phone" | "email"> & {
   name?: string | null; profession?: string | null; situation?: string | null; goal?: string | null;
   commitment?: string | null; investment?: string | null;
+  applicationReasons?: string | null; admissionDecision?: string | null;
 };
 
 export async function saveLeadToGoogleSheets(
@@ -27,6 +28,8 @@ export async function saveLeadToGoogleSheets(
     que_quiere_mejorar: lead.goal ?? "",
     nivel_compromiso: lead.commitment ?? "",
     rango_inversion: lead.investment ?? "",
+    razones_para_reservar: lead.applicationReasons ?? "",
+    decision_admision: lead.admissionDecision ?? "",
     email: lead.email,
     telefono: lead.phone,
     telefono_pais: phone?.country ?? "",

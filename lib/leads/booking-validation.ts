@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import { leadSchema } from "./validation";
-import { BOOKING_GOALS, COMMITMENTS, INVESTMENTS } from "./masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS } from "./masterclass";
 
 export const accessSchema = z.object({
   phone: leadSchema.shape.phone,
@@ -24,6 +24,8 @@ export const qualificationSchema = z.object({
   goal: z.enum(BOOKING_GOALS, { error: "Selecciona qué te gustaría mejorar" }),
   commitment: z.enum(COMMITMENTS, { error: "Selecciona tu nivel de compromiso" }),
   investment: z.enum(INVESTMENTS, { error: "Selecciona un rango de inversión" }),
+  applicationReasons: z.string().trim().min(1, "Escribe tus tres razones").max(2000, "Tus razones no pueden superar los 2000 caracteres"),
+  admissionDecision: z.enum(ADMISSION_DECISIONS, { error: "Indica si estás de acuerdo" }),
 }).strict();
 
 export type AccessContact = z.infer<typeof accessSchema>;

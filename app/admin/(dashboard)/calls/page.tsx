@@ -28,11 +28,11 @@ async function Calls() {
     const leadIds = [...new Set((registrations ?? []).map(registration => registration.lead_id))];
     if (leadIds.length) {
       const { data: leads, error: leadsError } = await db.from("leads")
-        .select("id,name,phone,profession,situation,goal,commitment,investment").in("id", leadIds);
+        .select("id,name,phone,profession,situation,goal,commitment,investment,application_reasons,admission_decision").in("id", leadIds);
       if (leadsError) throw new Error("No se pudieron consultar los contactos de las llamadas.");
       for (const registration of registrations ?? []) {
         const lead = leads?.find(lead => lead.id === registration.lead_id);
-        if (lead) contacts.set(registration.id, { name: lead.name, phone: lead.phone, profession: lead.profession, situation: lead.situation, goal: lead.goal, commitment: lead.commitment, investment: lead.investment });
+        if (lead) contacts.set(registration.id, { name: lead.name, phone: lead.phone, profession: lead.profession, situation: lead.situation, goal: lead.goal, commitment: lead.commitment, investment: lead.investment, application_reasons: lead.application_reasons, admission_decision: lead.admission_decision });
       }
     }
   }

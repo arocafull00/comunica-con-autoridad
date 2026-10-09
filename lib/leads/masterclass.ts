@@ -36,4 +36,9 @@ export const INVESTMENTS = [
   "Podría invertir con pagos a cuotas.",
 ] as const;
 
+export const ADMISSION_DECISIONS = [
+  "Sí, reservaré la llamada",
+  "No reservaré la llamada",
+] as const;
+
 export const CAL_BOOKING_URL = "https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion";
