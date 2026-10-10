@@ -73,6 +73,19 @@ describe("two-phase masterclass", () => {
     expect(failed.status).toBe(503); expect(await failed.json()).not.toHaveProperty("bookingUrl");
     log.mockRestore();
   });
+  it("saves all answers when declining and does not return a calendar URL", async () => {
+    const id = randomUUID(); const token = signAccessToken(id, env.LEAD_IP_HMAC_SECRET);
+    const declined = { ...answers, admissionDecision: ADMISSION_DECISIONS[1] };
+    const persist = vi.fn().mockResolvedValue({ outcome: "created", lead: { ...contact, ...declined } });
+    const syncSheets = vi.fn();
+    const response = await handleBookingForm(request(declined, { Authorization: `Bearer ${token}` }), "qualification", { persist, syncSheets, env });
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result).toMatchObject({ ok: true });
+    expect(result).not.toHaveProperty("bookingUrl");
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ p_application_reasons: answers.applicationReasons, p_admission_decision: ADMISSION_DECISIONS[1] }));
+    expect(syncSheets).toHaveBeenCalledWith({ ...contact, ...declined }, id);
+  });
   it("asks older four-question forms to reload without writing incomplete answers", async () => {
     const token = signAccessToken(randomUUID(), env.LEAD_IP_HMAC_SECRET);
     const persist = vi.fn(); const syncSheets = vi.fn();

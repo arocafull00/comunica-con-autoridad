@@ -10,8 +10,7 @@ export async function fillMasterclass(page: Page, email = "adrian@example.com") 
   await expect(page.locator(".iti__selected-dial-code")).toHaveText("+34");
   await page.getByLabel("Número de teléfono", { exact: true }).fill("612345678");
 }
-export async function fillQualification(page: Page) {
-  await page.getByRole("button", { name: "Reservar llamada" }).click();
+export async function fillQualification(page: Page, decision: typeof ADMISSION_DECISIONS[number] = ADMISSION_DECISIONS[0], submit = true) {
   await page.getByLabel("Profesión / actividad", { exact: true }).fill("Dirección");
   await page.getByRole("button", { name: "Continuar" }).click();
   for (const option of [BOOKING_GOALS[0], COMMITMENTS[0], INVESTMENTS[1]]) {
@@ -20,6 +19,6 @@ export async function fillQualification(page: Page) {
   }
   await page.getByLabel("Tus 3 razones", { exact: true }).fill(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true }).check();
-  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("radio", { name: decision, exact: true }).check();
+  if (submit) await page.getByRole("button", { name: decision === ADMISSION_DECISIONS[0] ? "Reservar llamada" : "No reservaré llamada", exact: true }).click();
 }

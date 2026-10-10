@@ -4,7 +4,7 @@ import { idempotencySchema } from "./validation";
 import { signAccessToken, verifyAccessToken } from "./access-token";
 import { BodyTooLargeError, readJsonBody, requestIpHash, type LeadEnvironment } from "./request";
 import type { SheetsLead } from "./google-sheets";
-import { CAL_BOOKING_URL } from "./masterclass";
+import { ADMISSION_DECISIONS, CAL_BOOKING_URL } from "./masterclass";
 
 type Result = { outcome: "created" | "replayed" | "conflict" | "rate_limited" | "missing"; retry_after?: number; lead?: SheetsLead };
 type Dependencies = {
@@ -69,7 +69,8 @@ export async function handleBookingForm(request: Request, stage: "access" | "qua
       await dependencies.registerWebinar?.(id);
       return json(result.outcome === "created" ? 201 : 200, { ok: true, message: "Tu acceso está listo.", accessToken: signAccessToken(id, secret) });
     }
-    return json(200, { ok: true, message: "Tus respuestas están guardadas.", bookingUrl: CAL_BOOKING_URL });
+    return json(200, { ok: true, message: "Tus respuestas están guardadas.",
+      ...(qualificationSchema.parse(parsed.data).admissionDecision === ADMISSION_DECISIONS[0] ? { bookingUrl: CAL_BOOKING_URL } : {}) });
   } catch {
     console.error("masterclass_form_unavailable");
     return json(503, { ok: false, message: "No hemos podido confirmar el guardado. Tus datos siguen aquí; vuelve a intentarlo." });

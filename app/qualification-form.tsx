@@ -17,7 +17,7 @@ const STEP_FIELDS: AnswerField[] = ["profession", ...FIELDS, "applicationReasons
 const TOTAL_STEPS = STEP_FIELDS.length;
 
 export function QualificationForm({ accessToken, onSuccess, onExpired }: {
-  accessToken: string; onSuccess: (bookingUrl: string) => void; onExpired: () => void;
+  accessToken: string; onSuccess: (bookingUrl?: string) => void; onExpired: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const inFlight = useRef(false);
@@ -41,7 +41,9 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
         body: JSON.stringify(answers), signal: AbortSignal.timeout(25_000),
       });
       const result: LeadResponse = await response.json();
-      if (response.ok && result.ok && result.bookingUrl) onSuccess(result.bookingUrl);
+      if (response.ok && result.ok && (result.bookingUrl || answers.admissionDecision === ADMISSION_DECISIONS[1])) {
+        onSuccess(answers.admissionDecision === ADMISSION_DECISIONS[0] ? result.bookingUrl : undefined);
+      }
       else if (response.status === 401) onExpired();
       else {
         setMessage(result.message || "No hemos podido guardar tus respuestas. Vuelve a intentarlo.");
@@ -94,7 +96,9 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
         </div>
         <div className="form-actions">
           {step > 0 ? <button className="back-btn" type="button" onClick={() => goTo(step - 1)}>← Atrás</button> : null}
-          <button className="next-btn" type="submit">{pending ? "GUARDANDO..." : "Continuar →"}</button>
+          <button className="next-btn" type="submit">{pending ? "GUARDANDO..." : step === TOTAL_STEPS - 1 && answers.admissionDecision
+            ? answers.admissionDecision === ADMISSION_DECISIONS[0] ? "Reservar llamada" : "No reservaré llamada"
+            : "Continuar →"}</button>
         </div>
       </fieldset>
       <p className="form-message" role="alert">{message}</p>

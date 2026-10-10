@@ -1,4 +1,4 @@
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS } from "../../lib/leads/masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL } from "../../lib/leads/masterclass";
 import { APPLICATION_REASONS, fillMasterclass, fillQualification } from "../browser/masterclass-helper";
 import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
@@ -22,8 +22,9 @@ test("real Next API saves leads and queues only consented welcomes while WhatsAp
       expect.objectContaining({ nombre: "Adrián", email, telefono: "+34612345678", telefono_pais: "ES", telefono_prefijo: "+34",
         a_que_te_dedicas: "", situacion_actual: "", que_quiere_mejorar: "" }),
     ]);
+    await page.route("https://cal.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Calendario simulado</h1>" }));
     await fillQualification(page);
-    await expect(page.getByRole("link", { name: "Reservar llamada" })).toBeVisible();
+    await expect(page).toHaveURL(CAL_BOOKING_URL);
     const qualified = await db.query("select name,profession,goal,commitment,investment,application_reasons,admission_decision from public.leads where email=$1", [email]);
     expect(qualified.rows).toEqual([{ name: "Adrián", profession: "Dirección", goal: BOOKING_GOALS[0], commitment: COMMITMENTS[0], investment: INVESTMENTS[1],
       application_reasons: APPLICATION_REASONS, admission_decision: ADMISSION_DECISIONS[0] }]);

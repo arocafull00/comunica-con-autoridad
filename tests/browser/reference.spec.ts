@@ -42,6 +42,7 @@ test("completion unlocks the replay and both access flags survive reload", async
   await page.reload();
   await expect(page.locator("#video2-wrap")).toBeVisible();
   await expect(page.locator("#access-area")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Reservar llamada" })).toBeVisible();
+  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reservar llamada" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
 });
