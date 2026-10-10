@@ -72,10 +72,9 @@ test("requires each answer, keeps selections when going back, and retries failed
   await expect(page.getByText("Completa esta pregunta para continuar.", { exact: true })).toBeVisible();
   await page.getByLabel("Tus 3 razones", { exact: true }).fill(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByText("Completa esta pregunta para continuar.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Reservar llamada", exact: true })).toBeVisible();
   expect(requests).toBe(0);
-  await page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true }).check();
   await page.getByRole("button", { name: "Atrás" }).click();
   await expect(page.getByLabel("Tus 3 razones", { exact: true })).toHaveValue(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();

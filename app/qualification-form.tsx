@@ -22,7 +22,7 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
   const formRef = useRef<HTMLFormElement>(null);
   const inFlight = useRef(false);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({ profession: "", goal: "", commitment: "", investment: "", applicationReasons: "", admissionDecision: "" });
+  const [answers, setAnswers] = useState({ profession: "", goal: "", commitment: "", investment: "", applicationReasons: "", admissionDecision: ADMISSION_DECISIONS[0] as typeof ADMISSION_DECISIONS[number] });
   const [errors, setErrors] = useState<LeadFieldErrors>({});
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);

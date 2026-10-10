@@ -19,6 +19,7 @@ export async function fillQualification(page: Page, decision: typeof ADMISSION_D
   }
   await page.getByLabel("Tus 3 razones", { exact: true }).fill(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByRole("radio", { name: decision, exact: true }).check();
+  if (decision === ADMISSION_DECISIONS[1]) await page.getByRole("radio", { name: decision, exact: true }).check();
+  await expect(page.getByRole("radio", { name: decision, exact: true })).toBeChecked();
   if (submit) await page.getByRole("button", { name: decision === ADMISSION_DECISIONS[0] ? "Reservar llamada" : "No reservaré llamada", exact: true }).click();
 }
