@@ -65,7 +65,14 @@ test.beforeEach(async ({ page }) => {
 test("shows eight fixed triggers and Meta statuses with no template selection or editing", async ({ page }) => {
   const before = (await db.query("select * from public.whatsapp_settings")).rows[0];
   await expect(page.locator(".admin-template-card")).toHaveCount(8);
-  await expect(page.locator(".admin-whatsapp-settings form, .admin-whatsapp-settings button, .admin-whatsapp-settings input, .admin-whatsapp-settings select, .admin-whatsapp-settings textarea")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sincronizar con Meta", exact: true })).toBeVisible();
+  const templates = page.locator(".admin-whatsapp-templates");
+  await expect(templates).not.toHaveAttribute("open");
+  await expect(page.locator(".admin-template-card").first()).toBeHidden();
+  await templates.locator("summary").click();
+  await expect(templates).toHaveAttribute("open");
+  await expect(page.locator(".admin-template-card").first()).toBeVisible();
+  await expect(page.locator(".admin-template-card form, .admin-template-card button, .admin-whatsapp-settings input, .admin-whatsapp-settings select, .admin-whatsapp-settings textarea")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Guardar plantilla" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Usar para bienvenida" })).toHaveCount(0);
@@ -79,7 +86,7 @@ test("shows eight fixed triggers and Meta statuses with no template selection or
   await expect(page.locator('[data-automation="webinar_1d"]')).toContainText("Pausada");
   await expect(page.locator('[data-automation="webinar_1h"]')).toContainText("[Nombre del registro]");
   await expect(page.locator('[data-automation="booking_2h"]')).toContainText("[Enlace de Meet]");
-  await expect(page.getByText("El administrador revisa las respuestas y cancela las plazas manualmente en Cal.com.", { exact: false })).toBeVisible();
+  await expect(page.getByText("El administrador revisa las respuestas ambiguas y gestiona las cancelaciones en Cal.com.", { exact: false })).toBeVisible();
   const meta = page.getByRole("link", { name: "Consultar en Meta" });
   const url = new URL((await meta.getAttribute("href"))!);
   expect(url.hostname).toBe("business.facebook.com");
@@ -96,5 +103,8 @@ test("shows eight fixed triggers and Meta statuses with no template selection or
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: `.vercel/whatsapp-fixed-automations-${width}.png`, fullPage: true });
   }
+  await templates.locator("summary").click();
+  await expect(page.locator(".admin-template-card").first()).toBeHidden();
+  await expect(page.getByRole("button", { name: "Sincronizar con Meta", exact: true })).toBeVisible();
   expect((await db.query("select * from public.whatsapp_settings")).rows[0]).toEqual(before);
 });

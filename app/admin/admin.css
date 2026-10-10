@@ -357,7 +357,6 @@
 .admin-whatsapp-settings { min-width: 0; }
 .admin-template-toolbar { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 24px; }
 .admin-template-toolbar .admin-muted { margin: 0; max-width: 65ch; }
-.admin-root .admin-template-toolbar-actions a[data-slot=button] { color: var(--primary-foreground); }
 .admin-template-toolbar-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .admin-template-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; align-items: stretch; }
 .admin-template-card { display: flex; flex-direction: column; min-width: 0; padding: 20px; border: 1px solid var(--admin-line); border-radius: 10px; background: var(--admin-surface); }
@@ -379,7 +378,8 @@
 .admin-template-card-footer { margin-top: auto; display: grid; gap: 16px; }
 .admin-template-in-use { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--admin-accent); font-size: 14px; }
 .admin-template-in-use svg { flex-shrink: 0; }
-.admin-whatsapp-settings > .admin-context-note { margin: 20px 0 32px; }
+.admin-whatsapp-templates { margin-bottom: 24px; }
+.admin-whatsapp-templates > .admin-context-note { margin: 20px 0 32px; }
 @media (max-width:1199px) { .admin-template-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width:599px) { .admin-template-grid { grid-template-columns: minmax(0,1fr); } .admin-template-toolbar-actions { width: 100%; } }
 .admin-delivery-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--admin-line); }
