@@ -53,6 +53,10 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
     } else if (!answers[field].trim()) { setErrors({ [field]: "Completa esta pregunta para continuar." }); return; }
     if (step < TOTAL_STEPS - 1) { goTo(step + 1); return; }
     inFlight.current = true; setPending(true); setMessage(""); setErrors({});
+    // Reserve the tab during the click so browsers allow it after the async save.
+    const calendar = answers.admissionDecision === ADMISSION_DECISIONS[0] ? window.open("about:blank", "_blank") : null;
+    if (calendar) calendar.opener = null;
+    let calendarOpened = false;
     try {
       const response = await fetch("/api/leads/qualification", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
@@ -60,7 +64,13 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
       });
       const result: LeadResponse = await response.json();
       if (response.ok && result.ok && (result.bookingUrl || answers.admissionDecision === ADMISSION_DECISIONS[1])) {
-        onSuccess(answers.admissionDecision === ADMISSION_DECISIONS[0] ? result.bookingUrl : undefined);
+        const url = answers.admissionDecision === ADMISSION_DECISIONS[0] ? result.bookingUrl : undefined;
+        if (url && calendar && !calendar.closed) {
+          calendar.location.replace(url);
+          calendar.focus();
+          calendarOpened = true;
+        }
+        onSuccess(url);
       }
       else if (response.status === 401) onExpired();
       else {
@@ -71,7 +81,10 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
         if (index >= 0) setStep(index);
       }
     } catch { setMessage("No hemos podido confirmar el guardado. Tus respuestas siguen aquí; vuelve a intentarlo."); }
-    finally { inFlight.current = false; setPending(false); }
+    finally {
+      if (!calendarOpened) calendar?.close();
+      inFlight.current = false; setPending(false);
+    }
   }
   const error = (field: keyof typeof answers) => errors[field] ? <div className="field-error" id={`${field}-error`} role="alert">{errors[field]}</div> : null;
   return <div id="qualification-form-wrap" className="qualification-wrap">

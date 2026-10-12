@@ -145,7 +145,7 @@ export function Masterclass() {
         <div className="wrap"><div className="after-card">
           <h2>¿Quieres que analicemos tu caso?</h2>
           <p>Reserva una sesión gratuita.</p>
-          {bookingUrl ? <a className="cta" href={bookingUrl}>Abrir calendario →</a> : null}
+          {bookingUrl ? <a className="cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">Abrir calendario →</a> : null}
           <div>
             {checkingAccess ? <p role="status">Comprobando tu inscripción…</p> : accessCheckError ? <div>
               <p role="alert">No hemos podido comprobar tu inscripción. Vuelve a intentarlo.</p>
@@ -155,7 +155,6 @@ export function Masterclass() {
                 setBookingUrl(url ?? "");
                 setDeclined(!url);
                 try { localStorage.setItem(url ? QUALIFIED_KEY : DECLINED_KEY, accessToken); } catch { /* Keep result in memory. */ }
-                if (url) window.location.assign(url);
               }} />
               : <LeadForm onSuccess={grantAccess} /> : null}
           </div>

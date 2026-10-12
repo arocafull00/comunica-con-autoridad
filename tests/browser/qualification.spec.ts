@@ -3,9 +3,9 @@ import { APPLICATION_REASONS, fillMasterclass, fillQualification } from "./maste
 import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL } from "../../lib/leads/masterclass";
 import { qualificationSchema } from "../../lib/leads/booking-validation";
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context }) => {
   await page.route("https://fast.wistia.com/**", route => route.abort());
-  await page.route("https://cal.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Calendario simulado</h1>" }));
+  await context.route("https://cal.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Calendario simulado</h1>" }));
   await page.route("**/api/leads/access", route => route.fulfill({ status: 201, json: { ok: true, accessToken: "signed-test-reference" } }));
 });
 
@@ -29,11 +29,17 @@ test("contact opens video and questions, then saving opens Cal.com and survives 
   await fillQualification(page, ADMISSION_DECISIONS[0], false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `test-results/qualified-${info.project.name}.png`, fullPage: true });
+  const calendarPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true }).click();
-  await expect(page).toHaveURL(CAL_BOOKING_URL);
+  const calendar = await calendarPromise;
+  await expect(calendar).toHaveURL(CAL_BOOKING_URL);
+  await expect(page).toHaveURL(/\/$/);
+  expect(await calendar.evaluate(() => window.opener)).toBeNull();
+  await calendar.close();
   expect(requests).toBe(1);
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Abrir calendario" })).toHaveAttribute("href", CAL_BOOKING_URL);
+  await expect(page.getByRole("link", { name: "Abrir calendario" })).toHaveAttribute("target", "_blank");
   await page.reload();
   await expect(page.getByRole("link", { name: "Abrir calendario" })).toBeVisible();
   await page.getByRole("button", { name: "Realizar otra inscripción" }).click();
@@ -84,13 +90,18 @@ test("requires each answer, keeps selections when going back, and retries failed
   await expect(page.getByLabel("Tus 3 razones", { exact: true })).toHaveValue(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true })).toBeChecked();
+  const failedCalendarPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true }).click();
+  const failedCalendar = await failedCalendarPromise;
   await expect(page.getByText("No hemos podido confirmar el guardado.", { exact: true })).toBeVisible();
+  await expect.poll(() => failedCalendar.isClosed()).toBe(true);
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true })).toBeChecked();
   await expect(page.getByRole("link", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+  const calendarPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true }).click();
-  await expect(page).toHaveURL(CAL_BOOKING_URL);
+  await expect(await calendarPromise).toHaveURL(CAL_BOOKING_URL);
+  await expect(page).toHaveURL(/\/$/);
   expect(requests).toBe(2);
 });
 
@@ -100,6 +111,22 @@ test("older saved access asks for contact details before booking", async ({ page
   await expect(page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+});
+
+test("keeps the saved calendar link when the browser blocks automatic tab opening", async ({ page }) => {
+  await page.addInitScript(() => { window.open = () => null; });
+  await page.route("**/api/leads/qualification", route => route.fulfill({ json: { ok: true, bookingUrl: CAL_BOOKING_URL } }));
+  await page.goto("/"); await fillMasterclass(page);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await fillQualification(page);
+  const link = page.getByRole("link", { name: "Abrir calendario" });
+  await expect(link).toHaveAttribute("href", CAL_BOOKING_URL);
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(page).toHaveURL(/\/$/);
+  expect(page.context().pages()).toHaveLength(1);
+  const calendar = page.waitForEvent("popup");
+  await link.click();
+  await expect(await calendar).toHaveURL(CAL_BOOKING_URL);
 });
 
 test("waits for saving before navigation and ignores duplicate submits", async ({ page }) => {
@@ -113,12 +140,17 @@ test("waits for saving before navigation and ignores duplicate submits", async (
   });
   await page.goto("/"); await fillMasterclass(page);
   await page.getByRole("button", { name: "Continuar" }).click();
+  const calendarPromise = page.waitForEvent("popup");
   await fillQualification(page);
+  const calendar = await calendarPromise;
+  await expect(calendar).toHaveURL("about:blank");
   await expect(page.getByRole("button", { name: "GUARDANDO..." })).toBeDisabled();
   await page.getByRole("form", { name: "Preguntas para reservar llamada" }).dispatchEvent("submit");
   await expect(page).toHaveURL(/\/$/);
+  expect(page.context().pages()).toHaveLength(2);
   release();
-  await expect(page).toHaveURL(CAL_BOOKING_URL);
+  await expect(calendar).toHaveURL(CAL_BOOKING_URL);
+  await expect(page).toHaveURL(/\/$/);
   expect(requests).toBe(1);
 });
 
@@ -143,6 +175,7 @@ test("changes the final label and saves declining without opening Cal.com, inclu
   await page.reload();
   await expect(page.getByRole("status").filter({ hasText: "No reservarás" })).toBeVisible();
   await expect(page.locator("#after a")).toHaveCount(0);
+  expect(page.context().pages()).toHaveLength(1);
   await page.getByRole("button", { name: "Realizar otra inscripción" }).click();
   expect(await page.evaluate(() => localStorage.getItem("webinar_declined_token_v1"))).toBeNull();
 });
