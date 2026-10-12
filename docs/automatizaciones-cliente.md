@@ -11,7 +11,7 @@ Este documento recoge el encargo, las diferencias con lo preparado y los puntos 
 3. Si no reserva, entra en la secuencia de captación por WhatsApp.
 4. Recibe la secuencia de cuatro emails, tanto si reserva la llamada como si no. Esta es la interpretación de trabajo de «tanto si se apuntan como si no»; confirmar que el cliente se refiere a reservar la llamada.
 
-Los tiempos de captación y email se cuentan desde la inscripción al webinar; los recordatorios de llamada se cuentan desde su hora de inicio. Actualmente la inscripción ocurre tras guardar WhatsApp y email y confirmar la copia en Google Sheets; las preguntas para reservar se completan después: no exige ver el vídeo entero. No se envían comunicaciones a quien no haya aceptado el canal correspondiente.
+Los tiempos de email se cuentan desde la inscripción con email; los WhatsApp de seguimiento se cuentan desde que la persona envía el segundo formulario con su móvil. Los recordatorios de llamada se cuentan desde su hora de inicio. El primer formulario solo pide email y su consentimiento opcional; el segundo pide nombre, WhatsApp y las seis respuestas. La copia a Sheets se hace al completar la segunda fase. No se exige ver el vídeo entero.
 
 ## Si reserva una llamada: WhatsApp
 
@@ -37,11 +37,11 @@ La lógica en la base de datos registra asistencia en el panel cuando hay una ú
 
 | Mensaje | Cuándo desde la inscripción | Condición del cliente | Variables | Clave preparada |
 | --- | --- | --- | --- | --- |
-| Pregunta sobre la clase | 1 minuto | No ha reservado llamada. Preguntar qué busca mejorar en su comunicación. | Nombre del registro | `webinar_1h` |
-| Invitación a reservar | 3 minutos | No ha reservado llamada. Enviar el enlace de Cal.com. | Enlace fijo de reserva | `webinar_1d` |
-| Cierre de seguimiento | 5 minutos | No ha reservado llamada y no ha respondido. | Ninguna | `webinar_3d` |
+| Pregunta sobre la clase | 1 hora | No ha reservado llamada. Preguntar qué busca mejorar en su comunicación. | Nombre del registro | `webinar_1h` |
+| Invitación a reservar | 1 día | No ha reservado llamada. Enviar el enlace de Cal.com. | Enlace fijo de reserva | `webinar_1d` |
+| Cierre de seguimiento | 3 días | No ha reservado llamada y no ha respondido. | Ninguna | `webinar_3d` |
 
-La reserva debe detener los WhatsApp de captación pendientes. Una respuesta por WhatsApp debe detener el mensaje de cierre de los cinco minutos. El encargo solo condiciona ese último mensaje a no haber respondido; no establece esa condición para el de tres minutos.
+La reserva debe detener los WhatsApp de captación pendientes. Una respuesta por WhatsApp debe detener el mensaje de cierre de los tres días. El encargo solo condiciona ese último mensaje a no haber respondido; no establece esa condición para el de un día.
 
 Enlace de reserva indicado por el cliente:
 
@@ -53,14 +53,14 @@ https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion
 
 | Orden | Cuándo desde la inscripción | Asunto original | Variables | Clave preparada |
 | --- | --- | --- | --- | --- |
-| 1 | 1 minuto | Quédate con esta idea de la masterclass que has visto. | Enlace fijo de reserva | `email_1` |
-| 2 | 3 minutos | Te presento a Santiago, Maria y Mateo. | Nombre y enlace fijo de reserva | `email_2` |
-| 3 | 5 minutos | Esto es lo que me dice la mayoría de la gente: | Enlace fijo de reserva | `email_3` |
-| 4 | 7 minutos | Transferencia recibida. | Enlace fijo de reserva | `email_4` |
+| 1 | 30 minutos | Quédate con esta idea de la masterclass que has visto. | Enlace fijo de reserva | `email_1` |
+| 2 | 1 día | Te presento a Santiago, Maria y Mateo. | Nombre y enlace fijo de reserva | `email_2` |
+| 3 | 2 días | Esto es lo que me dice la mayoría de la gente: | Enlace fijo de reserva | `email_3` |
+| 4 | 3 días | Transferencia recibida. | Enlace fijo de reserva | `email_4` |
 
-El 9 de octubre de 2026 el usuario reduce los tiempos a 1, 3 y 5 minutos para WhatsApp, y a 1, 3, 5 y 7 minutos para email. Aplicar `20261009200000_followup_minute_schedule.sql` para nuevas inscripciones; los trabajos ya programados conservan su fecha. El anexo conserva los tiempos del encargo original.
+El 9 de octubre de 2026 el usuario reduce temporalmente los tiempos a minutos mediante `20261009200000_followup_minute_schedule.sql`. El 12 de octubre solicita restaurar los horarios originales de estas tablas mediante `20261012000100_restore_followup_schedule.sql` para nuevas inscripciones; los trabajos ya programados conservan su fecha. El modo aislado de pruebas de WhatsApp conserva sus tiempos acelerados de 1, 3 y 5 minutos.
 
-La secuencia continúa aunque se reserve una llamada. Requiere consentimiento de comunicaciones por email y termina ante una baja. El encargo no incluye un email inmediato de bienvenida ni un email de reserva enviado por Resend; las notificaciones propias de Cal.com son independientes.
+La secuencia continúa aunque se reserve una llamada. Requiere consentimiento de comunicaciones por email y termina ante una baja. El encargo no incluye un email inmediato de bienvenida ni un email de reserva enviado por Resend; las notificaciones propias de Cal.com son independientes y deben estar activadas en Cal.com.
 
 El original llama «Email 4» tanto al mensaje de dos días como al de tres días. La tabla los numera por orden de envío, conservando los rótulos originales en el anexo.
 

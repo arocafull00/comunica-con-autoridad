@@ -53,11 +53,11 @@ async function Contacts({ searchParams }: { searchParams: Promise<{ start?: stri
             {lead.profession ? <details><summary>Respuestas de la masterclass</summary><p><strong>Profesión:</strong> {lead.profession}</p>{lead.situation ? <p><strong>Situación:</strong> {lead.situation}</p> : null}<p><strong>Quiere mejorar:</strong> {lead.goal}</p>{lead.commitment ? <p><strong>Compromiso:</strong> {lead.commitment}</p> : null}{lead.investment ? <p><strong>Inversión:</strong> {lead.investment}</p> : null}{lead.application_reasons ? <p><strong>Razones para reservar:</strong> {lead.application_reasons}</p> : null}{lead.admission_decision ? <p><strong>Decisión:</strong> {lead.admission_decision}</p> : null}</details> : null}
           </TableCell>
           <TableCell data-label="Teléfono">
-            <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(lead.name ? `Hola, ${lead.name}. ¿Cómo estás?` : "Hola. ¿Cómo estás?")}`} target="_blank" rel="noopener noreferrer" title={`Abrir WhatsApp con ${lead.name || lead.email}`}>{lead.phone}</a>
-            <p>WhatsApp</p>
+            {lead.phone ? <><a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(lead.name ? `Hola, ${lead.name}. ¿Cómo estás?` : "Hola. ¿Cómo estás?")}`} target="_blank" rel="noopener noreferrer" title={`Abrir WhatsApp con ${lead.name || lead.email}`}>{lead.phone}</a><p>WhatsApp</p></>
+              : <span className="admin-muted">Pendiente del segundo formulario</span>}
           </TableCell>
           <TableCell data-label="Correo"><a href={`mailto:${lead.email}`}>{lead.email}</a></TableCell>
-          <TableCell data-label="Confirmación"><Badge variant="outline" className={`admin-badge ${lead.whatsapp_consent ? "admin-badge-enabled" : ""}`}>{lead.whatsapp_consent ? "Aceptó la confirmación" : "No aceptó la confirmación"}</Badge></TableCell>
+          <TableCell data-label="Confirmación"><Badge variant="outline" className={`admin-badge ${lead.whatsapp_consent ? "admin-badge-enabled" : ""}`}>{lead.whatsapp_consent ? "WhatsApp activo" : "WhatsApp pendiente o retirado"}</Badge></TableCell>
         </TableRow>)}</TableBody>
       </Table>
     </div> : <div className="admin-empty"><UsersRound size={24} aria-hidden="true" /><strong>No hay contactos que coincidan con la búsqueda.</strong><p>Prueba con otro email o amplía el período seleccionado.</p></div>}

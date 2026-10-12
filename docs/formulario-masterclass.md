@@ -1,25 +1,18 @@
 # Formulario de la masterclass en dos fases
 
-1. «Acceder gratis a la masterclass» abre nombre, WhatsApp y email, con dos consentimientos independientes, opcionales y desmarcados. El nombre es obligatorio, admite entre 2 y 100 caracteres y se guarda tanto en Supabase como en Google Sheets.
-2. «Continuar» guarda el contacto, confirma Google Sheets, registra la inscripción y muestra el vídeo.
-3. Bajo el vídeo aparecen directamente seis preguntas: profesión, objetivo, compromiso, inversión, tres razones para reservar y decisión de admisión. Cada pregunta requiere una respuesta; se puede volver atrás.
-4. En la última pregunta, el botón muestra «Reservar llamada» si se elige «Sí, reservaré la llamada» o «No reservaré llamada» si se elige «No reservaré la llamada». Ambos guardan las seis respuestas en el mismo contacto y la misma fila de Sheets. Solo la opción afirmativa abre Cal.com automáticamente en la misma pestaña, después de confirmar ambos guardados. Ante un error se conservan las respuestas para reintentar, sin abrir el calendario.
-5. La decisión guardada se recuerda al volver a la página: la opción afirmativa muestra «Abrir calendario» y la negativa confirma el guardado sin ofrecer el calendario. «Realizar otra inscripción» permite comenzar de nuevo.
+1. «Acceder gratis a la masterclass» pide solo el email y muestra junto a él la casilla opcional, inicialmente desmarcada, para los cuatro emails de seguimiento. El acceso al vídeo no depende de marcarla.
+2. «Continuar» guarda el email en Supabase, registra la inscripción y muestra el vídeo. Si se aceptaron los emails, se programan `email_1` a `email_4` a los 30 minutos, 1 día, 2 días y 3 días desde esta inscripción. Antes de cada envío se comprueba de nuevo el consentimiento y la baja.
+3. Bajo el vídeo, el segundo formulario pide nombre y móvil de WhatsApp, seguidos de las seis preguntas existentes: profesión, objetivo, compromiso, inversión, tres razones y decisión de admisión. El aviso visible indica que al enviarlo se aceptan los tres WhatsApp de seguimiento de la clase, incluida una invitación a reservar, y los avisos de una llamada reservada. El botón final menciona expresamente WhatsApp. No hay casilla de WhatsApp. «BAJA» y «STOP» detienen sus envíos pendientes.
+4. Al enviar el segundo formulario se guardan el contacto y las respuestas en la misma inscripción, se programan los WhatsApp desde ese momento y se copia la ficha completa a Google Sheets. Solo la decisión afirmativa abre Cal.com, tras confirmar ambos guardados. Si Sheets falla, Supabase conserva los datos y se puede reintentar con la misma inscripción.
+5. Las reservas de Cal.com se vinculan por el mismo email. Si una reserva llega antes de que la persona facilite su móvil, sus WhatsApp se programan cuando complete el segundo formulario. Los correos propios de Cal.com se configuran y envían en Cal.com; la aplicación no les aplica el consentimiento de los cuatro emails de seguimiento.
 
-Una pestaña abierta con el formulario anterior de cuatro preguntas recibe un 400 que pide recargar la página para completar las dos preguntas nuevas. No se guardan respuestas incompletas. Al recargar se conserva el acceso, pero hay que volver a completar las respuestas.
+El navegador conserva las marcas de acceso y una referencia firmada válida durante 30 días; no guarda email, móvil ni respuestas. Una inscripción anterior sin referencia, o una referencia caducada, requiere completar el acceso otra vez. «Realizar otra inscripción» borra la referencia anterior.
 
-La inscripción y los plazos del seguimiento comienzan con la primera fase. Contestar las preguntas no crea otro contacto, no vuelve a dar consentimiento y no reinicia las automatizaciones. No se exige terminar el vídeo para reservar. Los contactos antiguos y sus respuestas siguen conservados. Las inscripciones anteriores sin nombre conservan su valor NULL y las plantillas que requieren un saludo usan «comunicador/a» cuando falta.
-
-El navegador conserva únicamente las marcas de acceso y una referencia firmada de inscripción válida durante 30 días; no guarda correo, móvil ni respuestas. Una inscripción anterior sin referencia, o una referencia caducada, requiere completar los datos de acceso antes de las preguntas. «Realizar otra inscripción» borra las marcas y la referencia anterior.
+La primera fase ya no llama a Google Sheets: el Apps Script existente exige teléfono. La segunda fase envía todos los datos y requiere `success: true` con `duplicate: false` para una fila nueva o `updated: true` para una fila existente antes de desbloquear Cal.com. Una inscripción que no complete esta fase queda registrada en Supabase y no aparece en Sheets. Una respuesta de duplicado sin `updated: true` no acredita la actualización.
 
 ## Puesta en producción
 
-- Aplicar las migraciones `20261009130000_two_stage_masterclass.sql` y `20261009150000_admission_questions.sql` después de las anteriores.
-- Aplicar `20261009210000_masterclass_access_name.sql` antes de desplegar la aplicación que recoge el nombre en la primera fase.
-- Actualizar el Apps Script de la hoja con `scripts/google-sheets-masterclass.gs` y publicar una nueva versión de la implementación web existente en «Implementar → Gestionar implementaciones → Editar → Nueva versión». Guardar el editor por sí solo no actualiza el endpoint. El script utiliza la hoja original; las propiedades `MASTERCLASS_SPREADSHEET_ID` y `MASTERCLASS_SHEET_NAME` permiten cambiar el destino. Si cambia la URL, actualizar `GOOGLE_SHEETS_ENDPOINT`.
-- El script reutiliza las cabeceras originales de A:H y conserva las columnas manuales I:J. Añade las columnas que faltan, incluidas `razones_para_reservar` y `decision_admision`, y busca la fila por `submission_id`. Para las filas del script antiguo sin identificador, vincula la última fila con el mismo email y teléfono; no reutiliza filas que ya tienen otro identificador.
-- Desplegar la aplicación y los workers `process-whatsapp-queue` y `process-followup-queue` para admitir contactos sin nombre. Esto no habilita envíos ni reintenta mensajes fallidos.
-
-La segunda fase exige `success: true, updated: true` del Apps Script. El acuse antiguo `duplicate: true` por sí solo no demuestra que se hayan añadido las respuestas y no desbloquea Cal.com. Ante un fallo de Sheets, Supabase conserva los datos y el reintento completa la copia con la misma inscripción.
-
-Las pruebas locales usan Supabase local y una hoja simulada; no prueban la implementación remota de Apps Script ni crean reservas reales.
+- Aplicar `20261012000100_restore_followup_schedule.sql`, `20261012000200_email_first_masterclass.sql` y `20261012000300_existing_contact_whatsapp_acceptance.sql`, en ese orden, sin modificar migraciones anteriores.
+- Desplegar la aplicación que utiliza las RPC `submit_masterclass_email_access` y `complete_masterclass_qualification_with_contact`.
+- Comprobar en Cal.com que sus propias confirmaciones y recordatorios por email estén activados. Esta aplicación no los envía ni controla su entrega.
+- Verificar con un registro de prueba la persistencia de ambas fases, la copia a Sheets, la programación de trabajos y la recepción real en los proveedores. Un estado `sent` acredita aceptación por el proveedor, no entrega final.

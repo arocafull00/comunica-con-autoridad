@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     env: { VERCEL: process.env.VERCEL, LEAD_IP_HMAC_SECRET: process.env.LEAD_IP_HMAC_SECRET },
     syncSheets: saveLeadToGoogleSheets,
     persist: async args => {
-      const { data, error } = await getSupabaseAdmin().rpc("submit_masterclass_access", args);
+      const { data, error } = await getSupabaseAdmin().rpc("submit_masterclass_email_access", args);
       if (error || !data) throw new Error("Access persistence failed");
       return data;
     },

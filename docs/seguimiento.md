@@ -2,9 +2,9 @@
 
 El encargo del cliente, sus textos originales y las diferencias pendientes están documentados en [automatizaciones-cliente.md](automatizaciones-cliente.md).
 
-La inscripción se registra cuando se guardan WhatsApp y email, se confirma la copia en Google Sheets y el servidor concede acceso al vídeo. Las cuatro preguntas para reservar se guardan después, en la misma inscripción (ver `formulario-masterclass.md`). No se exige reproducir o terminar el vídeo. La marca de acceso de localStorage no inscribe contactos antiguos automáticamente.
+La inscripción se registra al guardar el email y se concede acceso al vídeo. La casilla opcional de email se recoge en este primer formulario. El nombre, el WhatsApp y las seis preguntas para reservar se guardan después, en la misma inscripción, y entonces se copia la ficha completa a Google Sheets (ver `formulario-masterclass.md`). No se exige reproducir o terminar el vídeo. La marca de acceso de localStorage no inscribe contactos antiguos automáticamente.
 
-`POST /api/leads` guarda por separado el consentimiento opcional de WhatsApp y el de comunicaciones por email, con fecha y versión del texto. Las casillas empiezan desmarcadas. La falta de permiso no impide acceder al vídeo. Cada email admite baja; WhatsApp admite `BAJA` y `STOP`.
+El formulario principal usa `POST /api/leads/access` y `POST /api/leads/qualification`. Los cuatro emails de seguimiento requieren la casilla opcional de email y ausencia de baja. El segundo formulario no tiene casilla de WhatsApp: informa de los mensajes y su botón final expresa la aceptación al enviar el móvil. La fecha y versión de esa aceptación se guardan con el contacto. `BAJA` y `STOP` retiran los envíos pendientes de WhatsApp. El endpoint antiguo `POST /api/leads` conserva su contrato anterior.
 
 Una dirección de email entra una sola vez en el webinar. Los reintentos conservan la fecha inicial y los trabajos; volver a registrarse con otro identificador no reinicia los mensajes. La reserva se relaciona por el email del titular, normalizado a minúsculas: debe usar el mismo email en Cal.com. Una reserva con otro email queda guardada sin asociar y no genera mensajes hasta que ese email complete el formulario.
 
@@ -12,10 +12,10 @@ Una dirección de email entra una sola vez en el webinar. Los reintentos conserv
 
 | Evento | Canal | Momento | Condición |
 | --- | --- | --- | --- |
-| Formulario completo | WhatsApp | +1 minuto | Permiso y ninguna reserva registrada |
-| Formulario completo | WhatsApp | +3 minutos | Permiso y ninguna reserva registrada |
-| Formulario completo | WhatsApp | +5 minutos | Permiso, ninguna reserva y ninguna respuesta por WhatsApp |
-| Formulario completo | Resend | +1, +3, +5 y +7 minutos | Permiso de comunicaciones; continúa si reserva |
+| Segundo formulario completo | WhatsApp | +1 hora | Móvil y aceptación al enviarlo; ninguna reserva registrada |
+| Segundo formulario completo | WhatsApp | +1 día | Móvil y aceptación al enviarlo; ninguna reserva registrada |
+| Segundo formulario completo | WhatsApp | +3 días | Móvil y aceptación al enviarlo; ninguna reserva ni respuesta por WhatsApp |
+| Primer formulario completo | Resend | +30 minutos, +1 día, +2 días y +3 días | Casilla de email marcada, sin baja; continúa si reserva |
 | Reserva en Cal.com | WhatsApp | Inmediato | Confirmación habitual con ≥24h; variante corta entre 2 y <24h |
 | Llamada | WhatsApp | −24 horas, −2 horas y −15 minutos | Permiso y reserva vigente |
 
@@ -54,11 +54,11 @@ Las ocho asociaciones son fijas en `lib/followups/whatsapp-automations.ts` y en 
 | Recordatorio −24h | `recordatorio_24hantes` | `en` | Ninguna |
 | Recordatorio −2h | `recordatorio_reunion_2h` | `es` | `{{1}}`: enlace real de Meet |
 | Recordatorio −15m | `15_minutos_antes` | `en` | Ninguna |
-| Seguimiento +1 minuto | `seguimiento_webinar_1h` | `es` | `{{1}}`: nombre o «comunicador/a» |
-| Seguimiento +3 minutos | `no_reservan_1dia_despues` | `es` | Ninguna; botón con URL fija |
-| Seguimiento +5 minutos | `seguimiento_no_reserva_3dia` | `en` | Ninguna |
+| Seguimiento +1 hora | `seguimiento_webinar_1h` | `es` | `{{1}}`: nombre o «comunicador/a» |
+| Seguimiento +1 día | `no_reservan_1dia_despues` | `es` | Ninguna; botón con URL fija |
+| Seguimiento +3 días | `seguimiento_no_reserva_3dia` | `en` | Ninguna |
 
-La migración `20261009200000_followup_minute_schedule.sql` cambia los tiempos para nuevas inscripciones. Los trabajos existentes conservan su fecha. Las claves de los pasos y los nombres de las plantillas de Meta se mantienen aunque mencionen horas o días; el cron procesa los mensajes cada minuto.
+La migración `20261012000100_restore_followup_schedule.sql` restaura los tiempos originales para nuevas inscripciones. Los trabajos existentes conservan su fecha. Las claves de los pasos y los nombres de las plantillas de Meta se mantienen; el cron procesa los mensajes cada minuto. El modo aislado de pruebas de WhatsApp conserva sus tiempos acelerados de 1, 3 y 5 minutos.
 
 El idioma `en` es el identificador real registrado en Meta para algunas plantillas cuyo texto está en español. Se conserva tal cual. Las imágenes se envían mediante el enlace de la cabecera que proporciona el catálogo de Meta; los botones con URL fija y los pies los resuelve Meta sin parámetros adicionales.
 

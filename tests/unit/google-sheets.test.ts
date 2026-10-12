@@ -33,6 +33,7 @@ describe("Google Sheets copy", () => {
   it("requires an explicit update acknowledgement for the second phase", async () => {
     const qualified = { ...lead, commitment: "Alto", investment: "Menos de 500€" };
     await expect(saveLeadToGoogleSheets(qualified, key, GOOGLE_SHEETS_ENDPOINT, vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, duplicate: true })))).rejects.toThrow("qualification update");
+    await expect(saveLeadToGoogleSheets(qualified, key, GOOGLE_SHEETS_ENDPOINT, vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, duplicate: false })))).resolves.toBeUndefined();
     await expect(saveLeadToGoogleSheets(qualified, key, GOOGLE_SHEETS_ENDPOINT, vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, updated: true })))).resolves.toBeUndefined();
   });
   it.each([

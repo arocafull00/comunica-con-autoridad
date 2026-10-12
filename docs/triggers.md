@@ -14,12 +14,12 @@
 
 | Canal | Evento | Momento | Condición |
 |---|---|---|---|
-| WhatsApp | Seguimiento de la llamada | +1 minuto | Consentimiento WhatsApp y ninguna reserva asociada. |
-| WhatsApp | Invitación a reservar | +3 minutos | Consentimiento WhatsApp y ninguna reserva asociada. |
-| WhatsApp | Cierre del seguimiento | +5 minutos | Consentimiento WhatsApp, ninguna reserva y ninguna respuesta registrada. |
-| Email | Email 1: claridad | +1 minuto | Consentimiento email y sin baja. |
-| Email | Email 2: casos | +3 minutos | Consentimiento email y sin baja. |
-| Email | Email 3: empezar | +5 minutos | Consentimiento email y sin baja. |
-| Email | Email 4: resultados | +7 minutos | Consentimiento email y sin baja. |
+| WhatsApp | Seguimiento de la clase | +1 hora | Móvil enviado en el segundo formulario y ninguna reserva asociada. |
+| WhatsApp | Invitación a reservar | +1 día | Móvil enviado en el segundo formulario y ninguna reserva asociada. |
+| WhatsApp | Cierre del seguimiento | +3 días | Móvil enviado en el segundo formulario, ninguna reserva y ninguna respuesta registrada. |
+| Email | Email 1: claridad | +30 minutos | Consentimiento email y sin baja. |
+| Email | Email 2: casos | +1 día | Consentimiento email y sin baja. |
+| Email | Email 3: empezar | +2 días | Consentimiento email y sin baja. |
+| Email | Email 4: resultados | +3 días | Consentimiento email y sin baja. |
 
-Los tiempos se cuentan desde la inscripción. Aplicar `20261009200000_followup_minute_schedule.sql` para las nuevas inscripciones; los trabajos existentes conservan su fecha. El cron procesa la cola cada minuto, por lo que el envío puede producirse en la siguiente ejecución.
+Los tiempos de email se cuentan desde la primera inscripción con email; los de WhatsApp se cuentan desde el envío del segundo formulario. La migración `20261012000100_restore_followup_schedule.sql` restaura los horarios originales para las nuevas inscripciones; los trabajos existentes conservan su fecha. El cron procesa la cola cada minuto, por lo que el envío puede producirse en la siguiente ejecución.

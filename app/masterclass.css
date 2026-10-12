@@ -72,6 +72,7 @@
 .webinar-page .choice-radio input { width: 18px; height: 18px; min-height: 18px; padding: 0; flex: 0 0 18px; margin-top: 2px; accent-color: var(--copper2); }
 .webinar-page button.cta { border: 0; cursor: pointer; font: inherit; font-weight: 850; }
 .webinar-page .phone-hint { margin: 9px 0 0; color: #8f887f; font-size: 12px; line-height: 1.45; }
+  .webinar-page .whatsapp-notice { margin: 16px 0 0; color: #bdb3a8; font-size: 13px; line-height: 1.55; }
 .webinar-page .iti { width: 100%; }
 .webinar-page .iti__selected-country { display: flex; align-items: center; background: rgba(255,255,255,.035) !important; padding: 0; min-height: 50px; border-radius: 10px 0 0 10px; color: var(--ink); }
 .webinar-page .iti__selected-dial-code { color: var(--ink); }

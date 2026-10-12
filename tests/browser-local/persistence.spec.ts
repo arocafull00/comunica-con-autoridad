@@ -16,12 +16,9 @@ test("real Next API saves leads and queues only consented welcomes while WhatsAp
     await expect(page.locator("#webinar-content")).toBeVisible();
     let saved = await db.query("select l.name, l.whatsapp_consent, l.phone, l.utm_source, l.utm_medium, l.utm_campaign, l.profession, l.situation, l.goal, (select count(*)::int from public.whatsapp_messages m where m.lead_id=l.id) as messages from public.leads l where email=$1", [email]);
     expect(saved.rows).toHaveLength(1);
-    expect(saved.rows[0]).toEqual({ name: "Adrián", whatsapp_consent: false, phone: "+34612345678", messages: 0, utm_source: "tests_local", utm_medium: "e2e", utm_campaign: campaign, profession: null, situation: null, goal: null });
+    expect(saved.rows[0]).toEqual({ name: null, whatsapp_consent: false, phone: null, messages: 0, utm_source: "tests_local", utm_medium: "e2e", utm_campaign: campaign, profession: null, situation: null, goal: null });
     const sheets = await request.get("http://127.0.0.1:3102/submissions");
-    expect((await sheets.json()).filter((row: { email: string }) => row.email === email)).toEqual([
-      expect.objectContaining({ nombre: "Adrián", email, telefono: "+34612345678", telefono_pais: "ES", telefono_prefijo: "+34",
-        a_que_te_dedicas: "", situacion_actual: "", que_quiere_mejorar: "" }),
-    ]);
+    expect((await sheets.json()).filter((row: { email: string }) => row.email === email)).toEqual([]);
     await page.route("https://cal.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Calendario simulado</h1>" }));
     await fillQualification(page);
     await expect(page).toHaveURL(CAL_BOOKING_URL);

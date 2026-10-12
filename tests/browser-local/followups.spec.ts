@@ -3,7 +3,7 @@ import { execSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 import pg from "pg";
-import { fillMasterclass } from "../browser/masterclass-helper";
+import { fillMasterclass, fillQualification } from "../browser/masterclass-helper";
 import { unsubscribeToken } from "../../lib/followups/unsubscribe";
 
 test("real form consents, signed booking, CONFIRMO and unsubscribe persist",async({page,request})=>{
@@ -12,15 +12,19 @@ test("real form consents, signed booking, CONFIRMO and unsubscribe persist",asyn
   const sign=(value:string,secret:string)=>createHmac("sha256",secret).update(value).digest("hex");
   try{
     await page.goto("/");await fillMasterclass(page,email);
-    await page.locator("#whatsappConsent").check();await page.locator("#communicationsConsent").check();
+    await page.locator("#communicationsConsent").check();
     await page.setViewportSize({width:390,height:900});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await page.screenshot({path:"test-results/flow-consents-mobile.png",fullPage:true});
     await page.getByRole("button",{name:"Continuar"}).click();
     await expect(page.locator("#webinar-content")).toBeVisible();
     const saved=(await db.query("select l.whatsapp_consent,l.communications_consent,r.id from public.leads l join public.webinar_registrations r on r.lead_id=l.id where l.email=$1",[email])).rows[0];
-    expect(saved).toMatchObject({whatsapp_consent:true,communications_consent:true});
-    expect((await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1",[saved.id])).rows[0].n).toBe(7);
+    expect(saved).toMatchObject({whatsapp_consent:false,communications_consent:true});
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1",[saved.id])).rows[0].n).toBe(4);
+    await page.route("https://cal.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Calendario simulado</h1>" }));
+    await fillQualification(page);
+    await expect(page).toHaveURL(/^https:\/\/cal\.com\//);
+    expect((await db.query("select whatsapp_consent from public.leads where email=$1",[email])).rows[0].whatsapp_consent).toBe(true);
     const raw=JSON.stringify({triggerEvent:"BOOKING_CREATED",createdAt:new Date().toISOString(),payload:{uid,type:"sesion-gratuita-comunicacion",
       startTime:new Date(Date.now()+48*3600_000).toISOString(),endTime:new Date(Date.now()+48*3600_000+2700_000).toISOString(),
       attendees:[{email,timeZone:"Europe/Madrid"}],metadata:{videoCallUrl:"https://meet.google.com/local-test"}}});

@@ -68,8 +68,8 @@ describe("webinar registration and consent", () => {
     const {rows}=await db.query("select j.step,extract(epoch from j.scheduled_at-r.registered_at)::int as seconds from public.followup_jobs j join public.webinar_registrations r on r.id=j.registration_id where r.id=$1 order by j.scheduled_at",[id]);
     expect(rows).toHaveLength(7);
     expect(Object.fromEntries(rows.map(row=>[row.step,row.seconds]))).toEqual({
-      webinar_1h:60,webinar_1d:180,webinar_3d:300,
-      email_1:60,email_2:180,email_3:300,email_4:420,
+      webinar_1h:3600,webinar_1d:86400,webinar_3d:259200,
+      email_1:1800,email_2:86400,email_3:172800,email_4:259200,
     });
   });
   it.each([[false,false,0],[true,false,3],[false,true,4]])("enrolls only consented channels wa=%s email=%s",async(wa,email,count)=>{

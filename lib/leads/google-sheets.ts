@@ -1,12 +1,11 @@
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import type { z } from "zod";
 import type { leadSchema } from "./validation";
-import type { AccessContact } from "./booking-validation";
 
 // Existing Apps Script deployment from reference/template.html.
 export const GOOGLE_SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzh1bOTGWIBIxu4EeY1kjmBMsvlSLja11cp5WCr0FbW5sP6ivwHlmFs7_AaEVrRarHg/exec";
 export type ValidatedLead = z.infer<typeof leadSchema>;
-export type SheetsLead = Pick<AccessContact, "phone" | "email"> & {
+export type SheetsLead = { phone: string | null; email: string;
   name?: string | null; profession?: string | null; situation?: string | null; goal?: string | null;
   commitment?: string | null; investment?: string | null;
   applicationReasons?: string | null; admissionDecision?: string | null;
@@ -18,7 +17,7 @@ export async function saveLeadToGoogleSheets(
   endpoint = process.env.GOOGLE_SHEETS_ENDPOINT || GOOGLE_SHEETS_ENDPOINT,
   send: typeof fetch = fetch,
 ) {
-  const phone = parsePhoneNumberFromString(lead.phone);
+  const phone = lead.phone ? parsePhoneNumberFromString(lead.phone) : undefined;
   const body = new URLSearchParams({
     "form-name": "webinar-leads",
     submission_id: submissionId,
@@ -31,7 +30,7 @@ export async function saveLeadToGoogleSheets(
     razones_para_reservar: lead.applicationReasons ?? "",
     decision_admision: lead.admissionDecision ?? "",
     email: lead.email,
-    telefono: lead.phone,
+    telefono: lead.phone ?? "",
     telefono_pais: phone?.country ?? "",
     telefono_prefijo: phone ? `+${phone.countryCallingCode}` : "",
   });
@@ -44,8 +43,8 @@ export async function saveLeadToGoogleSheets(
   if (!result || typeof result !== "object" || !("success" in result) || result.success !== true) {
     throw new Error("Google Sheets did not confirm persistence");
   }
-  // A legacy duplicate acknowledgement does not prove that the new answers were saved.
-  if (lead.commitment && (!("updated" in result) || result.updated !== true)) {
+  // A newly created row contains the answers; an existing row needs an explicit update acknowledgement.
+  if (lead.commitment && !("updated" in result && result.updated === true) && !("duplicate" in result && result.duplicate === false)) {
     throw new Error("Google Sheets did not confirm qualification update");
   }
 }

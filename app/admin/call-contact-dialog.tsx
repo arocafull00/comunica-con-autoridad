@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 
 export type CallContact = {
   name: string | null;
-  phone: string;
+  phone: string | null;
   profession: string | null;
   situation: string | null;
   goal: string | null;
@@ -38,7 +38,7 @@ export function CallContactDialog({ email, contact, registered, timeZone }: {
         <dl className="admin-contact-details">
           {contact?.name ? <div><dt>Nombre</dt><dd>{contact.name}</dd></div> : null}
           <div><dt>Correo</dt><dd><a href={`mailto:${email}`}>{email}</a></dd></div>
-          {contact ? <div><dt>Teléfono</dt><dd><a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">{contact.phone}</a></dd></div> : null}
+          {contact?.phone ? <div><dt>Teléfono</dt><dd><a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">{contact.phone}</a></dd></div> : null}
           <div><dt>Formulario de la masterclass</dt><dd>{registered ? "Formulario asociado a este email." : "Sin formulario asociado a este email."}</dd></div>
           <div><dt>Zona horaria de la llamada</dt><dd>{timeZone}</dd></div>
           {contact?.profession ? <div><dt>Profesión</dt><dd>{contact.profession}</dd></div> : null}

@@ -14,7 +14,7 @@ type WhatsappJob = {
   last_error: string | null;
   scheduled_at: string;
   payload: { phone?: string; name?: string } | null;
-  registration: { email: string; lead: { name: string | null; phone: string } | null } | null;
+  registration: { email: string; lead: { name: string | null; phone: string | null } | null } | null;
 };
 
 async function Whatsapp() {

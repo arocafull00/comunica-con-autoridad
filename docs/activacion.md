@@ -21,7 +21,7 @@ pnpm exec supabase start -x studio,imgproxy,inbucket,storage-api,realtime,logfla
 
 Copiar `.env.example` a `.env.local`. Obtener la URL y la clave **service_role JWT** del Supabase local mediante `pnpm exec supabase status`. Generar un secreto HMAC propio con `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` y guardar su valor en `LEAD_IP_HMAC_SECRET`. No compartir ni versionar las claves.
 
-Google Sheets utiliza por defecto el destino de `reference/template.html`. Para cambiarlo, configurar `GOOGLE_SHEETS_ENDPOINT` en el servidor. Cada envío conserva `submission_id`, `nombre`, `a_que_te_dedicas`, `situacion_actual`, `que_quiere_mejorar`, `email`, `telefono`, `telefono_pais` y `telefono_prefijo`. El servidor verifica la respuesta JSON de Apps Script; un fallo devuelve `503` con un aviso de que el contacto ya está guardado en Supabase. El reintento conserva el identificador, y una respuesta `success: true` con `duplicate: true` se acepta como confirmación de la copia existente.
+Google Sheets utiliza por defecto el destino de `reference/template.html`. Para cambiarlo, configurar `GOOGLE_SHEETS_ENDPOINT` en el servidor. En la masterclass, el primer formulario guarda solo email en Supabase; la copia a Sheets se hace al completar nombre, WhatsApp y preguntas del segundo formulario. Cada copia conserva `submission_id`, `nombre`, `a_que_te_dedicas`, `situacion_actual`, `que_quiere_mejorar`, `email`, `telefono`, `telefono_pais` y `telefono_prefijo`. Un fallo de Sheets devuelve `503`; el reintento conserva el identificador. La segunda fase exige `success: true` y una fila nueva (`duplicate: false`) o una actualización confirmada (`updated: true`). El endpoint antiguo `POST /api/leads` mantiene su flujo de copia anterior.
 
 ```powershell
 pnpm dev
@@ -56,7 +56,7 @@ También se puede comprobar la autenticación del worker contra el runtime local
 2. Iniciar sesión en Supabase CLI y vincular el proyecto mediante `pnpm exec supabase link --project-ref <REFERENCIA>`. Revisar `pnpm exec supabase migration list` y `pnpm exec supabase db push --linked --dry-run` antes de aplicar `pnpm exec supabase db push --linked`.
 3. Configurar `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ADMIN_SITE_URL` y `LEAD_IP_HMAC_SECRET` en las variables **del servidor** de Vercel. Nunca usar el prefijo `NEXT_PUBLIC_`. Mantener el secreto HMAC estable entre instancias del mismo entorno. Preparar el acceso privado siguiendo [administración](administracion.md).
 4. Desplegar Next.js en Vercel. Con la configuración ausente o inaccesible, la API devuelve `503`; no confirma solicitudes no guardadas.
-5. Antes de publicar, configurar el aviso de privacidad del responsable real y su política publicada. El formulario mínimo no inventa razón social, domicilio ni textos jurídicos. La casilla WhatsApp autoriza exclusivamente una confirmación, no campañas posteriores.
+  5. Antes de publicar, configurar el aviso de privacidad del responsable real y su política publicada. El primer formulario pide email y consentimiento opcional para cuatro emails; el segundo explica el seguimiento por WhatsApp y su botón final expresa la aceptación al enviarlo.
 
 Las migraciones activan RLS y revocan acceso a visitantes y usuarios autenticados. Las tablas y RPCs se usan exclusivamente desde el servidor con credenciales privilegiadas. Las funciones de cola solo permiten operar sobre `whatsapp_outbound`; `private` y `pgmq` no se exponen en la Data API.
 

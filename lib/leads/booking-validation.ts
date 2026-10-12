@@ -4,30 +4,29 @@ import { leadSchema } from "./validation";
 import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS } from "./masterclass";
 
 export const accessSchema = z.object({
-  name: leadSchema.shape.name,
-  phone: leadSchema.shape.phone,
   email: leadSchema.shape.email,
-  whatsappConsent: leadSchema.shape.whatsappConsent,
   communicationsConsent: leadSchema.shape.communicationsConsent,
   website: leadSchema.shape.website,
   utmSource: leadSchema.shape.utmSource,
   utmMedium: leadSchema.shape.utmMedium,
   utmCampaign: leadSchema.shape.utmCampaign,
-}).strict().superRefine((value, context) => {
-  const type = parsePhoneNumberFromString(value.phone)?.getType();
-  if (type !== "MOBILE" && type !== "FIXED_LINE_OR_MOBILE") {
-    context.addIssue({ code: "custom", path: ["phone"], message: "Introduce un número de móvil válido. No se admiten teléfonos fijos." });
-  }
-});
+}).strict();
 
 export const qualificationSchema = z.object({
+  name: leadSchema.shape.name,
+  phone: leadSchema.shape.phone,
   profession: leadSchema.shape.profession.unwrap(),
   goal: z.enum(BOOKING_GOALS, { error: "Selecciona qué te gustaría mejorar" }),
   commitment: z.enum(COMMITMENTS, { error: "Selecciona tu nivel de compromiso" }),
   investment: z.enum(INVESTMENTS, { error: "Selecciona un rango de inversión" }),
   applicationReasons: z.string({ error: "Escribe tus tres razones" }).trim().min(1, "Escribe tus tres razones").max(2000, "Tus razones no pueden superar los 2000 caracteres"),
   admissionDecision: z.enum(ADMISSION_DECISIONS, { error: "Indica si estás de acuerdo" }),
-}).strict();
+}).strict().superRefine((value, context) => {
+  const type = parsePhoneNumberFromString(value.phone)?.getType();
+  if (type !== "MOBILE" && type !== "FIXED_LINE_OR_MOBILE") {
+    context.addIssue({ code: "custom", path: ["phone"], message: "Introduce un número de móvil válido. No se admiten teléfonos fijos." });
+  }
+});
 
 export type AccessContact = z.infer<typeof accessSchema>;
 export type Qualification = z.infer<typeof qualificationSchema>;

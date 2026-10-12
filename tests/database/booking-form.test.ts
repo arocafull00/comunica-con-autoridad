@@ -4,7 +4,6 @@ import pg from "pg";
 import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS } from "../../lib/leads/masterclass";
 
 const reasons = "Quiero liderar mejor, hablar con seguridad y comunicar con claridad.";
-
 const target = process.env.TEST_SUPABASE_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:55322/postgres";
 if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(target).hostname)) throw new Error("Local database only");
 const pool = new pg.Pool({ connectionString: target });
@@ -12,56 +11,81 @@ let db: pg.PoolClient;
 beforeEach(async () => { db = await pool.connect(); await db.query("begin"); });
 afterEach(async () => { await db.query("rollback"); db.release(); });
 afterAll(async () => { await pool.end(); });
-const capture = async (key: string, email: string, name: string | null = "Adrián") => (await db.query(
-  "select public.submit_masterclass_access($1,$4,'+34612345678',$2,true,true,'v1',$3) as result",
-  [key, email, createHash("sha256").update(key).digest("hex"), name],
+
+const capture = async (key: string, email: string, consent = true) => (await db.query(
+  "select public.submit_masterclass_email_access($1,$2,$3,'email-v1',$4,null,null,null) as result",
+  [key, email, consent, createHash("sha256").update(key).digest("hex")],
 )).rows[0].result;
-const qualify = async (key: string, profession = "Dirección") => (await db.query(
-  "select public.complete_masterclass_qualification($1,$2,$3,$4,$5,$6,$7) as result",
-  [key, profession, BOOKING_GOALS[0], COMMITMENTS[0], INVESTMENTS[1], reasons, ADMISSION_DECISIONS[0]],
+const qualify = async (key: string, name = "Adrián", phone = "+34612345678") => (await db.query(
+  "select public.complete_masterclass_qualification_with_contact($1,$2,$3,'whatsapp-v1',$4,$5,$6,$7,$8,$9) as result",
+  [key, name, phone, "Dirección", BOOKING_GOALS[0], COMMITMENTS[0], INVESTMENTS[1], reasons, ADMISSION_DECISIONS[0]],
 )).rows[0].result;
 
-describe("contact capture then qualification", () => {
-  it("keeps one lead, registration and welcome across both phases and retries", async () => {
+describe("email access then contact and qualification", () => {
+  it("stores only email first, then schedules WhatsApps once the mobile is supplied", async () => {
     const key = randomUUID(); const email = `${key}@example.com`;
-    expect(await capture(key, email, " Adrián ")).toMatchObject({ outcome: "created", lead: { name: "Adrián", email, profession: null } });
+    expect(await capture(key, email)).toMatchObject({ outcome: "created", lead: { name: "", phone: null, email } });
     const registration = (await db.query("select public.register_webinar($1) as id", [key])).rows[0].id;
-    const before = (await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1", [registration])).rows[0].n;
-    expect(before).toBeGreaterThan(0);
-    expect(await qualify(key)).toMatchObject({ outcome: "created", lead: { profession: "Dirección", goal: BOOKING_GOALS[0], commitment: COMMITMENTS[0], investment: INVESTMENTS[1],
-      applicationReasons: reasons, admissionDecision: ADMISSION_DECISIONS[0] } });
+    expect((await db.query("select name,phone,whatsapp_consent,communications_consent from public.leads where idempotency_key=$1", [key])).rows[0])
+      .toEqual({ name: null, phone: null, whatsapp_consent: false, communications_consent: true });
+    expect((await db.query("select step from public.followup_jobs where registration_id=$1", [registration])).rows.map(row => row.step).sort())
+      .toEqual(["email_1", "email_2", "email_3", "email_4"]);
+    expect(await qualify(key)).toMatchObject({ outcome: "created", lead: { name: "Adrián", phone: "+34612345678", profession: "Dirección" } });
     expect((await qualify(key)).outcome).toBe("replayed");
     expect((await capture(key, email)).outcome).toBe("replayed");
-    expect((await capture(key, email, "Otro nombre")).outcome).toBe("conflict");
-    expect((await qualify(key, "Ventas")).outcome).toBe("conflict");
-    expect((await db.query("select public.register_webinar($1) as id", [key])).rows[0].id).toBe(registration);
-    expect((await db.query("select count(*)::int as n from public.leads where idempotency_key=$1", [key])).rows[0].n).toBe(1);
-    expect((await db.query("select count(*)::int as n from public.whatsapp_messages m join public.leads l on m.lead_id=l.id where l.idempotency_key=$1", [key])).rows[0].n).toBe(1);
-    expect((await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1", [registration])).rows[0].n).toBe(before);
+    expect((await capture(key, "another@example.com")).outcome).toBe("conflict");
+    expect((await qualify(key, "Otra persona")).outcome).toBe("conflict");
+    expect((await db.query("select step from public.followup_jobs where registration_id=$1 and step like 'webinar_%'", [registration])).rows.map(row => row.step).sort())
+      .toEqual(["webinar_1d", "webinar_1h", "webinar_3d"]);
+    expect((await db.query("select whatsapp_consent_at,whatsapp_consent_version from public.leads where idempotency_key=$1", [key])).rows[0])
+      .toEqual({ whatsapp_consent_at: expect.any(Date), whatsapp_consent_version: "whatsapp-v1" });
   });
-  it("rejects qualification before registration and rejects partial direct RPC writes", async () => {
+
+  it("keeps promotional email opt-in separate and schedules booking reminders after contact completion", async () => {
+    const key = randomUUID(); const email = `${key}@example.com`;
+    await capture(key, email, false);
+    const registration = (await db.query("select public.register_webinar($1) as id", [key])).rows[0].id;
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1", [registration])).rows[0].n).toBe(0);
+    const uid = randomUUID();
+    await db.query("select public.record_cal_booking($1)", [JSON.stringify({ uid, event: "BOOKING_CREATED", eventAt: new Date().toISOString(),
+      email, startTime: new Date(Date.now() + 48 * 3600_000).toISOString(), endTime: new Date(Date.now() + 49 * 3600_000).toISOString(),
+      timeZone: "Europe/Madrid", meetingUrl: "https://meet.google.com/test" })]);
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1", [uid])).rows[0].n).toBe(0);
+    await qualify(key);
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where booking_uid=$1 and status='pending'", [uid])).rows[0].n).toBe(4);
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1 and step like 'email_%'", [registration])).rows[0].n).toBe(0);
+  });
+
+  it("rejects qualification before registration and partial direct RPC writes", async () => {
     const key = randomUUID(); const email = `${key}@example.com`;
     expect((await qualify(key)).outcome).toBe("missing");
     await capture(key, email);
     expect((await qualify(key)).outcome).toBe("missing");
     await db.query("select public.register_webinar($1)", [key]);
     await db.query("savepoint invalid");
-    await expect(db.query("select public.complete_masterclass_qualification($1,'Dirección',$2,null,$3,$4,$5)", [key, BOOKING_GOALS[0], INVESTMENTS[0], reasons, ADMISSION_DECISIONS[0]])).rejects.toThrow("Invalid qualification");
+    await expect(db.query("select public.complete_masterclass_qualification_with_contact($1,'Adrián','+34612345678','v1','Dirección',$2,null,$3,$4,$5)",
+      [key, BOOKING_GOALS[0], INVESTMENTS[0], reasons, ADMISSION_DECISIONS[0]])).rejects.toThrow("Invalid qualification");
     await db.query("rollback to savepoint invalid");
-    await expect(db.query("select public.complete_masterclass_qualification($1,'Dirección',$2,$3,$4,null,null)", [key, BOOKING_GOALS[0], COMMITMENTS[0], INVESTMENTS[0]])).rejects.toThrow("Invalid qualification");
-    await db.query("rollback to savepoint invalid");
-    expect((await db.query("select profession,qualified_at from public.leads where idempotency_key=$1", [key])).rows[0]).toEqual({ profession: null, qualified_at: null });
+    expect((await db.query("select name,phone,qualified_at from public.leads where idempotency_key=$1", [key])).rows[0])
+      .toEqual({ name: null, phone: null, qualified_at: null });
   });
-  it.each([null, "", " ", "A", "A".repeat(101), "Adrián\nRocafull"])("rejects invalid names in direct RPC writes: %s", async name => {
-    const key = randomUUID();
-    await expect(capture(key, `${key}@example.com`, name)).rejects.toThrow("Invalid name");
+
+  it("accepts a returning contact and does not undo BAJA on an idempotent replay", async () => {
+    const key = randomUUID(); const email = `${key}@example.com`;
+    await db.query("select public.submit_masterclass_access($1,'Adrián','+34612345678',$2,false,false,'v1',$3)",
+      [key, email, createHash("sha256").update(key).digest("hex")]);
+    const registration = (await db.query("select public.register_webinar($1) as id", [key])).rows[0].id;
+    expect(await qualify(key)).toMatchObject({ outcome: "created" });
+    expect((await db.query("select count(*)::int as n from public.followup_jobs where registration_id=$1 and step like 'webinar_%'", [registration])).rows[0].n).toBe(3);
+    await db.query("update public.leads set whatsapp_consent=false where idempotency_key=$1", [key]);
+    expect((await qualify(key)).outcome).toBe("replayed");
+    expect((await db.query("select whatsapp_consent from public.leads where idempotency_key=$1", [key])).rows[0].whatsapp_consent).toBe(false);
   });
-  it.each(["anon", "authenticated"])("prevents %s from bypassing server validation", async role => {
+
+  it.each(["anon", "authenticated"])("prevents %s from calling the new functions", async role => {
     await db.query(`set local role ${role}`);
-    await expect(db.query("select public.complete_masterclass_qualification(null,null,null,null,null,null,null)")).rejects.toThrow("permission denied");
-  });
-  it.each(["anon", "authenticated"])("prevents %s from writing contact names directly", async role => {
-    await db.query(`set local role ${role}`);
-    await expect(capture(randomUUID(), "test@example.com")).rejects.toThrow("permission denied");
+    await expect(db.query("select public.submit_masterclass_email_access(null,null,null,null,null)")).rejects.toThrow("permission denied");
+    await db.query("rollback"); await db.query("begin"); await db.query(`set local role ${role}`);
+    await expect(db.query("select public.complete_masterclass_qualification_with_contact(null,null,null,null,null,null,null,null,null,null)")).rejects.toThrow("permission denied");
   });
 });
