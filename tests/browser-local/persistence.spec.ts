@@ -4,6 +4,58 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import pg from "pg";
 
+test("a deleted registration is detected before asking the booking questions", async ({ page, request }) => {
+  const db = new pg.Client({ connectionString: "postgresql://postgres:postgres@127.0.0.1:55322/postgres" });
+  await db.connect();
+  const key = randomUUID(); const email = `deleted-${key}@example.com`;
+  try {
+    const access = await request.post("/api/leads/access", { headers: { "Idempotency-Key": key }, data: { email, communicationsConsent: false } });
+    expect(access.status()).toBe(201);
+    const { accessToken } = await access.json();
+    await db.query("delete from public.leads where idempotency_key=$1", [key]);
+    await page.addInitScript(token => {
+      localStorage.setItem("webinar_access_granted_v3", "1");
+      localStorage.setItem("webinar_access_token_v1", token);
+    }, accessToken);
+    await page.route("https://fast.wistia.com/**", route => route.abort());
+    await page.goto("/");
+    await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+    await expect(page.getByRole("form", { name: "Preguntas para reservar llamada" })).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem("webinar_access_token_v1"))).toBeNull();
+  } finally {
+    await db.query("delete from public.leads where email=$1", [email]);
+    await db.end();
+  }
+});
+
+test("reserving with an already registered email saves answers and opens Cal.com", async ({ page, request }) => {
+  const db = new pg.Client({ connectionString: "postgresql://postgres:postgres@127.0.0.1:55322/postgres" });
+  await db.connect();
+  const first = randomUUID(); const email = `returning-${first}@example.com`;
+  try {
+    await db.query("select public.submit_masterclass_email_access($1,$2,false,'email-v1',repeat('a',64))", [first, email]);
+    const registration = (await db.query("select public.register_webinar($1) as id", [first])).rows[0].id;
+    await page.route("https://fast.wistia.com/**", route => route.abort());
+    await page.route("https://cal.com/**", route => route.fulfill({ contentType: "text/html", body: "<h1>Calendario simulado</h1>" }));
+    await page.goto("/");
+    await fillMasterclass(page, email);
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(page.getByLabel("Número de WhatsApp", { exact: true })).toBeVisible();
+    const saved = page.waitForResponse("**/api/leads/qualification");
+    await fillQualification(page);
+    expect((await saved).status()).toBe(200);
+    await expect(page).toHaveURL(CAL_BOOKING_URL);
+    expect((await db.query("select l.name,l.phone,l.qualified_at from public.webinar_registrations r join public.leads l on l.id=r.lead_id where r.id=$1", [registration])).rows)
+      .toEqual([{ name: "Adrián", phone: "+34612345678", qualified_at: expect.any(Date) }]);
+    const sheets = await request.get("http://127.0.0.1:3102/submissions");
+    expect((await sheets.json()).filter((row: { email: string }) => row.email === email))
+      .toEqual([expect.objectContaining({ nombre: "Adrián", decision_admision: ADMISSION_DECISIONS[0] })]);
+  } finally {
+    await db.query("delete from public.leads where email=$1", [email]);
+    await db.end();
+  }
+});
+
 test("real Next API saves leads and queues only consented welcomes while WhatsApp is offline", async ({ page, request }) => {
   const db = new pg.Client({ connectionString: "postgresql://postgres:postgres@127.0.0.1:55322/postgres" });
   await db.connect();

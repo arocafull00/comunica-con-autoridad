@@ -30,24 +30,40 @@ export function Masterclass() {
   const [accessToken, setAccessToken] = useState("");
   const [declined, setDeclined] = useState(false);
   const [bookingUrl, setBookingUrl] = useState("");
+  const [checkingAccess, setCheckingAccess] = useState(false);
+  const [accessCheckError, setAccessCheckError] = useState(false);
   const intro = useRef<HTMLElement>(null);
   const replay = useRef<HTMLDivElement>(null);
   const webinar = useRef<HTMLDivElement>(null);
   const accessArea = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     // Read storage after hydration; do not store any contact details in the browser.
     const timer = setTimeout(() => {
       setAccess(readFlag(ACCESS_KEY));
       setCompleted(readFlag(COMPLETED_KEY));
       try {
         const token = localStorage.getItem(TOKEN_KEY) ?? "";
-        setAccessToken(token);
-        if (token && localStorage.getItem(QUALIFIED_KEY) === token) setBookingUrl(CAL_BOOKING_URL);
-        if (token && localStorage.getItem(DECLINED_KEY) === token) setDeclined(true);
+        if (token) {
+          setCheckingAccess(true);
+          void fetch("/api/leads/access", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal })
+            .then(async response => {
+              if (response.status === 401) {
+                clearFlag(TOKEN_KEY); clearFlag(QUALIFIED_KEY); clearFlag(DECLINED_KEY);
+                return;
+              }
+              if (!response.ok || !(await response.json()).ok) throw new Error("Access check failed");
+              setAccessToken(token);
+              if (localStorage.getItem(QUALIFIED_KEY) === token) setBookingUrl(CAL_BOOKING_URL);
+              if (localStorage.getItem(DECLINED_KEY) === token) setDeclined(true);
+            })
+            .catch(() => { if (!controller.signal.aborted) setAccessCheckError(true); })
+            .finally(() => { if (!controller.signal.aborted) setCheckingAccess(false); });
+        }
       } catch { /* Access still works without browser storage. */ }
     }, 0);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, []);
 
   useEffect(() => {
@@ -65,6 +81,7 @@ export function Masterclass() {
   }, [access]);
 
   function grantAccess(token: string) {
+    setAccessCheckError(false);
     setAccessToken(token);
     try { localStorage.setItem(TOKEN_KEY, token); } catch { /* Keep token in memory. */ }
     writeFlag(ACCESS_KEY);
@@ -75,6 +92,7 @@ export function Masterclass() {
   }
 
   function startAnotherRegistration() {
+    setAccessCheckError(false);
     clearFlag(ACCESS_KEY);
     clearFlag(COMPLETED_KEY);
     clearFlag(TOKEN_KEY);
@@ -129,7 +147,10 @@ export function Masterclass() {
           <p>Reserva una sesión gratuita.</p>
           {bookingUrl ? <a className="cta" href={bookingUrl}>Abrir calendario →</a> : null}
           <div>
-            {declined ? <p role="status">Tus respuestas se han guardado. No reservarás una llamada.</p> : !bookingUrl && access ? accessToken
+            {checkingAccess ? <p role="status">Comprobando tu inscripción…</p> : accessCheckError ? <div>
+              <p role="alert">No hemos podido comprobar tu inscripción. Vuelve a intentarlo.</p>
+              <button className="next-btn" type="button" onClick={() => window.location.reload()}>Reintentar</button>
+            </div> : declined ? <p role="status">Tus respuestas se han guardado. No reservarás una llamada.</p> : !bookingUrl && access ? accessToken
               ? <QualificationForm accessToken={accessToken} onExpired={() => { setAccessToken(""); clearFlag(TOKEN_KEY); }} onSuccess={url => {
                 setBookingUrl(url ?? "");
                 setDeclined(!url);
@@ -139,7 +160,7 @@ export function Masterclass() {
               : <LeadForm onSuccess={grantAccess} /> : null}
           </div>
           <div className="micro">Sesión gratuita · Sin compromiso</div>
-          <button className="another-registration-btn" type="button" onClick={startAnotherRegistration}>Realizar otra inscripción</button>
+          <button className="another-registration-btn" type="button" disabled={checkingAccess} onClick={startAnotherRegistration}>Realizar otra inscripción</button>
         </div></div>
       </section>
     </main>

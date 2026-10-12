@@ -70,6 +70,24 @@ describe("email access then contact and qualification", () => {
       .toEqual({ name: null, phone: null, qualified_at: null });
   });
 
+  it("qualifies a new submission for an existing email without restarting follow-ups", async () => {
+    const first = randomUUID(); const second = randomUUID(); const email = `${first}@example.com`;
+    await capture(first, email);
+    const registration = (await db.query("select public.register_webinar($1) as id", [first])).rows[0].id;
+    await qualify(first);
+    const jobs = (await db.query("select id,scheduled_at from public.followup_jobs where registration_id=$1 order by id", [registration])).rows;
+    await capture(second, email);
+    expect((await db.query("select public.register_webinar($1) as id", [second])).rows[0].id).toBe(registration);
+    expect(await qualify(second, "Contacto actualizado", "+34623456789")).toMatchObject({ outcome: "created",
+      lead: { name: "Contacto actualizado", phone: "+34623456789", email } });
+    expect((await db.query("select l.idempotency_key from public.webinar_registrations r join public.leads l on l.id=r.lead_id where r.id=$1", [registration])).rows[0].idempotency_key).toBe(second);
+    expect((await db.query("select id,scheduled_at from public.followup_jobs where registration_id=$1 order by id", [registration])).rows).toEqual(jobs);
+    expect((await qualify(second, "Contacto actualizado", "+34623456789")).outcome).toBe("replayed");
+    // A stale retry must not replace the contact from the newer completed form.
+    expect((await qualify(first)).outcome).toBe("replayed");
+    expect((await db.query("select l.idempotency_key from public.webinar_registrations r join public.leads l on l.id=r.lead_id where r.id=$1", [registration])).rows[0].idempotency_key).toBe(second);
+  });
+
   it("accepts a returning contact and does not undo BAJA on an idempotent replay", async () => {
     const key = randomUUID(); const email = `${key}@example.com`;
     await db.query("select public.submit_masterclass_access($1,'Adrián','+34612345678',$2,false,false,'v1',$3)",
