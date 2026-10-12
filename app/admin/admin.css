@@ -397,6 +397,11 @@
 .admin-whatsapp-disclosure > summary > span { margin-left: auto; color: var(--admin-muted); font-size: 14px; font-weight: 400; text-align: right; }
 .admin-whatsapp-disclosure .admin-stats { margin-top: 8px; }
 .admin-whatsapp-disclosure .admin-list { margin-bottom: 24px; }
+.admin-whatsapp .admin-whatsapp-activity { margin-bottom: 24px; }
+.admin-whatsapp .admin-whatsapp-activity th:nth-child(n) { width: 16%; }
+.admin-whatsapp .admin-whatsapp-activity th:nth-child(3) { width: 20%; }
+.admin-whatsapp .admin-whatsapp-activity td { white-space: normal; }
+.admin-whatsapp-activity .admin-badge-failed { color: #ffaaa0; }
 .admin-confirm-overlay { position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 65%); }
 .admin-root.admin-confirm-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 40; min-height: 0; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; padding: 28px; border: 1px solid var(--admin-line); border-radius: 10px; background: var(--admin-surface); }
 .admin-confirm-dialog h2 { font-size: 21px; }

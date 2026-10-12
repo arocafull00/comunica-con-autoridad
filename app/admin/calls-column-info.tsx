@@ -32,7 +32,7 @@ const help = {
     label: "Confirmación",
     descriptions: [
       "CONFIRMO recibido: la persona ha respondido CONFIRMO por WhatsApp y el sistema ha podido asociar su respuesta a esta llamada.",
-      "Pendiente de revisión: todavía no hay una confirmación de asistencia asociada. Una reserva nueva aparece así desde el principio, aunque falten semanas para la llamada.",
+      "Pendiente de confirmación por WhatsApp: todavía no hay una confirmación de asistencia asociada. Una reserva nueva aparece así desde el principio, aunque falten semanas para la llamada.",
       "Los recordatorios de WhatsApp piden confirmar la asistencia. Si la respuesta no se puede asociar a una única llamada, queda pendiente de revisión. La falta de confirmación no cancela la reserva automáticamente.",
     ],
   },

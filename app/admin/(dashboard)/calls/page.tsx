@@ -47,7 +47,7 @@ async function Calls() {
         <TableCell><CallsColumnInfo column="contact" mobile /><CallContactDialog email={call.email} contact={contacts.get(call.registration_id) ?? null} registered={!!call.registration_id} timeZone={call.time_zone} /></TableCell>
         <TableCell><CallsColumnInfo column="date" mobile /><time dateTime={call.start_time}>{new Intl.DateTimeFormat("es-ES", { timeZone: call.time_zone, dateStyle: "medium" }).format(new Date(call.start_time))}</time></TableCell>
         <TableCell><CallsColumnInfo column="time" mobile /><time dateTime={call.start_time}>{new Intl.DateTimeFormat("es-ES", { timeZone: call.time_zone, timeStyle: "short" }).format(new Date(call.start_time))}</time></TableCell>
-        <TableCell><CallsColumnInfo column="confirmation" mobile /><Badge variant="outline" className={`admin-badge ${call.confirmed_at ? "admin-badge-enabled" : ""}`}>{call.confirmed_at ? "CONFIRMO recibido" : "Pendiente de revisión"}</Badge></TableCell>
+        <TableCell><CallsColumnInfo column="confirmation" mobile /><Badge variant="outline" className={`admin-badge ${call.confirmed_at ? "admin-badge-enabled" : ""}`}>{call.confirmed_at ? "CONFIRMO recibido" : "Pendiente de confirmación por WhatsApp"}</Badge></TableCell>
         <TableCell><CallsColumnInfo column="meeting" mobile />{call.meeting_url ? <a href={call.meeting_url} target="_blank" rel="noopener noreferrer">Abrir llamada</a> : <span className="admin-muted">Enlace pendiente</span>}</TableCell>
       </TableRow>)}</TableBody>
     </Table></div> : <div className="admin-empty"><CalendarClock size={24} aria-hidden="true" /><strong>No hay próximas llamadas registradas.</strong><p>Las reservas recibidas de Cal.com aparecerán aquí.</p></div>}
