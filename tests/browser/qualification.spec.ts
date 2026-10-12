@@ -22,15 +22,15 @@ test("contact opens video and questions, then saving opens Cal.com and survives 
   await expect(page.getByLabel("Profesión / actividad")).toHaveCount(0);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.locator("#video1-wrap")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reservar llamada" })).toHaveCount(0);
   await expect(page.getByLabel("Número de WhatsApp")).toBeVisible();
   await page.reload();
   await fillQualification(page, ADMISSION_DECISIONS[0], false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `test-results/qualified-${info.project.name}.png`, fullPage: true });
   const calendarPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true }).click();
+  await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
   const calendar = await calendarPromise;
   await expect(calendar).toHaveURL(CAL_BOOKING_URL);
   await expect(page).toHaveURL(/\/$/);
@@ -55,7 +55,7 @@ test("requires each answer, keeps selections when going back, and retries failed
     return route.fulfill({ status: requests === 1 ? 503 : 200, json: requests === 1 ? { ok: false, message: "No hemos podido confirmar el guardado." } : { ok: true, bookingUrl: CAL_BOOKING_URL } });
   });
   await page.goto("/"); await fillMasterclass(page); await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reservar llamada" })).toHaveCount(0);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByText("Introduce tu nombre (mínimo 2 caracteres).", { exact: true })).toBeVisible();
   await page.getByLabel("Nombre", { exact: true }).fill("Adrián");
@@ -84,22 +84,22 @@ test("requires each answer, keeps selections when going back, and retries failed
   await page.getByLabel("Tus 3 razones", { exact: true }).fill(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true })).toBeChecked();
-  await expect(page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reservar llamada", exact: true })).toBeVisible();
   expect(requests).toBe(0);
   await page.getByRole("button", { name: "Atrás" }).click();
   await expect(page.getByLabel("Tus 3 razones", { exact: true })).toHaveValue(APPLICATION_REASONS);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true })).toBeChecked();
   const failedCalendarPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true }).click();
+  await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
   const failedCalendar = await failedCalendarPromise;
   await expect(page.getByText("No hemos podido confirmar el guardado.", { exact: true })).toBeVisible();
   await expect.poll(() => failedCalendar.isClosed()).toBe(true);
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true })).toBeChecked();
-  await expect(page.getByRole("link", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
   const calendarPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true }).click();
+  await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
   await expect(await calendarPromise).toHaveURL(CAL_BOOKING_URL);
   await expect(page).toHaveURL(/\/$/);
   expect(requests).toBe(2);
@@ -108,9 +108,9 @@ test("requires each answer, keeps selections when going back, and retries failed
 test("older saved access asks for contact details before booking", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("webinar_access_granted_v3", "1"));
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reservar llamada" })).toHaveCount(0);
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Reservar llamada y recibir WhatsApps" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
 });
 
 test("keeps the saved calendar link when the browser blocks automatic tab opening", async ({ page }) => {
@@ -164,11 +164,11 @@ test("changes the final label and saves declining without opening Cal.com, inclu
   await page.goto("/"); await fillMasterclass(page);
   await page.getByRole("button", { name: "Continuar" }).click();
   await fillQualification(page, ADMISSION_DECISIONS[1], false);
-  await expect(page.getByRole("button", { name: "Guardar y recibir WhatsApps", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardar respuestas", exact: true })).toBeVisible();
   await page.getByRole("radio", { name: ADMISSION_DECISIONS[0], exact: true }).check();
-  await expect(page.getByRole("button", { name: "Reservar llamada y recibir WhatsApps", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reservar llamada", exact: true })).toBeVisible();
   await page.getByRole("radio", { name: ADMISSION_DECISIONS[1], exact: true }).check();
-  await page.getByRole("button", { name: "Guardar y recibir WhatsApps", exact: true }).click();
+  await page.getByRole("button", { name: "Guardar respuestas", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "No reservarás" })).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
   expect(requests).toBe(1);

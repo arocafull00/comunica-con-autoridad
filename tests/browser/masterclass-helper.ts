@@ -22,5 +22,5 @@ export async function fillQualification(page: Page, decision: typeof ADMISSION_D
   await page.getByRole("button", { name: "Continuar" }).click();
   if (decision === ADMISSION_DECISIONS[1]) await page.getByRole("radio", { name: decision, exact: true }).check();
   await expect(page.getByRole("radio", { name: decision, exact: true })).toBeChecked();
-  if (submit) await page.getByRole("button", { name: decision === ADMISSION_DECISIONS[0] ? "Reservar llamada y recibir WhatsApps" : "Guardar y recibir WhatsApps", exact: true }).click();
+  if (submit) await page.getByRole("button", { name: decision === ADMISSION_DECISIONS[0] ? "Reservar llamada" : "Guardar respuestas", exact: true }).click();
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ComponentProps, type FormEvent } from
 import dynamic from "next/dynamic";
 import type { IntlTelInputRef } from "intl-tel-input/react";
 import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS } from "@/lib/leads/masterclass";
-import { WHATSAPP_CONSENT_TEXT, type LeadFieldErrors, type LeadResponse } from "@/lib/leads/contracts";
+import type { LeadFieldErrors, LeadResponse } from "@/lib/leads/contracts";
 
 const PhoneInput = dynamic(() => import("intl-tel-input/reactWithUtils"), { ssr: false });
 const PHONE_OPTIONS: ComponentProps<typeof PhoneInput>["initOptions"] = {
@@ -108,7 +108,6 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
             {error("phone")}
             <div className="phone-hint" id="phone-hint">Selecciona tu país y escribe tu móvil.</div>
           </div>
-          <p className="whatsapp-notice">{WHATSAPP_CONSENT_TEXT}</p>
         </div>
         <div className={`form-step${step === 1 ? " active" : ""}`}>
           <h3>¿A qué te dedicas?</h3>
@@ -143,10 +142,9 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
         <div className="form-actions">
           {step > 0 ? <button className="back-btn" type="button" onClick={() => goTo(step - 1)}>← Atrás</button> : null}
           <button className="next-btn" type="submit">{pending ? "GUARDANDO..." : step === TOTAL_STEPS - 1 && answers.admissionDecision
-            ? answers.admissionDecision === ADMISSION_DECISIONS[0] ? "Reservar llamada y recibir WhatsApps" : "Guardar y recibir WhatsApps"
+            ? answers.admissionDecision === ADMISSION_DECISIONS[0] ? "Reservar llamada" : "Guardar respuestas"
             : "Continuar →"}</button>
         </div>
-        {step === TOTAL_STEPS - 1 ? <p className="whatsapp-notice">{WHATSAPP_CONSENT_TEXT}</p> : null}
       </fieldset>
       <p className="form-message" role="alert">{message}</p>
     </form>

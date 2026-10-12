@@ -52,8 +52,10 @@ describe("fixed WhatsApp triggers", () => {
   ] as const)("chooses one fixed sequence for a booking %s hours away", async (hours, expected) => {
     const { uid, event } = await book(hours);
     await db.query("select public.record_cal_booking($1)", [JSON.stringify(event)]);
-    const jobs = (await db.query("select step,status,last_error from public.followup_jobs where booking_uid=$1", [uid])).rows;
+    const jobs = (await db.query("select j.step,j.status,j.last_error,extract(epoch from j.scheduled_at-b.start_time)::int as offset from public.followup_jobs j join public.call_bookings b on b.uid=j.booking_uid where j.booking_uid=$1", [uid])).rows;
     expect(jobs).toHaveLength(5);
+    expect(Object.fromEntries(jobs.filter((j) => ["booking_24h", "booking_2h", "booking_15m"].includes(j.step)).map((j) => [j.step, j.offset])))
+      .toEqual({ booking_24h: -86400, booking_2h: -7200, booking_15m: -900 });
     expect(jobs.filter((j) => j.status === "pending").map((j) => j.step).sort()).toEqual([...expected].sort());
     if (hours < 2) expect(jobs.filter((j) => j.step !== "booking_15m")).toEqual(expect.arrayContaining([
       expect.objectContaining({ status: "suppressed", last_error: "not_needed_short_notice" }),
