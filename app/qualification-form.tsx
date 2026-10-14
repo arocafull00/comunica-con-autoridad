@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, SITUATIONS } from "@/lib/leads/masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, CAL_BOOKING_URL,COMMITMENTS, INVESTMENTS, SITUATIONS } from "@/lib/leads/masterclass";
 import type { LeadFieldErrors, LeadResponse } from "@/lib/leads/contracts";
 
 type ChoiceField = "situation" | "goal" | "commitment" | "investment";
@@ -35,9 +35,8 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
     if (!answers[field].trim()) { setErrors({ [field]: "Completa esta pregunta para continuar." }); return; }
     if (step < TOTAL_STEPS - 1) { goTo(step + 1); return; }
     inFlight.current = true; setPending(true); setMessage(""); setErrors({});
-    // Reserve the tab during the click so browsers allow it after the async save.
     const calendar = answers.admissionDecision === ADMISSION_DECISIONS[0] ? window.open("about:blank", "_blank") : null;
-    if (calendar) calendar.opener = null;
+    if (calendar) { calendar.opener = null; calendar.location.replace(CAL_BOOKING_URL); }
     let calendarOpened = false;
     try {
       const response = await fetch("/api/leads/qualification", {
@@ -48,7 +47,7 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
       if (response.ok && result.ok && (result.bookingUrl || answers.admissionDecision === ADMISSION_DECISIONS[1])) {
         const url = answers.admissionDecision === ADMISSION_DECISIONS[0] ? result.bookingUrl : undefined;
         if (url && calendar && !calendar.closed) {
-          calendar.location.replace(url);
+          if (url !== CAL_BOOKING_URL) calendar.location.replace(url);
           calendar.focus();
           calendarOpened = true;
         }
