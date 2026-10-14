@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { handleBookingForm } from "../../lib/leads/booking-handler";
-import { accessSchema, qualificationSchema } from "../../lib/leads/booking-validation";
+import { accessSchema, candidateQualificationSchema, contactSchema, qualificationSchema } from "../../lib/leads/booking-validation";
 import { signAccessToken, verifyAccessToken } from "../../lib/leads/access-token";
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL } from "../../lib/leads/masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL, SITUATIONS } from "../../lib/leads/masterclass";
 
 const env = { LEAD_IP_HMAC_SECRET: "local-tests-masterclass-secret-over-32-characters" };
 const contact = { email: "test@example.com", communicationsConsent: false };
@@ -34,7 +34,7 @@ describe("two-phase masterclass", () => {
     expect(response.status).toBe(201);
     const result = await response.json();
     expect(verifyAccessToken(result.accessToken, env.LEAD_IP_HMAC_SECRET)).toBe(id);
-    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ p_email: contact.email, p_communications_consent: false }));
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ p_email: contact.email, p_communications_consent: false }), "email");
     expect(syncSheets).not.toHaveBeenCalled();
     expect(registerWebinar.mock.invocationCallOrder[0]).toBeGreaterThan(persist.mock.invocationCallOrder[0]);
     expect(JSON.stringify(result)).not.toContain(contact.email);
@@ -66,7 +66,7 @@ describe("two-phase masterclass", () => {
     const response = await handleBookingForm(request(answers, { Authorization: `Bearer ${token}` }), "qualification", { persist, syncSheets, registerWebinar, env });
     expect(await response.json()).toMatchObject({ ok: true, bookingUrl: CAL_BOOKING_URL });
     expect(persist).toHaveBeenCalledWith({ p_submission_id: id, p_name: answers.name, p_phone: answers.phone, p_whatsapp_consent_version: "2026-10-12-v1", p_profession: answers.profession, p_goal: answers.goal, p_commitment: answers.commitment, p_investment: answers.investment,
-      p_application_reasons: answers.applicationReasons, p_admission_decision: answers.admissionDecision });
+      p_application_reasons: answers.applicationReasons, p_admission_decision: answers.admissionDecision }, "qualification");
     expect(registerWebinar).not.toHaveBeenCalled();
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     syncSheets.mockRejectedValueOnce(new Error());
@@ -84,7 +84,7 @@ describe("two-phase masterclass", () => {
     const result = await response.json();
     expect(result).toMatchObject({ ok: true });
     expect(result).not.toHaveProperty("bookingUrl");
-    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ p_application_reasons: answers.applicationReasons, p_admission_decision: ADMISSION_DECISIONS[1] }));
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ p_application_reasons: answers.applicationReasons, p_admission_decision: ADMISSION_DECISIONS[1] }), "qualification");
     expect(syncSheets).toHaveBeenCalledWith({ ...contact, ...declined }, id);
   });
   it("asks older four-question forms to reload without writing incomplete answers", async () => {
@@ -94,8 +94,8 @@ describe("two-phase masterclass", () => {
     const response = await handleBookingForm(request(legacy, { Authorization: `Bearer ${token}` }), "qualification", { persist, syncSheets, env });
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ ok: false,
-      message: "El formulario se ha actualizado. Recarga la página y completa tu nombre, WhatsApp y las seis preguntas para reservar tu llamada.",
-      fieldErrors: { name: expect.any(String), phone: expect.any(String), applicationReasons: "Escribe tus tres razones", admissionDecision: "Indica si estás de acuerdo" } });
+      message: "El formulario se ha actualizado. Recarga la página y completa tus datos y las preguntas para reservar tu llamada.",
+      fieldErrors: { name: expect.any(String), phone: expect.any(String), applicationReasons: "Explica por qué deberíamos elegir tu candidatura", admissionDecision: "Indica si estás de acuerdo" } });
     expect(persist).not.toHaveBeenCalled();
     expect(syncSheets).not.toHaveBeenCalled();
   });
@@ -109,5 +109,56 @@ describe("two-phase masterclass", () => {
     }
     expect(persist).not.toHaveBeenCalled();
     expect(syncSheets).not.toHaveBeenCalled();
+  });
+});
+
+describe("contact before the questions", () => {
+  const person = { name: "Adrián", email: "test@example.com", phone: "+34612345678", communicationsConsent: false, whatsappConsent: false };
+  const candidate = { profession: "Dirección", situation: SITUATIONS[2], goal: BOOKING_GOALS[0], commitment: COMMITMENTS[0], investment: INVESTMENTS[1],
+    applicationReasons: "Lidero un equipo y necesito comunicar con más autoridad.", admissionDecision: ADMISSION_DECISIONS[0] };
+  it("needs name, email and mobile; both consents are optional and independent", () => {
+    expect(contactSchema.parse({ name: person.name, email: person.email, phone: person.phone })).toMatchObject({ communicationsConsent: false, whatsappConsent: false });
+    for (const [email, whatsapp] of [[true, false], [false, true], [true, true]]) {
+      expect(contactSchema.parse({ ...person, communicationsConsent: email, whatsappConsent: whatsapp })).toMatchObject({ communicationsConsent: email, whatsappConsent: whatsapp });
+    }
+    expect(contactSchema.safeParse({ ...person, phone: "+34911234567" }).success).toBe(false);
+    expect(contactSchema.safeParse({ ...person, name: "A" }).success).toBe(false);
+    expect(contactSchema.safeParse({ ...person, email: "nope" }).success).toBe(false);
+  });
+  it("saves the contact with the checkbox consent versions and grants a reference without registering twice", async () => {
+    const persist = vi.fn().mockResolvedValue({ outcome: "created", lead: person });
+    const syncSheets = vi.fn(); const registerWebinar = vi.fn(); const id = randomUUID();
+    const response = await handleBookingForm(request({ ...person, whatsappConsent: true }, { "Idempotency-Key": id }), "access", { persist, syncSheets, registerWebinar, env });
+    expect(response.status).toBe(201);
+    expect(verifyAccessToken((await response.json()).accessToken, env.LEAD_IP_HMAC_SECRET)).toBe(id);
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ p_idempotency_key: id, p_name: person.name, p_phone: person.phone, p_email: person.email,
+      p_communications_consent: false, p_whatsapp_consent: true, p_email_consent_version: "2026-10-12-v1", p_whatsapp_consent_version: "2026-10-14-v1" }), "contact");
+    expect(registerWebinar).not.toHaveBeenCalled();
+    expect(syncSheets).not.toHaveBeenCalled();
+  });
+  it("rejects a contact with a landline before persistence", async () => {
+    const persist = vi.fn();
+    const response = await handleBookingForm(request({ ...person, phone: "+34911234567" }, { "Idempotency-Key": randomUUID() }), "access", { persist, syncSheets: vi.fn(), env });
+    expect(response.status).toBe(400);
+    expect((await response.json()).fieldErrors).toHaveProperty("phone");
+    expect(persist).not.toHaveBeenCalled();
+  });
+  it("saves the seven answers with the current situation and opens Cal.com after Sheets", async () => {
+    expect(candidateQualificationSchema.safeParse({ ...candidate, situation: "Otra" }).success).toBe(false);
+    expect(candidateQualificationSchema.safeParse({ ...candidate, name: "Adrián" }).success).toBe(false);
+    const id = randomUUID(); const token = signAccessToken(id, env.LEAD_IP_HMAC_SECRET);
+    const persist = vi.fn().mockResolvedValue({ outcome: "created", lead: { ...person, ...candidate } });
+    const syncSheets = vi.fn();
+    const response = await handleBookingForm(request(candidate, { Authorization: `Bearer ${token}` }), "qualification", { persist, syncSheets, env });
+    expect(await response.json()).toMatchObject({ ok: true, bookingUrl: CAL_BOOKING_URL });
+    expect(persist).toHaveBeenCalledWith({ p_submission_id: id, p_profession: candidate.profession, p_situation: candidate.situation, p_goal: candidate.goal,
+      p_commitment: candidate.commitment, p_investment: candidate.investment, p_application_reasons: candidate.applicationReasons,
+      p_admission_decision: candidate.admissionDecision }, "candidate");
+    expect(syncSheets).toHaveBeenCalledWith(expect.objectContaining({ situation: candidate.situation }), id);
+  });
+  it("names the candidature question in its validation error", async () => {
+    const token = signAccessToken(randomUUID(), env.LEAD_IP_HMAC_SECRET);
+    const response = await handleBookingForm(request({ ...candidate, applicationReasons: " " }, { Authorization: `Bearer ${token}` }), "qualification", { persist: vi.fn(), syncSheets: vi.fn(), env });
+    expect((await response.json()).fieldErrors).toEqual({ applicationReasons: "Explica por qué deberíamos elegir tu candidatura" });
   });
 });

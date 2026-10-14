@@ -1,6 +1,6 @@
 # Panel del cliente
 
-El panel está integrado en la misma aplicación, en `/admin`. Incluye Resumen, Contactos, WhatsApp y Mi cuenta. No hay registro público ni una contraseña compartida entre administradores.
+El panel está integrado en la misma aplicación, en `/admin`. Incluye Resumen, Contactos, Llamadas, WhatsApp y Mi cuenta. No hay registro público ni una contraseña compartida entre administradores.
 
 ## Preparar el entorno
 
@@ -63,25 +63,19 @@ Si la conexión falta, falla, el formato no es compatible o el período no está
 
 El panel muestra ocho plantillas fijas en tarjetas: cuatro por fila en escritorio, dos en tablet y una en móvil, agrupadas en «Si reservan la llamada» y «Si no reservan la llamada». Cada tarjeta muestra el trigger, el contenido actual de Meta, su imagen o botón cuando corresponda, las variables y el estado de aprobación. No hay formularios ni controles para seleccionar, editar, sincronizar o activar envíos. «Consultar en Meta» abre el WhatsApp Manager de Nacho Roa.
 
-Los nombres e idiomas de las plantillas están fijados en el código y la nueva migración. El worker actualiza el catálogo automáticamente antes de procesar la cola; la única condición de aprobación es el estado `APPROVED` de Meta, sin comparaciones de texto ni restricciones de idioma o número de componentes. El nombre del contacto y el enlace de Meet se rellenan para sus respectivos triggers. La correspondencia completa y los secretos del servicio están en [seguimiento.md](seguimiento.md#whatsapp).
+Los nombres e idiomas de las plantillas están fijados en el código. El worker actualiza el catálogo antes de procesar la cola y comprueba el estado `APPROVED` de Meta. La correspondencia, los horarios y las condiciones están en [triggers.md](triggers.md); los secretos y el despliegue, en [activación](activacion.md).
 
 Las métricas y los últimos mensajes siguen disponibles para consulta. Los descartados por antelación insuficiente se muestran como «No ha hecho falta». El estado general refleja `whatsapp_settings.enabled`; el envío efectivo también requiere las credenciales, el cron y los flags del worker. No se modifica este estado desde el panel.
 
-El webhook detecta «CONFIRMO» para registrar asistencia en el panel ante una única reserva futura asociada al teléfono; «BAJA» y «STOP» retiran el consentimiento de WhatsApp. La recepción real desde Meta en producción sigue pendiente de verificar. El administrador revisa respuestas ambiguas y cancela manualmente en Cal.com. Reservar a menos de dos horas solo programa el aviso de 15 minutos, si su momento no ha pasado.
+«Aceptados por Meta» acredita aceptación de la petición, no entrega ni lectura. `delivery_unknown` requiere revisión manual y no tiene un botón de reenvío automático.
 
-Para desplegar, aplicar las migraciones pendientes hasta `20261009190000_fixed_meta_whatsapp_templates.sql`, desplegar `process-followup-queue` y publicar el frontend. El catálogo conserva sus permisos de servidor y las consultas del dashboard requieren una cuenta de administrador activa. La migración no activa envíos ni reprograma trabajos. No modificar migraciones históricas.
+## Llamadas
 
-La selección de bienvenida del flujo antiguo se conserva para clientes antiguos de la API, pero ya no se puede editar desde esta pantalla. Las inscripciones al webinar usan los mensajes fijos de `followup_steps` y no generan una bienvenida adicional.
-
-La configuración se comprueba de forma atómica al reclamar cada trabajo. Se registra quién cambió la selección/pausa y cuándo. Una revisión evita que dos administradores sobrescriban cambios: ante conflicto, hay que recargar. El nombre, idioma y versión Graph de un mensaje se mantienen en sus reintentos. Si su plantilla fue retirada del catálogo, queda pendiente hasta revisión, sin sustituirla silenciosamente.
-
-La pausa impide nuevas reclamaciones de mensajes pendientes, pero un envío ya iniciado puede terminar. El mantenimiento sigue archivando trabajos finalizados y marcando los procesamientos interrumpidos como `delivery_unknown`. Reactivar permite procesar el backlog con consentimiento: revisar esos pendientes antes.
-
-La activación del panel no configura las credenciales, despliega el worker ni habilita Cron. También hacen falta `WHATSAPP_SEND_ENABLED=true`, los Secrets completos del worker y la activación de Cron siguiendo [la guía](activacion.md). Mantener Secrets y Cron apagados durante las pruebas de configuración. “Aceptados por Meta” no acredita entrega ni lectura. `delivery_unknown` requiere revisión manual y no tiene un botón de reenvío automático.
+`/admin/calls` muestra las próximas reservas y su estado: «Pendiente de OK», «OK recibido» (ha recibido la información) o «Asistencia confirmada» (CONFIRMAR o CONFIRMO). En las reservas del flujo con audios, la columna «Mensajes y audios» muestra el resultado del mensaje OK, los dos audios y la petición de confirmación, incluido el motivo cuando se omiten (sin OK, ventana de 24 horas cerrada, ya confirmada). No se envían avisos fuera del panel ni se cancela nada automáticamente. El administrador revisa las pendientes o respuestas ambiguas y abre Cal.com para gestionar o cancelar la reserva. El comportamiento de `CONFIRMO`, cancelaciones y reprogramaciones se mantiene en [triggers.md](triggers.md#triggers-que-cambian-o-detienen-envíos).
 
 ## Validación local y prueba posterior
 
-La navegación precarga las cinco pantallas y conserva su contenido durante 60 segundos en la memoria del navegador mediante `use cache: private`. No se comparte entre sesiones ni se persiste al recargar. Cada petición al servidor comprueba el usuario y su acceso activo; las acciones de guardar siempre vuelven a autorizar el cambio. «Actualizar datos» fuerza una consulta reciente y limpia la caché de navegación. Guardar WhatsApp y cerrar sesión también invalidan el contenido anterior. Los contactos nuevos y los cambios externos de reservas o mensajes pueden tardar hasta un minuto en aparecer al navegar; usar «Actualizar datos» para verlos inmediatamente.
+La navegación precarga las cinco pantallas y conserva su contenido durante 60 segundos en la memoria del navegador mediante `use cache: private`. No se comparte entre sesiones ni se persiste al recargar. Cada petición al servidor comprueba el usuario y su acceso activo; las acciones de guardar siempre vuelven a autorizar el cambio. «Actualizar datos» fuerza una consulta reciente y limpia la caché de navegación; cerrar sesión también invalida el contenido anterior. Los contactos nuevos y los cambios externos de reservas o mensajes pueden tardar hasta un minuto en aparecer al navegar; usar «Actualizar datos» para verlos inmediatamente.
 
 Las pruebas de navegador local crean cuentas temporales con Supabase Auth, prueban login, permisos, revocación, invitación, recuperación, logout, contactos y cambios de configuración con conflicto. También revisan el ancho móvil. Las cuentas y la plantilla de prueba se eliminan y se restaura la configuración original. Las pruebas SQL cubren permisos, auditoría, límites, pausa y reintentos. Vercel y Meta se simulan en las pruebas de sus respuestas; no se conectan cuentas reales.
 

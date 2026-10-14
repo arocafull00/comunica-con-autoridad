@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Check, Pause } from "lucide-react";
 import { fixedWhatsappTemplates, whatsappAutomations, type WhatsappAutomation } from "@/lib/followups/whatsapp-automations";
-import { staticUrlButtons } from "@/lib/whatsapp-template-compatibility";
+import { quickReplyButtons, staticUrlButtons } from "@/lib/whatsapp-template-compatibility";
 import { Badge } from "@/components/ui/badge";
 import { WhatsappTemplateToolbar } from "./whatsapp-template-toolbar";
 
@@ -29,6 +29,8 @@ export function WhatsappOverview({ automations, settings }: { automations: Whats
           const imageUrl = header?.format === "IMAGE" ? header.example?.header_handle?.[0] : null;
           const footer = components.find((c) => c.type === "FOOTER")?.text;
           const variable = template?.parameter === "name" ? "[Nombre del registro]" : template?.parameter === "meetingUrl" ? "[Enlace de Meet]" : "{{1}}";
+          const variables: readonly string[] = "variables" in definition ? definition.variables : [variable];
+          const body = template?.body?.replace(/\{\{(\d+)\}\}/g, (match, index) => variables[Number(index) - 1] ?? match);
           return <article key={definition.key} className="admin-template-card" data-automation={definition.key} aria-labelledby={`template-${definition.key}`}>
             <div className="admin-template-card-status"><Badge variant="outline" data-status={template?.meta_status ?? "MISSING"}>{templateStatus(template?.meta_status ?? null)}</Badge></div>
             <h3 id={`template-${definition.key}`}>{definition.title}</h3>
@@ -36,12 +38,14 @@ export function WhatsappOverview({ automations, settings }: { automations: Whats
             <div className="admin-template-content">
               {imageUrl ? <Image className="admin-template-image" src={imageUrl} alt={`Imagen de ${definition.title}`} width={600} height={400} unoptimized /> : null}
               {header?.text ? <p className="admin-template-header">{header.text}</p> : null}
-              <p>{template?.body ? template.body.replaceAll("{{1}}", variable) : "El contenido aparecerá cuando se consulte el catálogo de Meta."}</p>
+              <p>{body || "El contenido aparecerá cuando se consulte el catálogo de Meta."}</p>
               {footer ? <p className="admin-template-meta">{footer}</p> : null}
               {staticUrlButtons(components).map((button, i) => <p className="admin-template-meta" key={i}>Botón: {button.text}<br />{button.url}</p>)}
+              {quickReplyButtons(components).map((button, i) => <p className="admin-template-meta" key={`reply-${i}`}>Botón de respuesta: {button.text}</p>)}
             </div>
             <div className="admin-template-card-footer">
-              {template?.parameter ? <p className="admin-template-meta">Variable: {template.parameter === "name" ? "nombre del registro" : "enlace real de Meet"}</p> : null}
+              {"variables" in definition ? <p className="admin-template-meta">Variables: {definition.variables.join(", ")}</p>
+                : template?.parameter ? <p className="admin-template-meta">Variable: {template.parameter === "name" ? "nombre del registro" : "enlace real de Meet"}</p> : null}
               <p className="admin-template-meta">Meta: {fixed.name} · {fixed.language}</p>
               {template?.ready ? <p className="admin-template-in-use"><Check size={16} aria-hidden="true" />Lista para su trigger</p> : null}
             </div>
@@ -49,7 +53,7 @@ export function WhatsappOverview({ automations, settings }: { automations: Whats
         })}
       </div>
     </section>)}
-    <p className="admin-context-note">Al recibir «CONFIRMO» por el webhook se registra la asistencia en el panel si hay una única llamada futura asociada al teléfono. «BAJA» o «STOP» retiran el consentimiento de WhatsApp. El administrador revisa las respuestas ambiguas y gestiona las cancelaciones en Cal.com.</p>
+    <p className="admin-context-note">El botón OK de la reserva vigente registra «OK recibido» y envía una vez el primer audio de Ignacio. El botón «CONFIRMAR», o «CONFIRMO» escrito cuando hay una única llamada futura asociada al teléfono, registra la asistencia. Los botones de una reserva cancelada o reprogramada no cambian nada. «BAJA» o «STOP» retiran el consentimiento de WhatsApp. El administrador revisa las respuestas ambiguas y gestiona las cancelaciones en Cal.com.</p>
     </details>
     <div className="admin-delivery-bar">
       <div>

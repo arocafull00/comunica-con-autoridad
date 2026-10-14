@@ -33,11 +33,15 @@ async function claim(id: string) { return (await db.query("select public.claim_f
 async function enableTemplates() {
   const template = (await db.query("insert into public.whatsapp_templates(name,language,body,approved) values($1,'es','Hola {{1}}',true) returning id",[`test_${randomUUID().replaceAll("-","")}`])).rows[0].id;
   await db.query("update public.whatsapp_settings set enabled=true,template_id=$1",[template]);
-  const steps=(await db.query("select key as step,replace(body,'{{'||coalesce(parameter,'')||'}}','{{1}}') as body from public.followup_steps where channel='whatsapp'")).rows;
-  await db.query("select public.sync_whatsapp_templates($1)",[JSON.stringify(steps.map(s=>({
-    ...fixedWhatsappTemplates[s.step as keyof typeof fixedWhatsappTemplates], body: s.body,
-    meta_status: "APPROVED", approved: true, components: [{ type: "BODY", text: s.body }],
-  })))]);
+  const steps=(await db.query("select key as step,body,parameter,parameters from public.followup_steps where channel='whatsapp'")).rows;
+  await db.query("select public.sync_whatsapp_templates($1)",[JSON.stringify(steps.filter(s=>s.step in fixedWhatsappTemplates).map(s=>{
+    const names: string[] = s.parameters ?? (s.parameter ? [s.parameter] : []);
+    const body = names.reduce((text, name, index) => text.replaceAll(`{{${name}}}`, `{{${index+1}}}`), s.body as string);
+    const button = s.step==="booking_ok_request" ? "OK" : s.step==="booking_confirm_request" ? "CONFIRMAR" : null;
+    // `approved` only marks welcome eligibility (one variable at most); claims use the Meta status.
+    return { ...fixedWhatsappTemplates[s.step as keyof typeof fixedWhatsappTemplates], body, meta_status: "APPROVED", approved: names.length<=1,
+      components: [{ type: "BODY", text: body }, ...(button ? [{ type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: button }] }] : [])] };
+  }))]);
 }
 async function reply(text: string, at = new Date(Date.now()+1000).toISOString(), id = randomUUID()) {
   await db.query("select public.record_whatsapp_replies($1)",[JSON.stringify([{id,phone:"+34612345678",receivedAt:at,confirms:text==="CONFIRMO",optsOut:text==="BAJA"}])]);

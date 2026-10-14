@@ -32,7 +32,7 @@ test("pageviews and conversions exclude queries, fragments and lead data", async
   await expect.poll(async () => (await events(page)).filter((event) => event.type === "pageview").length).toBeGreaterThan(0);
   await expect(page.locator('meta[name="referrer"]')).toHaveAttribute("content", "strict-origin");
   await fillMasterclass(page, "private@example.com"); await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.locator("#webinar-content")).toBeVisible();
+  await expect(page.getByLabel("Profesión / actividad")).toBeVisible();
   await expect.poll(async () => (await events(page)).filter((event) => event.name === "lead_submitted").length).toBe(1);
   const recorded = await events(page);
   expect(recorded.every((event) => event.url === "http://127.0.0.1:3100/")).toBe(true);
@@ -54,7 +54,7 @@ test("failed submissions and successful idempotent replays do not emit conversio
   await expect(page.getByRole("form").getByRole("alert")).toContainText("Vuelve a intentarlo");
   expect((await events(page)).filter((event) => event.name === "lead_submitted")).toHaveLength(0);
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.locator("#webinar-content")).toBeVisible();
+  await expect(page.getByLabel("Profesión / actividad")).toBeVisible();
   expect((await events(page)).filter((event) => event.name === "lead_submitted")).toHaveLength(0);
 });
 
@@ -65,5 +65,5 @@ test("a collector failure does not undo the saved lead confirmation", async ({ p
   await expect.poll(async () => (await events(page)).length).toBeGreaterThan(0);
   await page.evaluate(() => { window.va = () => { throw new Error("blocked analytics"); }; });
   await fillMasterclass(page, "private@example.com"); await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.locator("#webinar-content")).toBeVisible();
+  await expect(page.getByLabel("Profesión / actividad")).toBeVisible();
 });

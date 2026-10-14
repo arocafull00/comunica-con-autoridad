@@ -311,11 +311,13 @@
 .admin-contacts .admin-table th:nth-child(3) { width: 17%; }
 .admin-contacts .admin-table th:nth-child(4) { width: 22%; }
 .admin-contacts .admin-table th:last-child { width: 15%; }
-.admin-calls .admin-table th:first-child { width: 32%; }
-.admin-calls .admin-table th:nth-child(2) { width: 18%; }
-.admin-calls .admin-table th:nth-child(3) { width: 12%; }
-.admin-calls .admin-table th:nth-child(4) { width: 23%; }
-.admin-calls .admin-table th:last-child { width: 15%; }
+.admin-calls .admin-table th:first-child { width: 24%; }
+.admin-calls .admin-table th:nth-child(2) { width: 13%; }
+.admin-calls .admin-table th:nth-child(3) { width: 9%; }
+.admin-calls .admin-table th:nth-child(4) { width: 17%; }
+.admin-calls .admin-table th:nth-child(5) { width: 25%; }
+.admin-calls .admin-table th:last-child { width: 12%; }
+.admin-call-flow { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 13px; }
 .admin-calls .admin-table td { vertical-align: middle; }
 .admin-calls .admin-table td a { margin-top: 0; }
 .admin-contact-trigger { display: inline-block; max-width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--admin-accent); font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }

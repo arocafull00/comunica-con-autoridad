@@ -14,18 +14,29 @@ function workerJson(status: number, body: object) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+type TemplateParameter = "name" | "date" | "time" | "meetingUrl";
 export type FollowupMessage = {
   id: string; registrationId: string; channel: "email" | "whatsapp"; step: string;
   email: string; phone: string; name: string | null; time: string; meetingUrl: string | null;
   subject: string | null; body: string; parameter: "name" | "time" | "meetingUrl" | null;
   templateName: string | null; templateLanguage: string | null; testMode?: boolean;
   templateComponents?: MetaTemplateComponent[];
+  // Booking flow with audios: ordered body variables, start time for the date, and audio messages.
+  kind?: "template" | "audio"; parameters?: TemplateParameter[] | null; startTime?: string | null; timeZone?: string | null;
 };
+
+// Converted copies of public/primer-audio-reserva.m4a and public/segundo-audio-reserva.m4a (OGG/Opus).
+const audioFiles: Record<string, string> = {
+  booking_audio_1: "/whatsapp/primer-audio-reserva.ogg",
+  booking_audio_2: "/whatsapp/segundo-audio-reserva.ogg",
+};
+// Quick-reply buttons return this payload, binding the reply to the job and so to its booking revision.
+export const buttonPayload = (jobId: string) => `followup:${jobId}`;
 type Claim = { action: "claimed"; claimToken: string; message: FollowupMessage } | { action: "skip" | "paused" | "busy" | "unknown" | "missing_template" | "missing_meeting_url" };
 export type FollowupRpc = <T>(name: string, args: Record<string, unknown>) => Promise<T>;
 export type Config = {
   email: { key: string; from: string; siteUrl: string; unsubscribeSecret: string } | null;
-  whatsapp: { token: string; phoneNumberId: string; version: string; headerImageUrl?: string } | null;
+  whatsapp: { token: string; phoneNumberId: string; version: string; headerImageUrl?: string; audioUrls?: Record<string, string> } | null;
   whatsappTest?: { token: string; phoneNumberId: string; version: string; recipient: string };
 };
 type Result = { outcome: "sent"; providerId: string } | { outcome: "retry" | "failed" | "unknown"; error: string };
@@ -49,8 +60,29 @@ export function loadFollowupConfig(env: Record<string, string | undefined>): Con
     whatsapp: env.FOLLOWUP_WHATSAPP_TEST_ENABLED !== "true" && env.FOLLOWUP_WHATSAPP_SEND_ENABLED === "true" && env.WHATSAPP_ACCESS_TOKEN &&
       /^\d+$/.test(env.WHATSAPP_PHONE_NUMBER_ID || "") && /^v\d+\.\d+$/.test(env.WHATSAPP_GRAPH_API_VERSION || "")
       ? { token: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID!, version: env.WHATSAPP_GRAPH_API_VERSION!,
-        ...(siteUrl ? { headerImageUrl: new URL("/whatsapp/cabecera.png", siteUrl).href } : {}) } : null,
+        ...(siteUrl ? { headerImageUrl: new URL("/whatsapp/cabecera.png", siteUrl).href,
+          audioUrls: Object.fromEntries(Object.entries(audioFiles).map(([step, path]) => [step, new URL(path, siteUrl).href])) } : {}) } : null,
   };
+}
+
+function templateValue(message: FollowupMessage, parameter: TemplateParameter) {
+  if (parameter === "name") return message.name || "comunicador/a";
+  if (parameter === "time") return message.time;
+  // A missing Meet link must not stop the booking flow; booking_2h still waits for the real link.
+  if (parameter === "meetingUrl") return message.meetingUrl || "te lo enviaremos antes de la sesión";
+  if (!message.startTime || !message.timeZone) return "";
+  return new Intl.DateTimeFormat("es-ES", { timeZone: message.timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date(message.startTime));
+}
+
+function whatsappResult(response: Response, data: { messages?: { id?: unknown }[]; error?: { code?: unknown; is_transient?: unknown } } | null): Result {
+  if (response.ok) {
+    const id = data?.messages?.[0]?.id;
+    return typeof id === "string" && id ? { outcome: "sent", providerId: id } : { outcome: "unknown", error: "delivery_unknown" };
+  }
+  const code = data?.error?.code;
+  if (typeof code !== "number") return { outcome: "unknown", error: "delivery_unknown" };
+  const retry = data?.error?.is_transient === true || response.status === 429 || response.status >= 500 || [4,17,32,613,130429,131056,131048,131000].includes(code);
+  return { outcome: retry ? "retry" : "failed", error: `meta_${code}_http_${response.status}` };
 }
 
 function escapeHtml(value: string) {
@@ -78,7 +110,18 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
             ...(message.step === "email_2" ? { LEAD_NAME: escapeHtml(message.name || "comunicador/a") } : {}) } } }), signal: AbortSignal.timeout(10_000),
       });
     } else {
-      if (!config.whatsapp || !message.templateName || !message.templateLanguage) return { outcome: "failed", error: "whatsapp_configuration_missing" };
+      if (!config.whatsapp) return { outcome: "failed", error: "whatsapp_configuration_missing" };
+      const endpoint = `https://graph.facebook.com/${config.whatsapp.version}/${config.whatsapp.phoneNumberId}/messages`;
+      const headers = { Authorization: `Bearer ${config.whatsapp.token}`, "Content-Type": "application/json" };
+      if (message.kind === "audio") {
+        // Free-form audio is only valid inside the 24-hour window, which the claim has checked.
+        const link = config.whatsapp.audioUrls?.[message.step];
+        if (!link) return { outcome: "failed", error: "audio_missing" };
+        response = await fetcher(endpoint, { method: "POST", headers, signal: AbortSignal.timeout(10_000),
+          body: JSON.stringify({ messaging_product: "whatsapp", to: message.phone.replace(/^\+/, ""), type: "audio", audio: { link } }) });
+        return whatsappResult(response, await response.json().catch(() => null));
+      }
+      if (!message.templateName || !message.templateLanguage) return { outcome: "failed", error: "whatsapp_configuration_missing" };
       const parameter = message.parameter === "name" ? (message.name || "comunicador/a") : message.parameter ? message[message.parameter] : null;
       const components: object[] = [];
       const header = message.templateComponents?.find((c) => c.type === "HEADER");
@@ -90,13 +133,21 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
       }
       // Text, footer and fixed buttons are served by Meta. Only supply its required variables.
       const body = message.templateComponents?.find((c) => c.type === "BODY")?.text;
-      const needsParameter = body === undefined ? !!message.parameter : body.includes("{{1}}");
-      if (needsParameter) {
+      if (message.parameters?.length) {
+        const values = message.parameters.map((name) => templateValue(message, name));
+        if (values.some((value) => !value)) return { outcome: "failed", error: "template_parameter_missing" };
+        if (body !== undefined && values.some((_, index) => !body.includes(`{{${index + 1}}}`))) return { outcome: "failed", error: "template_parameter_mismatch" };
+        components.push({ type: "body", parameters: values.map((text) => ({ type: "text", text })) });
+      } else if (body === undefined ? !!message.parameter : body.includes("{{1}}")) {
         if (!parameter) return { outcome: "failed", error: "template_parameter_missing" };
         components.push({ type: "body", parameters: [{ type: "text", text: parameter }] });
       }
-      response = await fetcher(`https://graph.facebook.com/${config.whatsapp.version}/${config.whatsapp.phoneNumberId}/messages`, {
-        method: "POST", headers: { Authorization: `Bearer ${config.whatsapp.token}`, "Content-Type": "application/json" },
+      message.templateComponents?.find((c) => c.type === "BUTTONS")?.buttons?.forEach((button, index) => {
+        if (button?.type === "QUICK_REPLY") components.push({ type: "button", sub_type: "quick_reply", index: String(index),
+          parameters: [{ type: "payload", payload: buttonPayload(message.id) }] });
+      });
+      response = await fetcher(endpoint, {
+        method: "POST", headers,
         body: JSON.stringify({ messaging_product: "whatsapp", to: message.phone.replace(/^\+/, ""), type: "template",
           template: { name: message.templateName, language: { code: message.templateLanguage },
             ...(components.length ? { components } : {}) } }),
@@ -108,12 +159,7 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
       const id = message.channel === "email" ? data?.id : data?.messages?.[0]?.id;
       return typeof id === "string" && id ? { outcome: "sent", providerId: id } : { outcome: "unknown", error: "delivery_unknown" };
     }
-    if (message.channel === "whatsapp") {
-      const code = data?.error?.code;
-      if (typeof code !== "number") return { outcome: "unknown", error: "delivery_unknown" };
-      const retry = data.error.is_transient === true || response.status === 429 || response.status >= 500 || [4,17,32,613,130429,131056,131048,131000].includes(code);
-      return { outcome: retry ? "retry" : "failed", error: `meta_${code}_http_${response.status}` };
-    }
+    if (message.channel === "whatsapp") return whatsappResult(response, data);
     // Only a structured rejection is safe to retry. Timeouts remain for manual review.
     if (typeof data?.name !== "string") return { outcome: "unknown", error: "delivery_unknown" };
     return { outcome: response.status === 429 || response.status >= 500 ? "retry" : "failed", error: `resend_http_${response.status}` };

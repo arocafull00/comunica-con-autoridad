@@ -16,7 +16,10 @@ const payloadSchema = z.object({ object: z.literal("whatsapp_business_account"),
 // Parsed per item so an unexpected status shape never rejects the replies in the same payload.
 const failedStatusSchema = z.object({ id: z.string().max(300), status: z.literal("failed"),
   errors: z.array(z.object({ code: z.number(), title: z.string().max(300).optional() })).max(10).optional() });
-export type WhatsappReply = { id: string; phone: string; receivedAt: string; confirms: boolean; optsOut: boolean };
+export type WhatsappReply = { id: string; phone: string; receivedAt: string; confirms: boolean; optsOut: boolean;
+  oks: boolean; buttonJobId: string | null };
+// Quick replies of the booking templates carry the job id (see buttonPayload in the follow-up worker).
+const BUTTON_PAYLOAD = /^followup:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
 function normalizeKeyword(value: string | undefined) {
   // Match a complete command, so phrases such as "no confirmo" cannot confirm attendance.
@@ -42,13 +45,17 @@ export async function handleWhatsappWebhook(request: Request, deps: {
       for (const message of change.value.messages ?? []) {
         const time = Number(message.timestamp) * 1000;
         if (!Number.isFinite(time) || time <= 0 || time > Date.now() + 300_000) return webhookJson(400, { ok: false });
+        const payload = message.type === "button" ? message.button?.payload
+          : message.type === "interactive" ? message.interactive?.button_reply?.id : undefined;
         const keywords = (message.type === "text" ? [message.text?.body]
-          : message.type === "button" ? [message.button?.text, message.button?.payload]
-          : message.type === "interactive" ? [message.interactive?.button_reply?.title, message.interactive?.button_reply?.id]
+          : message.type === "button" ? [message.button?.text, payload]
+          : message.type === "interactive" ? [message.interactive?.button_reply?.title, payload]
           : []).map(normalizeKeyword);
         const optsOut = keywords.some(keyword => keyword === "BAJA" || keyword === "STOP");
-        const confirms = !optsOut && keywords.includes("CONFIRMO");
-        messages.push({ id: message.id, phone: `+${message.from}`, receivedAt: new Date(time).toISOString(), confirms, optsOut });
+        const confirms = !optsOut && keywords.some(keyword => keyword === "CONFIRMO" || keyword === "CONFIRMAR");
+        const oks = !optsOut && keywords.includes("OK");
+        messages.push({ id: message.id, phone: `+${message.from}`, receivedAt: new Date(time).toISOString(), confirms, optsOut, oks,
+          buttonJobId: payload?.match(BUTTON_PAYLOAD)?.[1] ?? null });
       }
     }
     if (messages.length) await deps.save(messages);

@@ -38,3 +38,8 @@ export function staticUrlButtons(components: MetaTemplateComponent[]) {
   return components.flatMap((c) => c?.type === "BUTTONS" && Array.isArray(c.buttons)
     ? c.buttons.filter(isStaticUrlButton) : []);
 }
+
+export function quickReplyButtons(components: MetaTemplateComponent[]) {
+  return components.flatMap((c) => c?.type === "BUTTONS" && Array.isArray(c.buttons)
+    ? c.buttons.filter((button) => button?.type === "QUICK_REPLY" && typeof button.text === "string") : []);
+}

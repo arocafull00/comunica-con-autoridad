@@ -6,8 +6,9 @@ export async function POST(request: Request) {
   return handleBookingForm(request, "qualification", {
     env: { LEAD_IP_HMAC_SECRET: process.env.LEAD_IP_HMAC_SECRET },
     syncSheets: saveLeadToGoogleSheets,
-    persist: async args => {
-      const { data, error } = await getSupabaseAdmin().rpc("complete_masterclass_qualification_with_contact", args);
+    persist: async (args, variant) => {
+      const rpc = variant === "candidate" ? "complete_masterclass_candidate_qualification" : "complete_masterclass_qualification_with_contact";
+      const { data, error } = await getSupabaseAdmin().rpc(rpc, args);
       if (error || !data) throw new Error("Qualification persistence failed");
       return data;
     },

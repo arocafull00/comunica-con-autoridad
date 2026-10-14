@@ -81,6 +81,31 @@ describe("WhatsApp replies", () => {
     expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
     expect(save).toHaveBeenCalledWith([expect.objectContaining({ id: "wamid.reply", phone: "+34612345678", confirms: true, optsOut: false })]);
   });
+  it.each([
+    [{ type: "button", button: { text: "OK", payload: "followup:5d2e1f0a-3b4c-4d5e-8f60-718293a4b5c6" } }, { oks: true, confirms: false }],
+    [{ type: "button", button: { text: "CONFIRMAR", payload: "followup:5d2e1f0a-3b4c-4d5e-8f60-718293a4b5c6" } }, { oks: false, confirms: true }],
+    [{ type: "interactive", interactive: { button_reply: { title: "OK", id: "followup:5d2e1f0a-3b4c-4d5e-8f60-718293a4b5c6" } } }, { oks: true, confirms: false }],
+  ])("binds booking buttons to their job %#", async (reply, expected) => {
+    const value = structuredClone(inbound);
+    value.entry[0].changes[0].value.messages = [{ id: "wamid.reply", from: "34612345678", timestamp, ...reply } as never];
+    const save = vi.fn();
+    expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ ...expected, optsOut: false, buttonJobId: "5d2e1f0a-3b4c-4d5e-8f60-718293a4b5c6" })]);
+  });
+  it.each([["ok", true, false], ["¡Ok!", true, false], ["confirmar", false, true], ["okey", false, false], ["ok gracias", false, false]])("reads typed %s without a job", async (body, oks, confirms) => {
+    const value = structuredClone(inbound);
+    value.entry[0].changes[0].value.messages[0].text.body = body;
+    const save = vi.fn();
+    await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save });
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ oks, confirms, buttonJobId: null })]);
+  });
+  it("ignores payloads that are not a follow-up job reference", async () => {
+    const value = structuredClone(inbound);
+    value.entry[0].changes[0].value.messages = [{ id: "wamid.reply", from: "34612345678", timestamp, type: "button", button: { text: "OK", payload: "followup:not-a-uuid" } } as never];
+    const save = vi.fn();
+    await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save });
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ oks: true, buttonJobId: null })]);
+  });
   it.each(["BAJA", "  baja  ", "¡Baja!", "STOP", " stop. "])("opts out with %s without persisting message content", async body => {
     const value = structuredClone(inbound);
     value.entry[0].changes[0].value.messages[0].text.body = body;

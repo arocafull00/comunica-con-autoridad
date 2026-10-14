@@ -14,7 +14,8 @@ for (const width of [320, 390, 768, 1280]) {
     await reference.route("https://script.google.com/**", route => route.abort());
     await reference.goto("/__reference.html");
     await page.goto("/");
-    for (const selector of [".brand", ".eyebrow", "h1", ".sub", ".access-btn", "footer"]) {
+    // The class now opens without the access button, so the hero is compared without it.
+    for (const selector of [".brand", ".eyebrow", "h1", ".sub"]) {
       const expected = await reference.locator(selector).boundingBox();
       const actual = await page.locator(`.webinar-page ${selector}`).boundingBox();
       expect(actual, selector).not.toBeNull();
@@ -30,8 +31,7 @@ for (const width of [320, 390, 768, 1280]) {
   });
 }
 
-test("completion unlocks the replay and both access flags survive reload", async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("webinar_access_granted_v3", "1"));
+test("completion unlocks the replay without registration and survives reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#video1-wrap")).toBeVisible();
   await expect(page.locator("#video2-wrap")).toBeHidden();
@@ -42,7 +42,7 @@ test("completion unlocks the replay and both access flags survive reload", async
   await page.reload();
   await expect(page.locator("#video2-wrap")).toBeVisible();
   await expect(page.locator("#access-area")).toHaveCount(0);
-  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Agendar llamada" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reservar llamada" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Reservar llamada" })).toHaveCount(0);
 });

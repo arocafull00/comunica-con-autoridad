@@ -31,9 +31,19 @@ const help = {
   confirmation: {
     label: "Confirmación",
     descriptions: [
-      "CONFIRMO recibido: la persona ha respondido CONFIRMO por WhatsApp y el sistema ha podido asociar su respuesta a esta llamada.",
-      "Pendiente de confirmación por WhatsApp: todavía no hay una confirmación de asistencia asociada. Una reserva nueva aparece así desde el principio, aunque falten semanas para la llamada.",
-      "Los recordatorios de WhatsApp piden confirmar la asistencia. Si la respuesta no se puede asociar a una única llamada, queda pendiente de revisión. La falta de confirmación no cancela la reserva automáticamente.",
+      "Asistencia confirmada: la persona ha pulsado CONFIRMAR, o ha escrito CONFIRMO o CONFIRMAR, y el sistema ha podido asociar la respuesta a esta reserva.",
+      "OK recibido: ha pulsado OK en el mensaje de la reserva. Indica que ha recibido la información, no que confirme su asistencia.",
+      "Pendiente de OK: reserva del flujo con audios que todavía no ha pulsado OK. Pendiente de confirmación por WhatsApp: reserva sin ese flujo y sin confirmación asociada.",
+      "Si la respuesta no se puede asociar a una única llamada, queda pendiente de revisión. La falta de confirmación no cancela la reserva automáticamente ni avisa a nadie fuera del panel.",
+    ],
+  },
+  audios: {
+    label: "Mensajes y audios",
+    descriptions: [
+      "Solo para reservas con 24 horas o más hechas con el flujo con audios activo. Las demás conservan los mensajes anteriores.",
+      "Mensaje OK: plantilla con fecha, hora y Meet. Audio 1: se envía una vez al recibir OK. Petición de confirmación: 2 horas después de que Meta acepte el audio 1, salvo que ya haya confirmado o haya empezado la llamada. Audio 2: un minuto después del recordatorio de 2 horas, solo con OK recibido.",
+      "WhatsApp solo permite audios dentro de las 24 horas siguientes al último mensaje del contacto. Si ese plazo ha terminado, el audio aparece omitido y el recordatorio con Meet se envía igualmente.",
+      "Aceptado por Meta confirma la aceptación del envío, no su entrega ni su escucha.",
     ],
   },
 };

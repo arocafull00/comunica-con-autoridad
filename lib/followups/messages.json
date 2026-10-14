@@ -38,5 +38,11 @@
   },
   "booking_short_notice": {
     "body": "¡Hola! Vi que reservaste tu sesión 🙌🏻\nTe cuento lo que haremos: veremos tu caso, qué quieres mejorar y si tiene sentido que trabajemos juntos.\nReserva unos 45 minutos y entra desde un sitio tranquilo.\n*Para mantener la sesión, respóndeme “CONFIRMO”. Si no recibimos confirmación, el administrador revisará tu reserva.*\n¡Nos vemos pronto!"
+  },
+  "booking_ok_request": {
+    "body": "¡Buenas, {{name}}!\nSoy el asistente virtual de Comunica con Autoridad. Hemos recibido correctamente tu solicitud para la sesión:\n\n🗓️ Fecha: {{date}}\n⏰ Hora: {{time}}\n💻 Videollamada: {{meetingUrl}}\n\nPulsa OK para confirmar que has recibido la información. Después recibirás un audio grabado por Ignacio en el que te explica cómo será el proceso."
+  },
+  "booking_confirm_request": {
+    "body": "¡Hola de nuevo, {{name}}!\n\n✅ Tu sesión ya está reservada. Solo necesitamos que confirmes tu asistencia pulsando el botón de abajo.\n\nEnlace de la reunión >> {{meetingUrl}}\n\n⚠️ Importante: Trabajamos con plazas limitadas para las sesiones individuales. Si no recibimos tu confirmación, podremos liberar ese horario para otra persona."
   }
 }

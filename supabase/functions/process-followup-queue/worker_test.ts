@@ -286,3 +286,45 @@ Deno.test("an authenticated Edge Function processes an empty queue without sendi
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { read: 0, sent: 0, retry: 0, failed: 0, unknown: 0, skipped: 0, errors: 0 });
 });
+
+Deno.test("booking OK template sends four variables in order and binds its quick reply to the job", async () => {
+  const fetcher: typeof fetch = async (_url, init) => {
+    const payload = JSON.parse(String(init?.body));
+    assert.deepEqual(payload.template, { name: "reserva_recibida_ok", language: { code: "es" }, components: [
+      { type: "body", parameters: [{ type: "text", text: "Adrián" }, { type: "text", text: "martes, 20 de octubre" },
+        { type: "text", text: "16:00 (Europe/Madrid)" }, { type: "text", text: "https://meet.google.com/abc" }] },
+      { type: "button", sub_type: "quick_reply", index: "0", parameters: [{ type: "payload", payload: `followup:${message.id}` }] },
+    ] });
+    return Response.json({ messages: [{ id: "wamid.ok" }] });
+  };
+  const result = await sendFollowup({ ...message, channel: "whatsapp", step: "booking_ok_request", templateName: "reserva_recibida_ok", kind: "template",
+    parameters: ["name", "date", "time", "meetingUrl"], startTime: "2026-10-20T14:00:00.000Z", timeZone: "Europe/Madrid",
+    templateComponents: [{ type: "BODY", text: "¡Buenas, {{1}}! Fecha: {{2}} Hora: {{3}} Videollamada: {{4}}" }, { type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: "OK" }] }] }, config, fetcher);
+  assert.deepEqual(result, { outcome: "sent", providerId: "wamid.ok" });
+});
+
+Deno.test("a missing Meet link uses a fallback text in the new templates, and a body mismatch is not sent", async () => {
+  const sent = await sendFollowup({ ...message, channel: "whatsapp", meetingUrl: null, kind: "template", parameters: ["name", "meetingUrl"],
+    templateComponents: [{ type: "BODY", text: "Hola {{1}}. Enlace >> {{2}}" }] }, config, async (_url, init) => {
+    assert.equal(JSON.parse(String(init?.body)).template.components[0].parameters[1].text, "te lo enviaremos antes de la sesión");
+    return Response.json({ messages: [{ id: "wamid.fallback" }] });
+  });
+  assert.equal(sent.outcome, "sent");
+  const mismatch = await sendFollowup({ ...message, channel: "whatsapp", kind: "template", parameters: ["name", "meetingUrl"],
+    templateComponents: [{ type: "BODY", text: "Solo {{1}}" }] }, config, noFetch);
+  assert.deepEqual(mismatch, { outcome: "failed", error: "template_parameter_mismatch" });
+});
+
+Deno.test("recorded audios are sent from the site as audio messages and window rejections are not retried", async () => {
+  const withAudio = loadFollowupConfig({ ...env, FOLLOWUP_WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "real", WHATSAPP_PHONE_NUMBER_ID: "123", WHATSAPP_GRAPH_API_VERSION: "v99.0" });
+  assert.deepEqual(withAudio.whatsapp?.audioUrls, { booking_audio_1: "https://example.com/whatsapp/primer-audio-reserva.ogg", booking_audio_2: "https://example.com/whatsapp/segundo-audio-reserva.ogg" });
+  const audio = { ...message, channel: "whatsapp" as const, step: "booking_audio_1", kind: "audio" as const, templateName: null, templateLanguage: null };
+  const result = await sendFollowup(audio, withAudio, async (url, init) => {
+    assert.equal(String(url), "https://graph.facebook.com/v99.0/123/messages");
+    assert.deepEqual(JSON.parse(String(init?.body)), { messaging_product: "whatsapp", to: "34612345678", type: "audio", audio: { link: "https://example.com/whatsapp/primer-audio-reserva.ogg" } });
+    return Response.json({ messages: [{ id: "wamid.audio" }] });
+  });
+  assert.deepEqual(result, { outcome: "sent", providerId: "wamid.audio" });
+  assert.deepEqual(await sendFollowup(audio, withAudio, fetchJson({ error: { code: 131047 } }, 400)), { outcome: "failed", error: "meta_131047_http_400" });
+  assert.deepEqual(await sendFollowup(audio, config, noFetch), { outcome: "failed", error: "audio_missing" });
+});

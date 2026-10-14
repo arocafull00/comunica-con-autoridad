@@ -1,0 +1,13 @@
+{
+  "note": "Plantillas de Meta del flujo de reserva con audios. Creadas el 14/10/2026 en la cuenta de WhatsApp de Ignacio Roa (UTILITY, es). Las variables se rellenan en process-followup-queue; los botones OK y CONFIRMAR devuelven followup:<id del trabajo>.",
+  "templates": [
+    {
+      "step": "booking_ok_request", "name": "reserva_recibida_ok", "language": "es", "category": "UTILITY", "metaId": "1639866107728827",
+      "variables": ["name", "date", "time", "meetingUrl"], "buttons": [{ "type": "QUICK_REPLY", "text": "OK" }]
+    },
+    {
+      "step": "booking_confirm_request", "name": "reserva_confirmar_asistencia", "language": "es", "category": "UTILITY", "metaId": "1672457027628104",
+      "variables": ["name", "meetingUrl"], "buttons": [{ "type": "QUICK_REPLY", "text": "CONFIRMAR" }]
+    }
+  ]
+}

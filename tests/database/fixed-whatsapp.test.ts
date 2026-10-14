@@ -33,12 +33,15 @@ async function sync(templates: ReturnType<typeof provider>[]) {
 }
 
 describe("fixed WhatsApp triggers", () => {
-  it("fixes eight provider identities with only name and Meet variables", async () => {
-    const rows = (await db.query("select key,body,parameter from public.followup_steps where channel='whatsapp'")).rows;
-    expect(rows).toHaveLength(8);
+  it("fixes ten provider identities and two audio steps without templates", async () => {
+    const rows = (await db.query("select key,body,parameter,parameters from public.followup_steps where channel='whatsapp'")).rows;
+    expect(rows).toHaveLength(12);
+    expect(rows.filter((r) => r.key.startsWith("booking_audio_")).map((r) => r.key).sort()).toEqual(["booking_audio_1", "booking_audio_2"]);
+    expect((await db.query("select count(*)::int as n from private.followup_templates where step like 'booking_audio_%'")).rows[0].n).toBe(0);
     for (const definition of whatsappAutomations) {
       const row = rows.find((r) => r.key === definition.key);
       expect(row.parameter).toBe(definition.key === "webinar_1h" ? "name" : definition.key === "booking_2h" ? "meetingUrl" : null);
+      expect(row.parameters).toEqual(definition.key === "booking_ok_request" ? ["name", "date", "time", "meetingUrl"] : definition.key === "booking_confirm_request" ? ["name", "meetingUrl"] : null);
       const binding = (await db.query("select name,language from private.followup_templates where step=$1", [definition.key])).rows[0];
       expect(binding).toEqual(fixedWhatsappTemplates[definition.key]);
     }

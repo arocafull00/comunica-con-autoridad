@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { cacheLife } from "next/cache";
 import { requireAdmin } from "@/lib/admin/auth";
 import { WhatsappOverview } from "../../whatsapp-form";
-import { type WhatsappAutomation, whatsappAutomations, whatsappJobStatus } from "@/lib/followups/whatsapp-automations";
+import { type WhatsappAutomation, whatsappJobStatus, whatsappStepTitle } from "@/lib/followups/whatsapp-automations";
 import { AdminLoading } from "../../loading-state";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,7 +57,7 @@ async function Whatsapp() {
                 return <TableRow key={job.id}>
                   <TableCell data-label="Lead"><strong>{name}</strong></TableCell>
                   <TableCell data-label="Teléfono">{phone ? <a href={`https://wa.me/${phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" title={`Abrir WhatsApp con ${name}`}>{phone}</a> : <span className="admin-muted">No disponible</span>}</TableCell>
-                  <TableCell data-label="Mensaje">{whatsappAutomations.find((definition) => definition.key === job.step)?.title ?? job.step}</TableCell>
+                  <TableCell data-label="Mensaje">{whatsappStepTitle(job.step)}</TableCell>
                   <TableCell data-label="Programado"><time dateTime={job.scheduled_at}>{new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "medium", timeStyle: "short" }).format(new Date(job.scheduled_at))}</time></TableCell>
                   <TableCell data-label="Estado"><Badge variant="outline" className={`admin-badge ${job.status === "sent" ? "admin-badge-enabled" : job.status === "failed" ? "admin-badge-failed" : ""}`}>{whatsappJobStatus(job.status, job.last_error)}</Badge></TableCell>
                   <TableCell data-label="Detalle">{job.last_error ? <span>{job.last_error}</span> : <span className="admin-muted">Sin incidencias</span>}</TableCell>
