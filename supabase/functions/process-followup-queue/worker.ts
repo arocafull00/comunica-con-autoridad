@@ -25,7 +25,7 @@ type Claim = { action: "claimed"; claimToken: string; message: FollowupMessage }
 export type FollowupRpc = <T>(name: string, args: Record<string, unknown>) => Promise<T>;
 export type Config = {
   email: { key: string; from: string; siteUrl: string; unsubscribeSecret: string } | null;
-  whatsapp: { token: string; phoneNumberId: string; version: string } | null;
+  whatsapp: { token: string; phoneNumberId: string; version: string; headerImageUrl?: string } | null;
   whatsappTest?: { token: string; phoneNumberId: string; version: string; recipient: string };
 };
 type Result = { outcome: "sent"; providerId: string } | { outcome: "retry" | "failed" | "unknown"; error: string };
@@ -48,7 +48,8 @@ export function loadFollowupConfig(env: Record<string, string | undefined>): Con
       } : {}),
     whatsapp: env.FOLLOWUP_WHATSAPP_TEST_ENABLED !== "true" && env.FOLLOWUP_WHATSAPP_SEND_ENABLED === "true" && env.WHATSAPP_ACCESS_TOKEN &&
       /^\d+$/.test(env.WHATSAPP_PHONE_NUMBER_ID || "") && /^v\d+\.\d+$/.test(env.WHATSAPP_GRAPH_API_VERSION || "")
-      ? { token: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID!, version: env.WHATSAPP_GRAPH_API_VERSION! } : null,
+      ? { token: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID!, version: env.WHATSAPP_GRAPH_API_VERSION!,
+        ...(siteUrl ? { headerImageUrl: new URL("/whatsapp/cabecera.png", siteUrl).href } : {}) } : null,
   };
 }
 
@@ -82,7 +83,8 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
       const components: object[] = [];
       const header = message.templateComponents?.find((c) => c.type === "HEADER");
       if (header?.format === "IMAGE") {
-        const link = header.example?.header_handle?.[0];
+        // The template's example handle is a signed Meta URL that fails delivery with 131053. Serve the image from the site.
+        const link = config.whatsapp.headerImageUrl;
         if (!link) return { outcome: "failed", error: "template_image_missing" };
         components.push({ type: "header", parameters: [{ type: "image", image: { link } }] });
       }

@@ -6,7 +6,7 @@ const secret = "test-only-unsubscribe-secret-at-least-32-characters";
 const env = { FOLLOWUP_EMAIL_SEND_ENABLED: "true",
   RESEND_API_KEY: "test-key", RESEND_FROM: "Ignacio <test@example.com>", ADMIN_SITE_URL: "https://example.com", EMAIL_UNSUBSCRIBE_SECRET: secret };
 const config = { email: { key: env.RESEND_API_KEY, from: env.RESEND_FROM, siteUrl: env.ADMIN_SITE_URL, unsubscribeSecret: secret },
-  whatsapp: { token: "test-token", phoneNumberId: "123", version: "v99.0" } };
+  whatsapp: { token: "test-token", phoneNumberId: "123", version: "v99.0", headerImageUrl: "https://example.com/whatsapp/cabecera.png" } };
 const message: FollowupMessage = { id: crypto.randomUUID(), registrationId: crypto.randomUUID(), channel: "email", step: "email_2",
   email: "test@example.com", phone: "+34612345678", name: "Adrián", time: "16:00 (Europe/Madrid)", meetingUrl: "https://meet.google.com/abc",
   subject: "Clase", body: "Hola {{name}}", parameter: null, templateName: "approved_template", templateLanguage: "es" };
@@ -20,11 +20,12 @@ const testEnv = { FOLLOWUP_WHATSAPP_TEST_ENABLED: "true", WHATSAPP_TEST_ACCESS_T
   WHATSAPP_TEST_PHONE_NUMBER_ID: "123", WHATSAPP_TEST_GRAPH_API_VERSION: "v99.0", WHATSAPP_TEST_RECIPIENT: message.phone };
 const testMessage: FollowupMessage = { ...message, channel: "whatsapp", testMode: true, templateName: "hello_world", templateLanguage: "en_US" };
 
-Deno.test("fixed Meta templates send their image and original language without copying text or static buttons", async () => {
+Deno.test("fixed Meta templates send the site-hosted image and original language without copying text or static buttons", async () => {
   const fetcher: typeof fetch = async (_url, init) => {
     const payload = JSON.parse(String(init?.body));
+    // Never the signed Meta example URL, which Meta itself cannot fetch at send time.
     assert.deepEqual(payload.template, { name: "reserva_menos_24hantes", language: { code: "en" }, components: [
-      { type: "header", parameters: [{ type: "image", image: { link: "https://example.com/header.png" } }] },
+      { type: "header", parameters: [{ type: "image", image: { link: "https://example.com/whatsapp/cabecera.png" } }] },
     ] });
     return Response.json({ messages: [{ id: "wamid.image" }] });
   };
@@ -34,6 +35,11 @@ Deno.test("fixed Meta templates send their image and original language without c
     { type: "BUTTONS", buttons: [{ type: "URL", text: "Reservar", url: "https://example.com/book" }] },
   ] }, config, fetcher);
   assert.deepEqual(result, { outcome: "sent", providerId: "wamid.image" });
+  const noImage = await sendFollowup({ ...message, channel: "whatsapp", templateComponents: [{ type: "HEADER", format: "IMAGE" }] },
+    { ...config, whatsapp: { ...config.whatsapp, headerImageUrl: undefined } }, noFetch);
+  assert.deepEqual(noImage, { outcome: "failed", error: "template_image_missing" });
+  assert.equal(loadFollowupConfig({ ...env, FOLLOWUP_WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "real", WHATSAPP_PHONE_NUMBER_ID: "123",
+    WHATSAPP_GRAPH_API_VERSION: "v99.0" }).whatsapp?.headerImageUrl, "https://example.com/whatsapp/cabecera.png");
 });
 
 Deno.test("Meta body variables use the lead name or actual meeting URL and disappear for fixed text", async () => {

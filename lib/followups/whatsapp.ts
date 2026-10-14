@@ -14,7 +14,7 @@ const payloadSchema = z.object({ object: z.literal("whatsapp_business_account"),
   }) })).max(1000),
 })).max(1000) });
 // Parsed per item so an unexpected status shape never rejects the replies in the same payload.
-const statusSchema = z.object({ id: z.string().max(300), status: z.string().max(50),
+const failedStatusSchema = z.object({ id: z.string().max(300), status: z.literal("failed"),
   errors: z.array(z.object({ code: z.number(), title: z.string().max(300).optional() })).max(10).optional() });
 export type WhatsappReply = { id: string; phone: string; receivedAt: string; confirms: boolean; optsOut: boolean };
 
@@ -32,18 +32,12 @@ export async function handleWhatsappWebhook(request: Request, deps: {
     if (!deps.phoneNumberId) return webhookJson(503, { ok: false });
     const messages: WhatsappReply[] = [];
     for (const entry of parsed.data.entry) for (const change of entry.changes) {
-      // TEMPORARY diagnosis of undelivered templates: which events arrive, and for which number.
-      console.info("whatsapp_webhook_event", { field: change.field, ownNumber: change.value.metadata?.phone_number_id === deps.phoneNumberId,
-        messages: change.value.messages?.length ?? 0, statuses: change.value.statuses?.length ?? 0 });
       if (change.field !== "messages" || change.value.metadata?.phone_number_id !== deps.phoneNumberId) continue;
       for (const status of change.value.statuses ?? []) {
-        const parsedStatus = statusSchema.safeParse(status);
-        if (!parsedStatus.success) { console.info("whatsapp_delivery_status_unparsed"); continue; }
+        const failed = failedStatusSchema.safeParse(status);
         // Meta reports delivery failures only here. Log the message id and error codes, never the recipient.
-        const { id, status: state, errors } = parsedStatus.data;
-        const details = { id, status: state, errors: (errors ?? []).map(({ code, title }) => ({ code, title })) };
-        if (state === "failed") console.error("whatsapp_delivery_failed", details);
-        else console.info("whatsapp_delivery_status", details); // TEMPORARY, see above.
+        if (failed.success) console.error("whatsapp_delivery_failed", { id: failed.data.id, status: failed.data.status,
+          errors: (failed.data.errors ?? []).map(({ code, title }) => ({ code, title })) });
       }
       for (const message of change.value.messages ?? []) {
         const time = Number(message.timestamp) * 1000;
