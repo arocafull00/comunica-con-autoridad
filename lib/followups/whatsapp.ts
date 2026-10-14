@@ -10,8 +10,12 @@ const payloadSchema = z.object({ object: z.literal("whatsapp_business_account"),
       button: z.object({ text: z.string().max(4096), payload: z.string().max(4096).optional() }).optional(),
       interactive: z.object({ button_reply: z.object({ title: z.string().max(4096), id: z.string().max(4096).optional() }).optional() }).optional(),
     })).max(1000).optional(),
+    statuses: z.array(z.unknown()).max(1000).optional(),
   }) })).max(1000),
 })).max(1000) });
+// Parsed per item so an unexpected status shape never rejects the replies in the same payload.
+const failedStatusSchema = z.object({ id: z.string().max(300), status: z.literal("failed"),
+  errors: z.array(z.object({ code: z.number(), title: z.string().max(300).optional() })).max(10).optional() });
 export type WhatsappReply = { id: string; phone: string; receivedAt: string; confirms: boolean; optsOut: boolean };
 
 function normalizeKeyword(value: string | undefined) {
@@ -29,6 +33,12 @@ export async function handleWhatsappWebhook(request: Request, deps: {
     const messages: WhatsappReply[] = [];
     for (const entry of parsed.data.entry) for (const change of entry.changes) {
       if (change.field !== "messages" || change.value.metadata?.phone_number_id !== deps.phoneNumberId) continue;
+      for (const status of change.value.statuses ?? []) {
+        const failed = failedStatusSchema.safeParse(status);
+        // Meta reports delivery failures only here. Log the message id and error codes, never the recipient.
+        if (failed.success) console.error("whatsapp_delivery_failed", { id: failed.data.id,
+          errors: (failed.data.errors ?? []).map(({ code, title }) => ({ code, title })) });
+      }
       for (const message of change.value.messages ?? []) {
         const time = Number(message.timestamp) * 1000;
         if (!Number.isFinite(time) || time <= 0 || time > Date.now() + 300_000) return webhookJson(400, { ok: false });

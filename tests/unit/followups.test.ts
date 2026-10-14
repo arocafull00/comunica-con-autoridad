@@ -123,6 +123,18 @@ describe("WhatsApp replies", () => {
     await handleWhatsappWebhook(signed(status, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save });
     expect(save).not.toHaveBeenCalled();
   });
+  it("logs failed deliveries without the recipient and still saves replies in the same payload", async () => {
+    const save = vi.fn();
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const value = structuredClone(inbound) as any;
+    value.entry[0].changes[0].value.statuses = [{ status: "delivered" }, { id: "wamid.out", status: "failed", recipient_id: "34612345678",
+      errors: [{ code: 131053, title: "Media upload error", error_data: { details: "private" } }] }];
+    expect((await handleWhatsappWebhook(signed(value, "x-hub-signature-256", "sha256="), { secret, phoneNumberId: "123", save })).status).toBe(200);
+    expect(log).toHaveBeenCalledWith("whatsapp_delivery_failed", { id: "wamid.out", errors: [{ code: 131053, title: "Media upload error" }] });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("34612345678");
+    expect(save).toHaveBeenCalledWith([expect.objectContaining({ id: "wamid.reply" })]);
+    log.mockRestore();
+  });
 });
 
 describe("email unsubscribe tokens", () => {
