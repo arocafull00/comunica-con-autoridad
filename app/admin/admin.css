@@ -482,17 +482,27 @@
   .admin-root .data-table .data-table-actions { width: 40px; padding-right: 4px; }
   .details-dialog-section dl > div { grid-template-columns: minmax(0,1fr); gap: 2px; }
 }
-.admin-campaign-builder { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 48px; max-width: 1040px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--admin-line); }
-.admin-campaign-builder .admin-form { margin: 0; }
-.admin-campaign-result { min-width: 0; padding: 20px; background: var(--admin-surface); border-radius: 8px; align-self: start; }
-.admin-campaign-result h2 { margin: 0 0 12px; }
-.admin-campaign-link { margin: 0 0 16px; padding: 12px 14px; background: var(--admin-raised); border-radius: 6px; font-family: ui-monospace, monospace; font-size: 14px; overflow-wrap: anywhere; user-select: all; }
-.admin-campaign-result .admin-muted { font-size: 14px; margin: 16px 0 0; }
-@media (max-width:800px) { .admin-campaign-builder { grid-template-columns: minmax(0,1fr); gap: 24px; } }
+.admin-campaign-builder { max-width: 1040px; margin: 0; padding: 20px; background: var(--admin-surface); border: 1px solid var(--admin-line); border-radius: 8px; }
+.admin-campaign-fields { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+.admin-campaign-fields [data-slot=input] { margin: 6px 0 0; }
+.admin-campaign-label { display: flex; align-items: baseline; gap: 8px; }
+.admin-campaign-label code { color: var(--admin-muted); font-size: 12px; font-weight: 400; }
+.admin-campaign-result { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--admin-line); }
+.admin-campaign-preview { flex: 1; min-width: 0; margin: 0; padding: 10px 14px; background: var(--admin-raised); border-radius: 6px; font-family: ui-monospace, monospace; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; color: var(--admin-muted); }
+.admin-campaign-value { color: var(--admin-ink); }
+.admin-campaign-gap { color: var(--admin-accent); opacity: .7; font-style: italic; }
+.admin-campaign-builder .admin-error, .admin-campaign-builder .admin-success { margin: 12px 0 0; font-size: 14px; }
+.admin-campaign-link { margin: 0; padding: 8px 10px; background: var(--admin-raised); border-radius: 6px; font-family: ui-monospace, monospace; font-size: 13px; overflow-wrap: anywhere; user-select: all; }
 .admin-campaign-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.admin-saved-campaigns { max-width: 1040px; margin-top: 40px; }
-.admin-saved-campaigns .admin-campaign-link { margin: 8px 0 0; padding: 8px 10px; font-size: 13px; }
-@media (max-width:800px) { .admin-campaign-result .admin-campaign-actions [data-slot=button] { flex: 1; } }
+.admin-root .admin-saved-campaigns { max-width: 1040px; margin-top: 32px; }
+.admin-saved-campaigns .admin-panel-heading { margin-bottom: 8px; }
+.admin-saved-campaigns .admin-campaign-link { margin-top: 8px; }
+.admin-root .admin-campaign-empty { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--admin-muted); font-size: 15px; }
+@media (max-width:800px) {
+  .admin-campaign-fields { grid-template-columns: minmax(0,1fr); }
+  .admin-campaign-result { flex-direction: column; align-items: stretch; }
+  .admin-campaign-result .admin-campaign-actions [data-slot=button] { flex: 1; }
+}
 .admin-funnel { list-style: none; padding: 0; margin: 0 0 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .admin-funnel-card { display: flex; flex-direction: column; gap: 14px; background: var(--admin-surface); border: 1px solid var(--admin-line); border-radius: 8px; padding: 20px; min-width: 0; text-align: center; }
 .admin-funnel-card-heading { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 76px; }
@@ -501,6 +511,9 @@
 .admin-funnel-card-count { margin: 0; color: var(--admin-muted); font-size: 14px; }
 .admin-funnel-card-count strong { display: block; color: var(--admin-ink); font-size: 32px; line-height: 1.15; font-weight: 550; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .admin-funnel-card-rates { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; padding-top: 14px; border-top: 1px solid var(--admin-line); }
+.admin-funnel-card-rates > div { display: flex; flex-direction: column; justify-content: space-between; }
 .admin-funnel-card-rates dt { color: var(--admin-muted); font-size: 13px; }
 .admin-funnel-card-rates dd { margin: 2px 0 0; font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .admin-funnel-card .admin-campaign-bar { margin-top: auto; }
+.admin-root .admin-combobox-trigger { width: 100%; min-height: 44px; margin: 6px 0 0; font-size: 16px; }
+.admin-root.admin-combobox-popover { min-height: 0; width: var(--radix-popover-trigger-width); border: 1px solid var(--admin-line); background: var(--admin-surface); z-index: 20; }
