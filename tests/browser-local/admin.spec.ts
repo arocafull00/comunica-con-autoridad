@@ -138,13 +138,13 @@ test("shows real reports, contacts, fixed WhatsApp messages and responsive accou
   await expect(page.getByRole("heading", { name: "Contactos", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: `contact-${adminId}@example.com`, exact: true })).toBeVisible();
   await page.getByLabel("Buscar email", { exact: true }).fill(`contact-${adminId}@example.com`);
-  await page.getByRole("button", { name: "Buscar", exact: true }).click();
-  await expect(page.locator(".admin-result-count")).toContainText("1 solicitud que coincide");
+  await page.getByLabel("Buscar email", { exact: true }).press("Enter");
+  await expect(page.locator(".contacts-footer")).toContainText("1–1 de 1");
   await page.getByRole("link", { name: "7 días", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/contacts\?/);
   await expect(page.getByLabel("Buscar email", { exact: true })).toHaveValue(`contact-${adminId}@example.com`);
   await expect(page.getByRole("link", { name: `contact-${adminId}@example.com`, exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Limpiar búsqueda", exact: true }).click();
+  await page.getByRole("link", { name: "Limpiar", exact: true }).click();
   await expect(page.getByLabel("Buscar email", { exact: true })).toHaveValue("");
   await page.screenshot({ path: "test-results/admin-contacts-desktop.png", fullPage: true });
   await page.getByRole("link", { name: "WhatsApp", exact: true }).click();
@@ -207,8 +207,15 @@ test("admin typography keeps summary and contact rows readable across viewport s
       if (path === "/admin/contacts") {
         const row = page.getByRole("row").filter({ hasText: `contact-${adminId}@example.com` });
         await expect(row).toBeVisible();
-        expect(await row.getByRole("cell").first().evaluate(element => getComputedStyle(element).fontSize)).toBe("15px");
+        expect(await row.getByRole("cell").first().evaluate(element => getComputedStyle(element).fontSize)).toBe("14px");
         await expect(row.getByRole("link", { name: `contact-${adminId}@example.com`, exact: true })).toBeVisible();
+        await row.getByRole("button", { name: /^Ver detalles de / }).click();
+        const details = page.getByRole("dialog");
+        await expect(details.getByRole("heading", { name: "Solicitud", exact: true })).toBeVisible();
+        await expect(details).toContainText("campana_de_prueba");
+        await page.screenshot({ path: `test-results/admin-contact-dialog-${width}.png` });
+        await page.keyboard.press("Escape");
+        await expect(details).not.toBeVisible();
       }
       await page.screenshot({ path: `test-results/admin-type-${path === "/admin" ? "summary" : "contacts"}-${width}.png`, fullPage: true });
     }

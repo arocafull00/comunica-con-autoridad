@@ -306,11 +306,7 @@
 .admin-page .admin-table th:first-child { width: 38%; }
 .admin-page .admin-table th:nth-child(2) { width: 37%; }
 .admin-page .admin-table th:last-child { width: 25%; }
-.admin-contacts .admin-table th:first-child { width: 18%; }
-.admin-contacts .admin-table th:nth-child(2) { width: 28%; }
-.admin-contacts .admin-table th:nth-child(3) { width: 17%; }
-.admin-contacts .admin-table th:nth-child(4) { width: 22%; }
-.admin-contacts .admin-table th:last-child { width: 15%; }
+
 .admin-calls .admin-table th:first-child { width: 24%; }
 .admin-calls .admin-table th:nth-child(2) { width: 13%; }
 .admin-calls .admin-table th:nth-child(3) { width: 9%; }
@@ -463,10 +459,64 @@
   .admin-navigation { grid-template-columns: repeat(3,minmax(0,1fr)); }
   .admin-navigation a { padding-inline: 0; font-size: 14px; }
 }
-.admin-form-progress { margin: 4px 0 0; color: var(--admin-muted); font-size: 14px; }
-.admin-form-progress-open { color: var(--admin-ink); font-weight: 500; }
-.admin-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; color: var(--admin-muted); font-variant-numeric: tabular-nums; }
+
+/* Contacts: compact data table, details in a dialog. */
+.contacts-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.contacts-search { position: relative; width: min(320px, 100%); }
+.contacts-search svg { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: var(--admin-muted); pointer-events: none; }
+.admin-root .contacts-search [data-slot=input] { margin: 0; height: 36px; min-height: 36px; padding-left: 32px; font-size: 14px; box-shadow: none; }
+.admin-root :is(.contacts-toolbar, .contacts-table, .contacts-footer, .contacts-dialog) [data-slot=button] { min-height: 32px; font-size: 14px; }
+.contacts-table { border: 1px solid var(--admin-line); border-radius: 8px; overflow: hidden; }
+.contacts-table table { font-size: 14px; }
+.contacts-table tr { border-color: var(--admin-line); }
+.contacts-table thead tr { background: var(--admin-surface); }
+.contacts-table tbody tr:hover { background: color-mix(in srgb, var(--admin-surface) 70%, transparent); }
+.admin-root .contacts-table th { height: 40px; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--admin-muted); }
+.admin-root .contacts-table td { padding: 10px 12px; vertical-align: middle; white-space: nowrap; }
+.contacts-name, .contacts-line { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; color: var(--admin-ink); }
+.contacts-name { font-weight: 500; }
+.contacts-line { max-width: 180px; }
+.admin-root .contacts-sub { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; color: var(--admin-muted); font-size: 13px; text-decoration: none; }
+.admin-root .contacts-col-source .contacts-sub { max-width: 180px; }
+.admin-root a.contacts-sub:hover { color: var(--admin-ink); text-decoration: underline; }
+.admin-root .contacts-phone { color: var(--admin-ink); text-decoration: none; font-variant-numeric: tabular-nums; }
+.admin-root .contacts-phone:hover { color: var(--admin-accent); text-decoration: underline; }
+.contacts-status { gap: 6px; color: var(--admin-muted); border-color: var(--admin-line); }
+.contacts-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.contacts-status[data-tone=done] { color: #9fcfa6; }
+.contacts-status[data-tone=open] { color: var(--admin-accent); }
+.admin-root .contacts-table .contacts-col-date { text-align: right; color: var(--admin-muted); font-variant-numeric: tabular-nums; }
+.admin-root .contacts-table .contacts-col-actions { width: 48px; padding: 0 8px 0 0; text-align: right; }
+.admin-root .contacts-table .contacts-empty { height: 96px; text-align: center; color: var(--admin-muted); }
+.contacts-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding: 12px 0; font-size: 14px; color: var(--admin-muted); }
+.contacts-footer p { margin: 0; font-variant-numeric: tabular-nums; }
+.contacts-footer-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
+.contacts-page-count { color: var(--admin-ink); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.contacts-page-buttons { display: flex; gap: 6px; }
 .admin-page-size { display: flex; align-items: center; gap: 8px; }
-.admin-page-size [data-slot=label] { font-size: 14px; font-weight: 400; color: var(--admin-muted); }
-.admin-root .admin-pagination-nav { width: auto; margin: 0; justify-content: flex-end; }
-.admin-pagination-nav [data-slot=pagination-link] { min-width: 44px; min-height: 44px; font-variant-numeric: tabular-nums; }
+.admin-root .admin-page-size [data-slot=label] { font-size: 14px; font-weight: 500; color: var(--admin-ink); white-space: nowrap; }
+.admin-root .admin-page-size [data-slot=native-select-wrapper] { width: auto; margin: 0; }
+.admin-root .admin-page-size [data-slot=native-select] { width: 72px; height: 32px; min-height: 32px; font-size: 14px; }
+.contacts-dialog-description { margin: 4px 0 0; color: var(--admin-muted); font-size: 14px; overflow-wrap: anywhere; }
+.admin-root .contacts-dialog-section { margin-top: 24px; }
+.contacts-dialog-section h3 { margin: 0 0 8px; font-size: 13px; font-weight: 500; color: var(--admin-muted); }
+.contacts-dialog-section dl { margin: 0; border: 1px solid var(--admin-line); border-radius: 8px; }
+.contacts-dialog-section dl > div { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 12px; padding: 10px 14px; font-size: 14px; }
+.contacts-dialog-section dl > div + div { border-top: 1px solid var(--admin-line); }
+.contacts-dialog-section dt { color: var(--admin-muted); }
+.contacts-dialog-section dd { margin: 0; overflow-wrap: anywhere; }
+@media (pointer: coarse) {
+  .admin-root :is(.contacts-toolbar, .contacts-table, .contacts-footer, .contacts-dialog) [data-slot=button], .admin-root .contacts-search [data-slot=input], .admin-root .admin-page-size [data-slot=native-select] { height: 44px; min-height: 44px; }
+  .admin-root :is(.contacts-table, .contacts-footer, .contacts-dialog) [data-slot=button][data-size=icon-sm] { width: 44px; }
+}
+@media (max-width:1100px) { .contacts-col-source { display: none; } }
+@media (max-width:800px) { .contacts-col-consent, .contacts-col-date { display: none; } }
+@media (max-width:480px) {
+  .contacts-search { flex: 1; }
+  .contacts-page-edge, .admin-page-size { display: none; }
+  .contacts-col-form { display: none; }
+  .admin-root .contacts-table :is(th, td) { padding-inline: 10px; }
+  .contacts-name, .admin-root .contacts-sub { max-width: 150px; }
+  .admin-root .contacts-table .contacts-col-actions { width: 40px; padding-right: 4px; }
+  .contacts-dialog-section dl > div { grid-template-columns: minmax(0,1fr); gap: 2px; }
+}
