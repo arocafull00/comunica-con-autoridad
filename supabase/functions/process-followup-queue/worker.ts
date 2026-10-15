@@ -117,8 +117,20 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
         // Free-form audio is only valid inside the 24-hour window, which the claim has checked.
         const link = config.whatsapp.audioUrls?.[message.step];
         if (!link) return { outcome: "failed", error: "audio_missing" };
+        const file = await fetcher(link, { signal: AbortSignal.timeout(10_000) });
+        if (!file.ok) return { outcome: "retry", error: `audio_http_${file.status}` };
+        const form = new FormData();
+        form.append("messaging_product", "whatsapp");
+        form.append("type", "audio/ogg");
+        form.append("file", new Blob([await file.arrayBuffer()], { type: "audio/ogg" }), link.split("/").pop()!);
+        const upload = await fetcher(`https://graph.facebook.com/${config.whatsapp.version}/${config.whatsapp.phoneNumberId}/media`, {
+          method: "POST", headers: { Authorization: headers.Authorization }, body: form, signal: AbortSignal.timeout(20_000) });
+        const media = await upload.json().catch(() => null);
+        if (typeof media?.id !== "string" || !media.id) {
+          return typeof media?.error?.code === "number" ? whatsappResult(upload, media) : { outcome: "retry", error: `media_upload_http_${upload.status}` };
+        }
         response = await fetcher(endpoint, { method: "POST", headers, signal: AbortSignal.timeout(10_000),
-          body: JSON.stringify({ messaging_product: "whatsapp", to: message.phone.replace(/^\+/, ""), type: "audio", audio: { link } }) });
+          body: JSON.stringify({ messaging_product: "whatsapp", to: message.phone.replace(/^\+/, ""), type: "audio", audio: { id: media.id } }) });
         return whatsappResult(response, await response.json().catch(() => null));
       }
       if (!message.templateName || !message.templateLanguage) return { outcome: "failed", error: "whatsapp_configuration_missing" };
