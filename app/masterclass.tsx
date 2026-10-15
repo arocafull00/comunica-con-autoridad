@@ -5,6 +5,7 @@ import Script from "next/script";
 import { ContactForm } from "./contact-form";
 import { QualificationForm } from "./qualification-form";
 import { CAL_BOOKING_URL } from "@/lib/leads/masterclass";
+import { trackFunnel } from "@/lib/funnel";
 
 const COMPLETED_KEY = "webinar_intro_completed_v1";
 const TOKEN_KEY = "webinar_access_token_v1";
@@ -63,9 +64,30 @@ export function Masterclass() {
   }, []);
 
   useEffect(() => {
+    trackFunnel("visit");
+    const players = () => [intro.current, replay.current?.querySelector("wistia-player")] as ({ currentTime?: number; duration?: number } | null | undefined)[];
+    const progress = setInterval(() => {
+      for (const player of players()) {
+        const time = Number(player?.currentTime) || 0;
+        const duration = Number(player?.duration) || 0;
+        if (time > 0) trackFunnel("video_play");
+        if (!duration) continue;
+        if (time >= duration * 0.25) trackFunnel("video_25");
+        if (time >= duration * 0.5) trackFunnel("video_50");
+        if (time >= duration * 0.75) trackFunnel("video_75");
+      }
+    }, 2000);
+    const ended = () => trackFunnel("video_complete");
+    const replayPlayer = replay.current?.querySelector("wistia-player");
+    replayPlayer?.addEventListener("ended", ended);
+    return () => { clearInterval(progress); replayPlayer?.removeEventListener("ended", ended); };
+  }, []);
+
+  useEffect(() => {
     const player = intro.current;
     if (!player) return;
     const unlock = () => {
+      trackFunnel("video_complete");
       writeFlag(COMPLETED_KEY);
       setCompleted(true);
       requestAnimationFrame(() => replay.current?.scrollIntoView({
@@ -77,6 +99,7 @@ export function Masterclass() {
   }, []);
 
   function saveContact(token: string) {
+    trackFunnel("contact_saved");
     setAccessCheckError(false);
     setAccessToken(token);
     try { localStorage.setItem(TOKEN_KEY, token); } catch { /* Keep token in memory. */ }
@@ -141,7 +164,7 @@ export function Masterclass() {
                 try { localStorage.setItem(url ? QUALIFIED_KEY : DECLINED_KEY, accessToken); } catch { /* Keep result in memory. */ }
               }} />
               : contactOpen ? <ContactForm onSuccess={saveContact} />
-              : <button className="cta" id="open-booking" type="button" onClick={() => setContactOpen(true)}>Agendar llamada →</button>}
+              : <button className="cta" id="open-booking" type="button" onClick={() => { trackFunnel("booking_open"); setContactOpen(true); }}>Agendar llamada →</button>}
           </div>
           <div className="micro">Sesión gratuita · Sin compromiso</div>
           {accessToken || bookingUrl || declined ? <button className="another-registration-btn" type="button" disabled={checkingAccess} onClick={startAnotherRegistration}>Realizar otra inscripción</button> : null}

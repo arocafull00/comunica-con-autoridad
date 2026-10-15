@@ -12,6 +12,19 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { AdminLoading } from "../../loading-state";
 import { DateRangeFilter } from "../../date-range-filter";
+import { QUALIFICATION_STEP_LABELS } from "@/lib/funnel";
+
+const DRAFT_LABELS: Record<string, string> = { profession: "Profesión", situation: "Situación", goal: "Quiere mejorar", commitment: "Compromiso", investment: "Inversión", applicationReasons: "Razones para reservar" };
+
+function FormProgress({ lead }: { lead: { qualified_at: string | null; qualification_step: number | null; qualification_draft: Record<string, string> | null } }) {
+  if (lead.qualified_at) return <p className="admin-form-progress">Formulario completado</p>;
+  if (!lead.qualification_step) return <p className="admin-form-progress">No ha empezado las preguntas</p>;
+  const draft = Object.entries(lead.qualification_draft ?? {}).filter(([field]) => DRAFT_LABELS[field]);
+  return <>
+    <p className="admin-form-progress admin-form-progress-open">Se quedó en la pregunta {lead.qualification_step} de {QUALIFICATION_STEP_LABELS.length} · {QUALIFICATION_STEP_LABELS[lead.qualification_step - 1]}</p>
+    {draft.length ? <details><summary>Respuestas sin enviar</summary>{draft.map(([field, value]) => <p key={field}><strong>{DRAFT_LABELS[field]}:</strong> {value}</p>)}</details> : null}
+  </>;
+}
 async function Contacts({ searchParams }: { searchParams: Promise<{ start?: string; end?: string; page?: string; email?: string }> }) {
   "use cache: private";
   cacheLife({ stale: 60 });
@@ -20,7 +33,7 @@ async function Contacts({ searchParams }: { searchParams: Promise<{ start?: stri
   const range = dateRange(params.start, params.end);
   const page = Math.max(1, Math.min(100000, Math.floor(Number(params.page) || 1)));
   const email = (params.email ?? "").trim().slice(0, 254);
-  let query = db.from("leads").select("id,name,email,phone,created_at,whatsapp_consent,utm_source,utm_campaign,profession,situation,goal,commitment,investment,application_reasons,admission_decision", { count: "exact" }).eq("source", "web").gte("created_at", madridMidnight(range.start)).lt("created_at", madridMidnight(range.end));
+  let query = db.from("leads").select("id,name,email,phone,created_at,whatsapp_consent,utm_source,utm_campaign,profession,situation,goal,commitment,investment,application_reasons,admission_decision,qualified_at,qualification_step,qualification_draft,qualification_progress_at", { count: "exact" }).eq("source", "web").gte("created_at", madridMidnight(range.start)).lt("created_at", madridMidnight(range.end));
   if (email) query = query.ilike("email", `%${email.replace(/[\\%_]/g, "\\$&")}%`);
   const { data, error, count } = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).range((page - 1) * 25, page * 25 - 1);
   if (error) throw new Error("No se pudieron consultar los contactos.");
@@ -50,6 +63,7 @@ async function Contacts({ searchParams }: { searchParams: Promise<{ start?: stri
           <TableCell data-label="Solicitud">
             <time dateTime={lead.created_at}>{new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "medium", timeStyle: "short" }).format(new Date(lead.created_at))}</time>
             <p>{lead.utm_source ?? "Sin fuente"} · {lead.utm_campaign ?? "Sin campaña"}</p>
+            <FormProgress lead={lead} />
             {lead.profession ? <details><summary>Respuestas de la masterclass</summary><p><strong>Profesión:</strong> {lead.profession}</p>{lead.situation ? <p><strong>Situación:</strong> {lead.situation}</p> : null}<p><strong>Quiere mejorar:</strong> {lead.goal}</p>{lead.commitment ? <p><strong>Compromiso:</strong> {lead.commitment}</p> : null}{lead.investment ? <p><strong>Inversión:</strong> {lead.investment}</p> : null}{lead.application_reasons ? <p><strong>Razones para reservar:</strong> {lead.application_reasons}</p> : null}{lead.admission_decision ? <p><strong>Decisión:</strong> {lead.admission_decision}</p> : null}</details> : null}
           </TableCell>
           <TableCell data-label="Teléfono">

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ADMISSION_DECISIONS, BOOKING_GOALS, CAL_BOOKING_URL,COMMITMENTS, INVESTMENTS, SITUATIONS } from "@/lib/leads/masterclass";
 import type { LeadFieldErrors, LeadResponse } from "@/lib/leads/contracts";
+import { trackFunnel, type FunnelEvent } from "@/lib/funnel";
 
 type ChoiceField = "situation" | "goal" | "commitment" | "investment";
 type AnswerField = "profession" | ChoiceField | "applicationReasons" | "admissionDecision";
@@ -14,6 +15,15 @@ const CHOICES: { field: ChoiceField; question: string; options: readonly string[
 ];
 const STEP_FIELDS: AnswerField[] = ["profession", ...CHOICES.map(choice => choice.field), "applicationReasons", "admissionDecision"];
 const TOTAL_STEPS = STEP_FIELDS.length;
+
+function saveProgress(accessToken: string, step: number, answers: Record<string, string>) {
+  trackFunnel(`question_${step + 1}` as FunnelEvent);
+  const draft = Object.fromEntries(Object.entries(answers).filter(([field, value]) => field !== "admissionDecision" && value.trim()));
+  void fetch("/api/leads/progress", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ step: step + 1, answers: draft }), keepalive: true,
+  }).catch(() => {});
+}
 
 // Questions after the contact step. Name, mobile and consents are already saved.
 export function QualificationForm({ accessToken, onSuccess, onExpired }: {
@@ -27,7 +37,8 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   useEffect(() => { formRef.current?.querySelector<HTMLElement>(".form-step.active input, .form-step.active textarea")?.focus({ preventScroll: true }); }, [step]);
-  function goTo(next: number) { setStep(next); setErrors({}); setMessage(""); }
+  useEffect(() => { saveProgress(accessToken, 0, {}); }, [accessToken]);
+  function goTo(next: number) { setStep(next); setErrors({}); setMessage(""); saveProgress(accessToken, next, answers); }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
@@ -51,6 +62,8 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
           calendar.focus();
           calendarOpened = true;
         }
+        trackFunnel("form_completed");
+        if (url) trackFunnel("calendar_open");
         onSuccess(url);
       }
       else if (response.status === 401) onExpired();

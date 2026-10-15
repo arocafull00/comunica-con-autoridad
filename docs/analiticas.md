@@ -63,6 +63,14 @@ Los correos únicos del total se calculan para todo el período; sumar los corre
 
 Para aplicar la migración en otro entorno, seguir el procedimiento de revisión y despliegue de [activación](activacion.md). Los clientes anteriores que no envían UTM siguen funcionando.
 
+## Embudo de la clase y progreso del formulario
+
+El Resumen de `/admin` muestra el **Embudo de la clase**: cuántas sesiones entran, empiezan el vídeo, ven el 25, 50 y 75 %, lo terminan, pulsan «Agendar llamada», dejan sus datos, llegan a cada una de las siete preguntas, completan el formulario y abren el calendario. Cada carga de la página genera un identificador aleatorio que vive solo en memoria (sin cookies ni `localStorage`) y se envía a `/api/funnel` junto al nombre del paso. Cada sesión cuenta una vez por paso. La tabla `private.funnel_events` no guarda IP, contacto ni respuestas; se consulta con `get_funnel_metrics(p_start, p_end)`, con los mismos días de Madrid que `get_lead_metrics`.
+
+El avance del vídeo se mide leyendo `currentTime` y `duration` del reproductor de Wistia cada dos segundos. Una persona que vuelve otro día es otra sesión. Quien regresa con el formulario empezado puede aparecer en las preguntas sin pasar por los pasos anteriores en esa sesión. Las cifras son orientativas: bloqueadores o conexiones interrumpidas pueden perder algún paso.
+
+Por persona, una vez guardado el contacto, cada cambio de pregunta llama a `/api/leads/progress` con el token de acceso. `save_masterclass_progress` conserva la pregunta más avanzada en `leads.qualification_step` (1 a 7) y combina las respuestas aún no enviadas en `leads.qualification_draft`. Al completar el formulario deja de actualizarse. En **Contactos** cada solicitud indica «Formulario completado», «No ha empezado las preguntas» o «Se quedó en la pregunta N de 7», con las respuestas sin enviar.
+
 ## Campañas
 
 Usar etiquetas de campaña no personales en los enlaces publicados, por ejemplo:
