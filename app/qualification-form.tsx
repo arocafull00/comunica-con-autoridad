@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { CAL_BOOKING_URL, GOALS, SITUATIONS } from "@/lib/leads/masterclass";
+import { GOALS, SITUATIONS } from "@/lib/leads/masterclass";
 import type { LeadFieldErrors, LeadResponse } from "@/lib/leads/contracts";
 import { trackFunnel, type FunnelEvent } from "@/lib/funnel";
 
@@ -45,7 +45,7 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
     if (step < TOTAL_STEPS - 1) { goTo(step + 1); return; }
     inFlight.current = true; setPending(true); setMessage(""); setErrors({});
     const calendar = window.open("about:blank", "_blank");
-    if (calendar) { calendar.opener = null; calendar.location.replace(CAL_BOOKING_URL); }
+    if (calendar) calendar.opener = null;
     let calendarOpened = false;
     try {
       const response = await fetch("/api/leads/qualification", {
@@ -55,7 +55,7 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
       const result: LeadResponse = await response.json();
       if (response.ok && result.ok && result.bookingUrl) {
         if (calendar && !calendar.closed) {
-          if (result.bookingUrl !== CAL_BOOKING_URL) calendar.location.replace(result.bookingUrl);
+          calendar.location.replace(result.bookingUrl);
           calendar.focus();
           calendarOpened = true;
         }
