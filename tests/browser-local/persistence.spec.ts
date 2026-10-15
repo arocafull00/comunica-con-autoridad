@@ -1,5 +1,5 @@
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL } from "../../lib/leads/masterclass";
-import { APPLICATION_REASONS, fillMasterclass, fillQualification } from "../browser/masterclass-helper";
+import { CAL_BOOKING_URL, GOALS, SITUATIONS } from "../../lib/leads/masterclass";
+import { fillMasterclass, fillQualification } from "../browser/masterclass-helper";
 import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import pg from "pg";
@@ -51,7 +51,7 @@ test("reserving with an already registered email saves answers and opens Cal.com
       .toEqual([{ name: "Adrián", phone: "+34612345678", qualified_at: expect.any(Date) }]);
     const sheets = await request.get("http://127.0.0.1:3102/submissions");
     expect((await sheets.json()).filter((row: { email: string }) => row.email === email))
-      .toEqual([expect.objectContaining({ nombre: "Adrián", decision_admision: ADMISSION_DECISIONS[0] })]);
+      .toEqual([expect.objectContaining({ nombre: "Adrián", situacion_actual: SITUATIONS[2], que_quiere_mejorar: GOALS[0] })]);
   } finally {
     await db.query("delete from public.leads where email=$1", [email]);
     await db.end();
@@ -78,13 +78,11 @@ test("real Next API saves leads and queues only consented welcomes while WhatsAp
     await fillQualification(page);
     await expect(await calendar).toHaveURL(CAL_BOOKING_URL);
     await expect(page).toHaveURL(/\?utm_source=/);
-    const qualified = await db.query("select name,profession,goal,commitment,investment,application_reasons,admission_decision from public.leads where email=$1", [email]);
-    expect(qualified.rows).toEqual([{ name: "Adrián", profession: "Dirección", goal: BOOKING_GOALS[0], commitment: COMMITMENTS[0], investment: INVESTMENTS[1],
-      application_reasons: APPLICATION_REASONS, admission_decision: ADMISSION_DECISIONS[0] }]);
+    const qualified = await db.query("select name,profession,situation,goal,commitment,qualified_at from public.leads where email=$1", [email]);
+    expect(qualified.rows).toEqual([{ name: "Adrián", profession: "Dirección", situation: SITUATIONS[2], goal: GOALS[0], commitment: null, qualified_at: expect.any(Date) }]);
     const updatedSheets = await request.get("http://127.0.0.1:3102/submissions");
     expect((await updatedSheets.json()).filter((row: { email: string }) => row.email === email)).toEqual([
-      expect.objectContaining({ a_que_te_dedicas: "Dirección", que_quiere_mejorar: BOOKING_GOALS[0], nivel_compromiso: COMMITMENTS[0], rango_inversion: INVESTMENTS[1],
-        razones_para_reservar: APPLICATION_REASONS, decision_admision: ADMISSION_DECISIONS[0] }),
+      expect.objectContaining({ a_que_te_dedicas: "Dirección", situacion_actual: SITUATIONS[2], que_quiere_mejorar: GOALS[0] }),
     ]);
     const report = await db.query("select public.get_lead_metrics((now() at time zone 'Europe/Madrid')::date, (now() at time zone 'Europe/Madrid')::date + 1) as metrics");
     const attributed = report.rows[0].metrics.campaigns.find((entry: { utm_campaign: string | null }) => entry.utm_campaign === campaign);

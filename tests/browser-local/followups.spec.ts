@@ -72,22 +72,20 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
     await page.getByRole("button",{name:"Entrar",exact:true}).click();
     await page.getByRole("link",{name:"Llamadas",exact:true}).click();
     await expect(page.getByRole("heading",{name:"Llamadas",exact:true})).toBeVisible();
-    const row=page.getByRole("row").filter({hasText:contact});await expect(row).toContainText("Pendiente de revisión");
-    await expect(row.getByRole("cell")).toHaveCount(5);
+    const row=page.getByRole("row").filter({hasText:contact});await expect(row).toContainText("Pendiente");
+    await expect(row.getByRole("cell")).toHaveCount(6);
     await expect(row).not.toContainText("Sin formulario asociado a este email.");
     await expect(row).not.toContainText("Europe/Madrid");
     await expect(row.getByRole("link", { name: "Abrir llamada", exact: true })).toHaveAttribute("href", "https://meet.google.com/local-test");
-    expect(await row.getByRole("cell").first().evaluate(element => getComputedStyle(element).fontSize)).toBe("15px");
+    expect(await row.getByRole("cell").first().evaluate(element => getComputedStyle(element).fontSize)).toBe("14px");
     for(const width of [1280,768,390,320]){
       await page.setViewportSize({width,height:900});
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-      const labels = width > 800 ? page.getByRole("columnheader") : row;
+      const labels = page.getByRole("columnheader");
       for (const [column, explanation] of [
         ["contacto", "Puede haber reservado directamente desde el enlace de Cal.com"],
-        ["fecha", "zona horaria de la persona que reservó"],
-        ["hora", "zona horaria de la persona que reservó"],
         ["confirmación", "La falta de confirmación no cancela la reserva automáticamente"],
-        ["enlace", "Cal.com ha facilitado el enlace para entrar a la sesión"],
+        ...(width > 480 ? [["fecha", "zona horaria de la persona que reservó"], ["enlace", "Cal.com ha facilitado el enlace para entrar a la sesión"]] : []),
       ]) {
         const trigger = labels.getByRole("button", { name: `Información sobre ${column}`, exact: true });
         await trigger.focus();
@@ -109,10 +107,10 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
       await trigger.click();
       await page.getByRole("button", { name: "Cerrar información", exact: true }).click();
       await expect(page.getByRole("dialog")).toBeHidden();
-      const contactTrigger = row.getByRole("button", { name: `Ver contacto: ${contact}`, exact: true });
+      const contactTrigger = row.getByRole("button", { name: `Ver detalles de ${contact}`, exact: true });
       await contactTrigger.focus();
       await page.keyboard.press("Enter");
-      const contactDialog = page.getByRole("dialog", { name: "Información del contacto", exact: true });
+      const contactDialog = page.getByRole("dialog", { name: contact, exact: true });
       await expect(contactDialog).toBeVisible();
       await expect(contactDialog).toContainText("Sin formulario asociado a este email.");
       await expect(contactDialog).toContainText("Europe/Madrid");
@@ -127,18 +125,18 @@ test("private calls page exposes manual review and fits mobile widths",async({pa
       await expect(contactDialog).toBeHidden();
       await expect(contactTrigger).toBeFocused();
       await contactTrigger.click();
-      await contactDialog.getByRole("button", { name: "Cerrar contacto", exact: true }).click();
+      await contactDialog.getByRole("button", { name: "Cerrar", exact: true }).click();
       await expect(contactDialog).toBeHidden();
       await page.screenshot({path:`test-results/calls-${width}.png`,fullPage:true});
     }
     await db.query("update public.call_bookings set confirmed_at=now() where uid=$1",[uid]);await page.reload();
-    await expect(page.getByRole("row").filter({hasText:contact})).toContainText("CONFIRMO recibido");
+    await expect(page.getByRole("row").filter({hasText:contact})).toContainText("Confirmada");
     const submissionId = randomUUID();
     leadId = (await db.query("insert into public.leads(name,email,phone,profession,situation,goal,idempotency_key) values('Contacto vinculado',$1,'+34612345678','Docente','Hablar en público','Explicar con claridad',$2) returning id", [contact, submissionId])).rows[0].id;
     await db.query("select public.register_webinar($1)", [submissionId]);
     await page.reload();
-    await page.getByRole("button", { name: `Ver contacto: ${contact}`, exact: true }).click();
-    const linkedDialog = page.getByRole("dialog", { name: "Información del contacto", exact: true });
+    await page.getByRole("button", { name: "Ver detalles de Contacto vinculado", exact: true }).click();
+    const linkedDialog = page.getByRole("dialog", { name: "Contacto vinculado", exact: true });
     for (const value of ["Contacto vinculado", "+34612345678", "Formulario asociado a este email.", "Docente", "Hablar en público", "Explicar con claridad"]) {
       await expect(linkedDialog).toContainText(value);
     }

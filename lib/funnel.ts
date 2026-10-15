@@ -1,4 +1,4 @@
-export const QUALIFICATION_STEP_LABELS = ["Profesión", "Situación", "Qué quiere mejorar", "Compromiso", "Inversión", "Candidatura", "Decisión"] as const;
+export const QUALIFICATION_STEP_LABELS = ["Profesión", "Situación", "Qué quiere mejorar"] as const;
 
 export const FUNNEL_STEPS = [
   { event: "visit", label: "Entran a la clase" },

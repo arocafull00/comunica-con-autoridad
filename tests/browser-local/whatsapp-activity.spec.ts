@@ -36,7 +36,6 @@ test("WhatsApp activity links each status and error to its recipient and fits mo
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await page.goto("/admin/whatsapp");
-    await page.locator(".admin-whatsapp-disclosure > summary").filter({ hasText: "Actividad de los mensajes" }).click();
     const table = page.getByRole("table", { name: "Actividad de los mensajes de WhatsApp" });
     await expect(table).toBeVisible();
     await expect(table.getByRole("columnheader")).toHaveText(["Lead", "Teléfono", "Mensaje", "Programado", "Estado", "Detalle"]);

@@ -3,19 +3,29 @@ import { Check, Pause } from "lucide-react";
 import { fixedWhatsappTemplates, whatsappAutomations, type WhatsappAutomation } from "@/lib/followups/whatsapp-automations";
 import { quickReplyButtons, staticUrlButtons } from "@/lib/whatsapp-template-compatibility";
 import { Badge } from "@/components/ui/badge";
-import { WhatsappTemplateToolbar } from "./whatsapp-template-toolbar";
-
-const metaManagerUrl = "https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=1102523378841182&asset_id=1407248797600706&tab=message-templates";
+export const metaManagerUrl = "https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=1102523378841182&asset_id=1407248797600706&tab=message-templates";
 
 function templateStatus(status: string | null) {
   const labels: Record<string, string> = { APPROVED: "Aprobada", PENDING: "Pendiente de aprobación", REJECTED: "Rechazada", PAUSED: "Pausada", DISABLED: "Deshabilitada", IN_APPEAL: "En revisión de recurso", PENDING_DELETION: "Pendiente de eliminación", DELETED: "Eliminada", UNAVAILABLE: "Ya no está en Meta" };
   return status ? labels[status] ?? `Estado: ${status}` : "Pendiente de sincronización";
 }
 
-export function WhatsappOverview({ automations, settings }: { automations: WhatsappAutomation[]; settings: { enabled: boolean } }) {
+export function WhatsappDeliveryStatus({ automations, settings }: { automations: WhatsappAutomation[]; settings: { enabled: boolean } }) {
   const readyCount = automations.filter((t) => t.ready).length;
+  return <div className="admin-delivery-bar">
+    <div>
+      <h2>Envíos automáticos</h2>
+      <p className={`admin-delivery-status ${settings.enabled ? "is-enabled" : ""}`}>
+        {settings.enabled ? <Check size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
+        {settings.enabled ? "Habilitados en la configuración del servicio" : "Pausados en la configuración del servicio"}
+      </p>
+      <p className="admin-muted">{readyCount} de {whatsappAutomations.length} plantillas aprobadas para sus triggers.</p>
+    </div>
+  </div>;
+}
+
+export function WhatsappTemplates({ automations }: { automations: WhatsappAutomation[] }) {
   return <div className="admin-whatsapp-settings">
-    <WhatsappTemplateToolbar metaManagerUrl={metaManagerUrl} />
     <details className="admin-whatsapp-disclosure admin-whatsapp-templates">
       <summary>Plantillas de WhatsApp<span>{whatsappAutomations.length} plantillas</span></summary>
     {([{ key: "booking", title: "Si reservan la llamada" }, { key: "webinar", title: "Si no reservan la llamada" }] as const).map((group) => <section key={group.key} className="admin-automation-group" aria-labelledby={`whatsapp-${group.key}`}>
@@ -55,15 +65,5 @@ export function WhatsappOverview({ automations, settings }: { automations: Whats
     </section>)}
     <p className="admin-context-note">El botón OK de la reserva vigente registra «OK recibido» y envía una vez el primer audio de Ignacio. El botón «CONFIRMAR», o «CONFIRMO» escrito cuando hay una única llamada futura asociada al teléfono, registra la asistencia. Los botones de una reserva cancelada o reprogramada no cambian nada. «BAJA» o «STOP» retiran el consentimiento de WhatsApp. El administrador revisa las respuestas ambiguas y gestiona las cancelaciones en Cal.com.</p>
     </details>
-    <div className="admin-delivery-bar">
-      <div>
-        <h2>Envíos automáticos</h2>
-        <p className={`admin-delivery-status ${settings.enabled ? "is-enabled" : ""}`}>
-          {settings.enabled ? <Check size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
-          {settings.enabled ? "Habilitados en la configuración del servicio" : "Pausados en la configuración del servicio"}
-        </p>
-        <p className="admin-muted">{readyCount} de {whatsappAutomations.length} plantillas aprobadas para sus triggers.</p>
-      </div>
-    </div>
   </div>;
 }

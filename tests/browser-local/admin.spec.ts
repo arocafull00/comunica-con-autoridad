@@ -139,7 +139,7 @@ test("shows real reports, contacts, fixed WhatsApp messages and responsive accou
   await expect(page.getByRole("link", { name: `contact-${adminId}@example.com`, exact: true })).toBeVisible();
   await page.getByLabel("Buscar email", { exact: true }).fill(`contact-${adminId}@example.com`);
   await page.getByLabel("Buscar email", { exact: true }).press("Enter");
-  await expect(page.locator(".contacts-footer")).toContainText("1–1 de 1");
+  await expect(page.locator(".data-table-footer")).toContainText("1–1 de 1");
   await page.getByRole("link", { name: "7 días", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/contacts\?/);
   await expect(page.getByLabel("Buscar email", { exact: true })).toHaveValue(`contact-${adminId}@example.com`);

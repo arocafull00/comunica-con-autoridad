@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import { leadSchema } from "./validation";
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, SITUATIONS } from "./masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, GOALS, INVESTMENTS, SITUATIONS } from "./masterclass";
 
 function requireMobile(value: { phone: string }, context: z.RefinementCtx) {
   const type = parsePhoneNumberFromString(value.phone)?.getType();
@@ -54,6 +54,12 @@ export const qualificationSchema = z.object({
 export const candidateQualificationSchema = z.object({
   ...answers,
   situation: z.enum(SITUATIONS, { error: "Selecciona en qué punto te encuentras" }),
+}).strict();
+
+export const profileQualificationSchema = z.object({
+  profession: answers.profession,
+  situation: z.enum(SITUATIONS, { error: "Selecciona tu situación actual" }),
+  goal: z.enum(GOALS, { error: "Selecciona qué te gustaría mejorar" }),
 }).strict();
 
 export type AccessContact = z.infer<typeof accessSchema>;

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { handleBookingForm } from "../../lib/leads/booking-handler";
-import { accessSchema, candidateQualificationSchema, contactSchema, qualificationSchema } from "../../lib/leads/booking-validation";
+import { accessSchema, candidateQualificationSchema, contactSchema, profileQualificationSchema, qualificationSchema } from "../../lib/leads/booking-validation";
 import { signAccessToken, verifyAccessToken } from "../../lib/leads/access-token";
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, CAL_BOOKING_URL, SITUATIONS } from "../../lib/leads/masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, GOALS, INVESTMENTS, CAL_BOOKING_URL, SITUATIONS } from "../../lib/leads/masterclass";
 
 const env = { LEAD_IP_HMAC_SECRET: "local-tests-masterclass-secret-over-32-characters" };
 const contact = { email: "test@example.com", communicationsConsent: false };
@@ -155,6 +155,18 @@ describe("contact before the questions", () => {
       p_commitment: candidate.commitment, p_investment: candidate.investment, p_application_reasons: candidate.applicationReasons,
       p_admission_decision: candidate.admissionDecision }, "candidate");
     expect(syncSheets).toHaveBeenCalledWith(expect.objectContaining({ situation: candidate.situation }), id);
+  });
+  it("saves profession, situation and goal from the first form and always opens Cal.com", async () => {
+    const profile = { profession: "Dirección", situation: SITUATIONS[2], goal: GOALS[0] };
+    expect(profileQualificationSchema.safeParse({ ...profile, goal: BOOKING_GOALS[0] }).success).toBe(false);
+    expect(profileQualificationSchema.safeParse({ ...profile, situation: "Otra" }).success).toBe(false);
+    const id = randomUUID(); const token = signAccessToken(id, env.LEAD_IP_HMAC_SECRET);
+    const persist = vi.fn().mockResolvedValue({ outcome: "created", lead: { ...person, ...profile } });
+    const syncSheets = vi.fn();
+    const response = await handleBookingForm(request(profile, { Authorization: `Bearer ${token}` }), "qualification", { persist, syncSheets, env });
+    expect(await response.json()).toMatchObject({ ok: true, bookingUrl: CAL_BOOKING_URL });
+    expect(persist).toHaveBeenCalledWith({ p_submission_id: id, p_profession: profile.profession, p_situation: profile.situation, p_goal: profile.goal }, "profile");
+    expect(syncSheets).toHaveBeenCalledWith(expect.objectContaining(profile), id);
   });
   it("names the candidature question in its validation error", async () => {
     const token = signAccessToken(randomUUID(), env.LEAD_IP_HMAC_SECRET);

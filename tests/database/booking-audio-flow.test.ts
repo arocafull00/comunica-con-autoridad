@@ -2,7 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import pg from "pg";
 import { fixedWhatsappTemplates } from "../../lib/followups/whatsapp-automations";
-import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, INVESTMENTS, SITUATIONS } from "../../lib/leads/masterclass";
+import { ADMISSION_DECISIONS, BOOKING_GOALS, COMMITMENTS, GOALS, INVESTMENTS, SITUATIONS } from "../../lib/leads/masterclass";
 
 const target = process.env.TEST_SUPABASE_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:55322/postgres";
 if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(target).hostname)) throw new Error("Local database only");
@@ -130,6 +130,17 @@ describe("contact step", () => {
     expect((await db.query(sql, args)).rows[0].result.outcome).toBe("replayed");
     expect((await db.query(sql, [...args.slice(0, 2), SITUATIONS[0], ...args.slice(3)])).rows[0].result.outcome).toBe("conflict");
     await expect(db.query(sql, [randomUUID(), ...args.slice(1, 2), "Inventada", ...args.slice(3)])).rejects.toThrow(/Invalid qualification/);
+  });
+  it("qualifies with profession, situation and goal from the first form", async () => {
+    const person = await contact({ whatsapp: false });
+    const args = [person.key, "Dirección", SITUATIONS[2], GOALS[0]];
+    const sql = "select public.complete_masterclass_profile($1,$2,$3,$4) as result";
+    expect((await db.query(sql, args)).rows[0].result).toMatchObject({ outcome: "created", lead: { profession: "Dirección", situation: SITUATIONS[2], goal: GOALS[0], whatsappConsent: false, name: "Lucía" } });
+    expect((await db.query("select qualified_at,commitment from public.leads where idempotency_key=$1", [person.key])).rows[0]).toEqual({ qualified_at: expect.any(Date), commitment: null });
+    expect((await db.query(sql, args)).rows[0].result.outcome).toBe("replayed");
+    expect((await db.query(sql, [...args.slice(0, 3), GOALS[1]])).rows[0].result.outcome).toBe("conflict");
+    expect((await db.query(sql, [randomUUID(), ...args.slice(1)])).rows[0].result.outcome).toBe("missing");
+    await expect(db.query(sql, [person.key, "Dirección", SITUATIONS[2], BOOKING_GOALS[0]])).rejects.toThrow(/Invalid qualification/);
   });
   it("asks email-only registrations to complete the contact step first", async () => {
     const key = randomUUID();

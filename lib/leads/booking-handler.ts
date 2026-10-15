@@ -1,5 +1,5 @@
 import { EMAIL_CONSENT_VERSION, WHATSAPP_CHECKBOX_CONSENT_VERSION, WHATSAPP_CONSENT_VERSION, type LeadFieldErrors } from "./contracts";
-import { accessSchema, candidateQualificationSchema, contactSchema, qualificationSchema } from "./booking-validation";
+import { accessSchema, candidateQualificationSchema, contactSchema, profileQualificationSchema, qualificationSchema } from "./booking-validation";
 import { idempotencySchema } from "./validation";
 import { signAccessToken, verifyAccessToken } from "./access-token";
 import { BodyTooLargeError, readJsonBody, requestIpHash, type LeadEnvironment } from "./request";
@@ -7,8 +7,8 @@ import type { SheetsLead } from "./google-sheets";
 import { ADMISSION_DECISIONS, CAL_BOOKING_URL } from "./masterclass";
 
 type Result = { outcome: "created" | "replayed" | "conflict" | "rate_limited" | "missing"; retry_after?: number; lead?: SheetsLead };
-// "email" and "qualification" are the previous form; "contact" and "candidate" the current one.
-export type BookingFormVariant = "email" | "contact" | "qualification" | "candidate";
+// "email", "qualification" and "candidate" are previous forms; "contact" and "profile" the current one.
+export type BookingFormVariant = "email" | "contact" | "qualification" | "candidate" | "profile";
 type Dependencies = {
   persist: (args: Record<string, unknown>, variant: BookingFormVariant) => Promise<Result>;
   syncSheets: (lead: SheetsLead, submissionId: string) => Promise<void>;
@@ -37,8 +37,9 @@ export async function handleBookingForm(request: Request, stage: "access" | "qua
     // The current form sends the contact first; earlier pages send name and mobile with the answers.
     const variant: BookingFormVariant = stage === "access"
       ? hasAny(raw, ["name", "phone", "whatsappConsent"]) ? "contact" : "email"
-      : hasAny(raw, ["situation"]) && !hasAny(raw, ["name", "phone"]) ? "candidate" : "qualification";
-    const schema = { email: accessSchema, contact: contactSchema, qualification: qualificationSchema, candidate: candidateQualificationSchema }[variant];
+      : hasAny(raw, ["name", "phone"]) || !hasAny(raw, ["situation"]) ? "qualification"
+      : hasAny(raw, ["commitment", "investment", "applicationReasons", "admissionDecision"]) ? "candidate" : "profile";
+    const schema = { email: accessSchema, contact: contactSchema, qualification: qualificationSchema, candidate: candidateQualificationSchema, profile: profileQualificationSchema }[variant];
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
       const fieldErrors: LeadFieldErrors = {};
@@ -72,6 +73,10 @@ export async function handleBookingForm(request: Request, stage: "access" | "qua
         p_whatsapp_consent_version: WHATSAPP_CONSENT_VERSION, p_profession: answers.profession, p_goal: answers.goal,
         p_commitment: answers.commitment, p_investment: answers.investment,
         p_application_reasons: answers.applicationReasons, p_admission_decision: answers.admissionDecision };
+    } else if (variant === "profile") {
+      const answers = profileQualificationSchema.parse(parsed.data);
+      admissionDecision = ADMISSION_DECISIONS[0];
+      args = { p_submission_id: id, p_profession: answers.profession, p_situation: answers.situation, p_goal: answers.goal };
     } else {
       const answers = candidateQualificationSchema.parse(parsed.data);
       admissionDecision = answers.admissionDecision;

@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { candidateQualificationSchema } from "@/lib/leads/booking-validation";
+import { profileQualificationSchema } from "@/lib/leads/booking-validation";
 import { verifyAccessToken } from "@/lib/leads/access-token";
 import { readJsonBody } from "@/lib/leads/request";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 const progressSchema = z.object({ step: z.number().int().min(1).max(7), answers: z.record(z.string(), z.unknown()) }).strict();
-const answerFields = candidateQualificationSchema.shape;
+const answerFields = profileQualificationSchema.shape;
 
 function validAnswers(answers: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(answerFields).flatMap(([field, schema]) => {
