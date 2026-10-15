@@ -317,19 +317,19 @@ Deno.test("a missing Meet link uses a fallback text in the new templates, and a 
 
 Deno.test("recorded audios are sent from the site as audio messages and window rejections are not retried", async () => {
   const withAudio = loadFollowupConfig({ ...env, FOLLOWUP_WHATSAPP_SEND_ENABLED: "true", WHATSAPP_ACCESS_TOKEN: "real", WHATSAPP_PHONE_NUMBER_ID: "123", WHATSAPP_GRAPH_API_VERSION: "v99.0" });
-  assert.deepEqual(withAudio.whatsapp?.audioUrls, { booking_audio_1: "https://example.com/whatsapp/primer-audio-reserva.ogg", booking_audio_2: "https://example.com/whatsapp/segundo-audio-reserva.ogg" });
+  assert.deepEqual(withAudio.whatsapp?.audioUrls, { booking_audio_1: "https://example.com/primer-audio-reserva.m4a", booking_audio_2: "https://example.com/segundo-audio-reserva.m4a" });
   const audio = { ...message, channel: "whatsapp" as const, step: "booking_audio_1", kind: "audio" as const, templateName: null, templateLanguage: null };
   const calls: string[] = [];
   const audioFetch = (send: Response): typeof fetch => async (url, init) => {
     calls.push(String(url));
-    if (String(url) === "https://example.com/whatsapp/primer-audio-reserva.ogg") return new Response(new Uint8Array([79, 103, 103, 83]));
+    if (String(url) === "https://example.com/primer-audio-reserva.m4a") return new Response(new Uint8Array([79, 103, 103, 83]));
     if (String(url).endsWith("/media")) {
       const form = init?.body as FormData;
       assert.equal(form.get("messaging_product"), "whatsapp");
-      assert.equal(form.get("type"), "audio/ogg");
+      assert.equal(form.get("type"), "audio/mp4");
       const file = form.get("file") as File;
-      assert.equal(file.name, "primer-audio-reserva.ogg");
-      assert.equal(file.type, "audio/ogg");
+      assert.equal(file.name, "primer-audio-reserva.m4a");
+      assert.equal(file.type, "audio/mp4");
       assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [79, 103, 103, 83]);
       return Response.json({ id: "media-1" });
     }
@@ -337,7 +337,7 @@ Deno.test("recorded audios are sent from the site as audio messages and window r
     return send;
   };
   assert.deepEqual(await sendFollowup(audio, withAudio, audioFetch(Response.json({ messages: [{ id: "wamid.audio" }] }))), { outcome: "sent", providerId: "wamid.audio" });
-  assert.deepEqual(calls, ["https://example.com/whatsapp/primer-audio-reserva.ogg", "https://graph.facebook.com/v99.0/123/media", "https://graph.facebook.com/v99.0/123/messages"]);
+  assert.deepEqual(calls, ["https://example.com/primer-audio-reserva.m4a", "https://graph.facebook.com/v99.0/123/media", "https://graph.facebook.com/v99.0/123/messages"]);
   assert.deepEqual(await sendFollowup(audio, withAudio, audioFetch(Response.json({ error: { code: 131047 } }, { status: 400 }))), { outcome: "failed", error: "meta_131047_http_400" });
   assert.deepEqual(await sendFollowup(audio, withAudio, fetchJson({}, 404)), { outcome: "retry", error: "audio_http_404" });
   const rejected: typeof fetch = async (url) => String(url).endsWith("/media") ? Response.json({ error: { code: 131053 } }, { status: 400 }) : new Response("ogg");

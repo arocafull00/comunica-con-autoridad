@@ -103,10 +103,10 @@ Se aplica a reservas nuevas y reprogramaciones con **24 horas o más** de antela
 | Paso | Cuándo | Plantilla / contenido | Condición |
 | --- | --- | --- | --- |
 | `booking_ok_request` | **Inmediato** | `reserva_recibida_ok` · `es`: nombre, fecha, hora local, Meet y botón OK | Sin Meet todavía, muestra «te lo enviaremos antes de la sesión». |
-| `booking_audio_1` | Al recibir el OK | Audio `primer-audio-reserva.ogg` | Una vez por revisión; ventana de 24 horas abierta. |
+| `booking_audio_1` | Al recibir el OK | Audio `primer-audio-reserva.m4a` | Una vez por revisión; ventana de 24 horas abierta. |
 | `booking_confirm_request` | 2 horas después de que Meta acepte el audio 1 | `reserva_confirmar_asistencia` · `es`: nombre, Meet y botón CONFIRMAR | Se omite si ya hay confirmación o la llamada ha empezado. |
 | `booking_2h` | C − **2 horas** | `recordatorio_reunion_2h` · `es` | Igual que antes: espera el enlace real de Meet. |
-| `booking_audio_2` | C − 2 horas + 1 minuto | Audio `segundo-audio-reserva.ogg` | OK recibido y ventana abierta; si no, se omite con el motivo (`ok_not_received`, `whatsapp_window_closed`). |
+| `booking_audio_2` | C − 2 horas + 1 minuto | Audio `segundo-audio-reserva.m4a` | OK recibido y ventana abierta; si no, se omite con el motivo (`ok_not_received`, `whatsapp_window_closed`). |
 | `booking_15m` | C − **15 minutos** | `15_minutos_antes` · `en` | Igual que antes. |
 
 WhatsApp solo permite mensajes que no son plantilla, como los audios, durante las 24 horas siguientes al último mensaje del cliente ([política](https://whatsappbusiness.com/policy/)); el worker exige una respuesta registrada en las últimas 23 h 55 min. Los botones llevan el identificador del trabajo, de modo que una cancelación o reprogramación invalida los botones y trabajos de la revisión anterior. No se avisa a Eduardo ni se cancela ninguna reserva automáticamente.

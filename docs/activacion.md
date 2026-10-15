@@ -87,7 +87,7 @@ La edición y publicación de correos se mantiene en [templates/README.md](../te
 
 Las migraciones `20261014000100` y `20261014000200` se aplican con el resto (`pnpm exec supabase db push`). El flujo queda **desactivado** hasta ejecutar su interruptor; mientras tanto todas las reservas siguen con los mensajes anteriores.
 
-1. Publicar la web: sirve `public/whatsapp/primer-audio-reserva.ogg` y `segundo-audio-reserva.ogg` (copias OGG/Opus de los `.m4a` originales de `public/`). El worker los enlaza con `ADMIN_SITE_URL`, que debe ser el dominio público de la web.
+1. Publicar la web: sirve `public/primer-audio-reserva.m4a` y `segundo-audio-reserva.m4a` (AAC, `audio/mp4`). El worker los descarga con `ADMIN_SITE_URL`, los sube a Meta y los envía por su id. Meta no entregaba las copias OGG/Opus (error 131053). `ADMIN_SITE_URL` debe ser el dominio público de la web.
 2. Desplegar `process-followup-queue` (comando anterior).
 3. Plantillas de Meta, mismo número y cuenta: `reserva_recibida_ok` (botón OK) y `reserva_confirmar_asistencia` (botón CONFIRMAR), ambas `es` y UTILITY, enviadas a revisión el 14/10/2026 ([definición](../templates/whatsapp-booking-audio.json)). El worker sincroniza el catálogo cada minuto; comprobar que figuran `APPROVED` en el panel de WhatsApp.
 4. Activar con SQL administrativo. Se rechaza si alguna de las dos plantillas no está aprobada:

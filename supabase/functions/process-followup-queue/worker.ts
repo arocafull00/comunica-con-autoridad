@@ -25,10 +25,9 @@ export type FollowupMessage = {
   kind?: "template" | "audio"; parameters?: TemplateParameter[] | null; startTime?: string | null; timeZone?: string | null;
 };
 
-// Converted copies of public/primer-audio-reserva.m4a and public/segundo-audio-reserva.m4a (OGG/Opus).
 const audioFiles: Record<string, string> = {
-  booking_audio_1: "/whatsapp/primer-audio-reserva.ogg",
-  booking_audio_2: "/whatsapp/segundo-audio-reserva.ogg",
+  booking_audio_1: "/primer-audio-reserva.m4a",
+  booking_audio_2: "/segundo-audio-reserva.m4a",
 };
 // Quick-reply buttons return this payload, binding the reply to the job and so to its booking revision.
 export const buttonPayload = (jobId: string) => `followup:${jobId}`;
@@ -121,8 +120,8 @@ export async function sendFollowup(message: FollowupMessage, config: Config, fet
         if (!file.ok) return { outcome: "retry", error: `audio_http_${file.status}` };
         const form = new FormData();
         form.append("messaging_product", "whatsapp");
-        form.append("type", "audio/ogg");
-        form.append("file", new Blob([await file.arrayBuffer()], { type: "audio/ogg" }), link.split("/").pop()!);
+        form.append("type", "audio/mp4");
+        form.append("file", new Blob([await file.arrayBuffer()], { type: "audio/mp4" }), link.split("/").pop()!);
         const upload = await fetcher(`https://graph.facebook.com/${config.whatsapp.version}/${config.whatsapp.phoneNumberId}/media`, {
           method: "POST", headers: { Authorization: headers.Authorization }, body: form, signal: AbortSignal.timeout(20_000) });
         const media = await upload.json().catch(() => null);
