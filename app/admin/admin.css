@@ -118,7 +118,7 @@
   .admin-sidebar .admin-brand { font-size: 16px; }
   .admin-sidebar .admin-brand > span { display: inline; margin-left: 4px; }
   .admin-brand .admin-brand-caption { margin-top: 6px; }
-  .admin-navigation { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); margin-top: 24px; gap: 4px; }
+  .admin-navigation { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); margin-top: 24px; gap: 4px; }
   .admin-navigation a { flex-direction: column; gap: 6px; padding: 10px 4px; font-size: 14px; }
   .admin-sidebar-bottom { padding-top: 0; }
   .admin-sidebar-bottom .admin-public-link { display: none; }
@@ -233,8 +233,8 @@
 .admin-summary .admin-chart { height: clamp(208px, calc(100dvh - 480px), 480px); }
 .admin-chart-note summary { cursor: pointer; width: fit-content; min-height: 44px; display: list-item; align-content: center; }
 .admin-summary .admin-chart-note { margin: 4px 0 0; }
-.admin-summary :is(.admin-campaigns, .admin-funnel) li { gap: 16px; padding: 12px 0; }
-.admin-summary :is(.admin-campaigns, .admin-funnel) li:first-child { padding-top: 0; }
+.admin-root :is(.admin-summary .admin-campaigns, .admin-funnel) li { gap: 16px; padding: 12px 0; }
+.admin-root :is(.admin-summary .admin-campaigns, .admin-funnel) li:first-child { padding-top: 0; }
 .admin-campaign-detail { flex: 1; min-width: 0; }
 .admin-campaign-detail > strong { display: block; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
 .admin-summary .admin-campaign-count strong { font-size: 20px; }
@@ -465,7 +465,6 @@
 }
 .admin-form-progress { margin: 4px 0 0; color: var(--admin-muted); font-size: 14px; }
 .admin-form-progress-open { color: var(--admin-ink); font-weight: 500; }
-.admin-summary > .admin-report:last-child { margin-top: 40px; }
 .admin-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; color: var(--admin-muted); font-variant-numeric: tabular-nums; }
 .admin-page-size { display: flex; align-items: center; gap: 8px; }
 .admin-page-size [data-slot=label] { font-size: 14px; font-weight: 400; color: var(--admin-muted); }

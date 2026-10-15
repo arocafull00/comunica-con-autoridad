@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { cacheLife } from "next/cache";
-import { ArrowUpRight, Filter, Inbox, Megaphone } from "lucide-react";
+import { ArrowUpRight, Inbox, Megaphone } from "lucide-react";
 import { getDashboard, type LeadMetrics } from "@/lib/admin/data";
 import { dateRange } from "@/lib/admin/validation";
 import { DailyChart } from "../charts";
@@ -9,7 +9,6 @@ import { DateRangeFilter } from "../date-range-filter";
 import { AdminLoading } from "../loading-state";
 import { MetricComparison } from "../metric-comparison";
 import { conversionRate } from "@/lib/admin/comparison";
-import { FUNNEL_STEPS, type FunnelEvent } from "@/lib/funnel";
 
 const format = (value: number) => new Intl.NumberFormat("es-ES").format(value);
 
@@ -37,30 +36,13 @@ function CampaignRows({ campaigns, max }: { campaigns: LeadMetrics["campaigns"];
   </li>)}</ul>;
 }
 
-function FunnelRows({ funnel }: { funnel: Partial<Record<FunnelEvent, number>> }) {
-  const visits = funnel.visit ?? 0;
-  const percent = (value: number, base: number) => base > 0 ? `${new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 }).format(value / base * 100)} %` : "—";
-  return <ul className="admin-list admin-funnel">{FUNNEL_STEPS.map((step, i) => {
-    const count = funnel[step.event as FunnelEvent] ?? 0;
-    const previous = i > 0 ? funnel[FUNNEL_STEPS[i - 1].event as FunnelEvent] ?? 0 : null;
-    return <li key={step.event}>
-      <div className="admin-campaign-detail">
-        <strong>{step.label}</strong>
-        <p>{percent(count, visits)} de las visitas{previous !== null ? ` · ${percent(count, previous)} del paso anterior` : ""}</p>
-        <div className="admin-campaign-bar" aria-hidden="true"><span style={{ width: `${visits > 0 ? Math.min(100, count / visits * 100) : 0}%` }} /></div>
-      </div>
-      <div className="admin-campaign-count"><strong>{format(count)}</strong><span>sesiones</span></div>
-    </li>;
-  })}</ul>;
-}
-
 async function Summary({ searchParams }: { searchParams: Promise<{ start?: string; end?: string }> }) {
   "use cache: private";
   cacheLife({ stale: 60 });
   const params = await searchParams;
   const range = dateRange(params.start, params.end);
   const defaultRange = dateRange();
-  const { metrics, traffic, previous, comparison, funnel } = await getDashboard(range);
+  const { metrics, traffic, previous, comparison } = await getDashboard(range);
   const conversion = conversionRate(metrics.leads, traffic.available ? traffic.visitors : null);
   const previousConversion = previous.metrics ? conversionRate(previous.metrics.leads, previous.traffic.available ? previous.traffic.visitors : null) : null;
   const campaigns = [...metrics.campaigns].sort((a, b) => b.leads - a.leads);
@@ -104,14 +86,6 @@ async function Summary({ searchParams }: { searchParams: Promise<{ start?: strin
       </section>
     </div>
 
-    <section className="admin-report" aria-labelledby="funnel-heading">
-      <div className="admin-panel-heading"><h2 id="funnel-heading">Embudo de la clase</h2><span>Sesiones que llegan a cada paso</span></div>
-      {funnel === null ? <p role="status" className="admin-traffic-status">El embudo no está disponible temporalmente.</p>
-        : funnel.visit ? <>
-          <FunnelRows funnel={funnel} />
-          <details className="admin-chart-note admin-metric-help"><summary>Cómo se mide el embudo</summary><p>Cada carga de la página es una sesión anónima, sin cookies ni datos de contacto, y cuenta una sola vez por paso. Una persona que vuelve otro día cuenta como otra sesión; quien regresa con el formulario empezado puede aparecer en las preguntas sin haber pasado por los pasos anteriores en esa sesión. Los bloqueadores y las conexiones interrumpidas pueden impedir registrar algún paso. El detalle de cada contacto está en Contactos.</p></details>
-        </> : <div className="admin-empty"><Filter size={24} aria-hidden="true" /><strong>Aún no hay sesiones registradas en este período</strong><p>El embudo empieza a contar desde que se publica esta versión.</p></div>}
-    </section>
   </div>;
 }
 

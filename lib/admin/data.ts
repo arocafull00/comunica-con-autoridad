@@ -8,15 +8,18 @@ export async function getDashboard(range: { start: string; end: string }) {
   const { db } = await requireAdmin();
   const comparison = comparisonPeriod(range);
   const trafficConfig = { token: process.env.VERCEL_ANALYTICS_TOKEN, projectId: process.env.VERCEL_ANALYTICS_PROJECT_ID, teamId: process.env.VERCEL_ANALYTICS_TEAM_ID };
-  const [report, traffic, previousReport, previousTraffic, funnel] = await Promise.all([
+  const [report, traffic, previousReport, previousTraffic] = await Promise.all([
     db.rpc("get_lead_metrics", { p_start: range.start, p_end: range.end }),
     queryTraffic(range, trafficConfig),
     db.rpc("get_lead_metrics", { p_start: comparison.range.start, p_end: comparison.range.end }),
     queryTraffic(comparison.range, trafficConfig),
-    db.rpc("get_funnel_metrics", { p_start: range.start, p_end: range.end }),
   ]);
   if (report.error || !report.data) throw new Error("No se pudieron consultar las solicitudes.");
   return { metrics: report.data as LeadMetrics, traffic, comparison,
-    funnel: funnel.error || !funnel.data ? null : funnel.data as Partial<Record<FunnelEvent, number>>,
     previous: { metrics: previousReport.error || !previousReport.data ? null : previousReport.data as LeadMetrics, traffic: previousTraffic } };
+}
+export async function getFunnel(range: { start: string; end: string }) {
+  const { db } = await requireAdmin();
+  const { data, error } = await db.rpc("get_funnel_metrics", { p_start: range.start, p_end: range.end });
+  return error || !data ? null : data as Partial<Record<FunnelEvent, number>>;
 }

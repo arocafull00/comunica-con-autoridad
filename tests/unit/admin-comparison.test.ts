@@ -50,7 +50,6 @@ describe("dashboard period queries", () => {
     expect(mocks.rpc.mock.calls).toEqual([
       ["get_lead_metrics", { p_start: "2026-06-01", p_end: "2026-06-08" }],
       ["get_lead_metrics", { p_start: "2026-05-25", p_end: "2026-06-01" }],
-      ["get_funnel_metrics", { p_start: "2026-06-01", p_end: "2026-06-08" }],
     ]);
     expect(mocks.traffic.mock.calls.map(([range]) => range)).toEqual([
       { start: "2026-06-01", end: "2026-06-08" }, { start: "2026-05-25", end: "2026-06-01" },
