@@ -28,6 +28,8 @@
 .webinar-page .after-card h2 { font-size: clamp(28px,3.8vw,46px); margin: 0 auto 8px; letter-spacing: -.03em; max-width: 760px; font-weight: 700; line-height: normal; }
 .webinar-page .after-card > p { display: none; }
 .webinar-page .cta { display: inline-flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 26px; border-radius: 12px; background: linear-gradient(180deg,var(--copper2),var(--copper)); color: #111; text-decoration: none; font-weight: 850; box-shadow: 0 12px 34px rgba(184,111,54,.24); transition: .2s ease; }
+.webinar-page .cta-lg { min-height: 76px; padding: 0 44px; border-radius: 16px; font-size: clamp(19px,2.4vw,24px); box-shadow: 0 16px 48px rgba(184,111,54,.34); }
+@media (max-width: 640px) { .webinar-page .cta-lg { width: 100%; padding: 0 20px; } }
 .webinar-page .cta:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .webinar-page .micro { margin-top: 14px; color: #9d968d; font-size: 15px; font-weight: 600; }
 .webinar-page .another-registration-btn { display: block; width: 100%; margin: 16px 0 0; padding: 0; border: 0; background: transparent; color: #9d968d; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: none; }

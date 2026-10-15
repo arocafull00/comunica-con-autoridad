@@ -150,9 +150,9 @@ export function Masterclass() {
       </section>
       <section id="after" className="section">
         <div className="wrap"><div className="after-card" id="booking-area" ref={bookingArea}>
-          <h2>¿Quieres que analicemos tu caso?</h2>
+          {bookingUrl ? null : <h2>¿Quieres que analicemos tu caso?</h2>}
           <p>Reserva una sesión gratuita.</p>
-          {bookingUrl ? <a className="cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">Abrir calendario →</a> : null}
+          {bookingUrl ? <a className="cta cta-lg" href={bookingUrl} target="_blank" rel="noopener noreferrer">Agendar consultoría gratuita →</a> : null}
           <div>
             {checkingAccess ? <p role="status">Comprobando tu inscripción…</p> : accessCheckError ? <div>
               <p role="alert">No hemos podido comprobar tu inscripción. Vuelve a intentarlo.</p>

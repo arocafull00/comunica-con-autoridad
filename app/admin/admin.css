@@ -466,3 +466,8 @@
 .admin-form-progress { margin: 4px 0 0; color: var(--admin-muted); font-size: 14px; }
 .admin-form-progress-open { color: var(--admin-ink); font-weight: 500; }
 .admin-summary > .admin-report:last-child { margin-top: 40px; }
+.admin-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; color: var(--admin-muted); font-variant-numeric: tabular-nums; }
+.admin-page-size { display: flex; align-items: center; gap: 8px; }
+.admin-page-size [data-slot=label] { font-size: 14px; font-weight: 400; color: var(--admin-muted); }
+.admin-root .admin-pagination-nav { width: auto; margin: 0; justify-content: flex-end; }
+.admin-pagination-nav [data-slot=pagination-link] { min-width: 44px; min-height: 44px; font-variant-numeric: tabular-nums; }
