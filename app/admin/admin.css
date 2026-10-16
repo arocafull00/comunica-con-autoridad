@@ -456,6 +456,11 @@
 .data-table-page-count { color: var(--admin-ink); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .data-table-page-buttons { display: flex; gap: 6px; }
 .admin-page-size { display: flex; align-items: center; gap: 8px; }
+.data-table-filters { flex-wrap: wrap; align-items: end; gap: 12px; }
+.data-table-filter { display: flex; flex-direction: column; gap: 4px; }
+.admin-root .data-table-filter [data-slot=label] { font-size: 13px; font-weight: 500; color: var(--admin-muted); }
+.admin-root .data-table-filter [data-slot=native-select-wrapper] { width: auto; margin: 0; }
+.admin-root .data-table-filter [data-slot=native-select] { min-width: 160px; height: 32px; min-height: 32px; font-size: 14px; }
 .admin-root .admin-page-size [data-slot=label] { font-size: 14px; font-weight: 500; color: var(--admin-ink); white-space: nowrap; }
 .admin-root .admin-page-size [data-slot=native-select-wrapper] { width: auto; margin: 0; }
 .admin-root .admin-page-size [data-slot=native-select] { width: 72px; height: 32px; min-height: 32px; font-size: 14px; }
@@ -468,13 +473,15 @@
 .details-dialog-section dt { color: var(--admin-muted); }
 .details-dialog-section dd { margin: 0; overflow-wrap: anywhere; }
 @media (pointer: coarse) {
-  .admin-root :is(.data-table-toolbar, .data-table, .data-table-footer, .details-dialog) [data-slot=button], .admin-root .data-table-search [data-slot=input], .admin-root .admin-page-size [data-slot=native-select] { height: 44px; min-height: 44px; }
+  .admin-root :is(.data-table-toolbar, .data-table, .data-table-footer, .details-dialog) [data-slot=button], .admin-root .data-table-search [data-slot=input], .admin-root :is(.admin-page-size, .data-table-filter) [data-slot=native-select] { height: 44px; min-height: 44px; }
   .admin-root :is(.data-table, .data-table-footer, .details-dialog) [data-slot=button][data-size=icon-sm] { width: 44px; }
 }
 @media (max-width:1100px) { .col-hide-lg { display: none; } }
 @media (max-width:800px) { .col-hide-md, .data-table-date { display: none; } }
 @media (max-width:480px) {
   .data-table-search { flex: 1; }
+  .data-table-filter { flex: 1 1 100%; }
+  .admin-root .data-table-filter [data-slot=native-select-wrapper] { width: 100%; }
   .data-table-page-edge, .admin-page-size { display: none; }
   .col-hide-sm { display: none; }
   .admin-root .data-table :is(th, td) { padding-inline: 10px; }

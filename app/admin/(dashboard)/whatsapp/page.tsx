@@ -3,11 +3,13 @@ import { cacheLife } from "next/cache";
 import { requireAdmin } from "@/lib/admin/auth";
 import { WhatsappDeliveryStatus, WhatsappTemplates, metaManagerUrl } from "../../whatsapp-form";
 import { WhatsappTemplateToolbar } from "../../whatsapp-template-toolbar";
-import { type WhatsappAutomation, whatsappJobStatus, whatsappStepTitle } from "@/lib/followups/whatsapp-automations";
+import { type WhatsappAutomation, whatsappAudioSteps, whatsappAutomations, whatsappJobStatus, whatsappStepTitle } from "@/lib/followups/whatsapp-automations";
 import { AdminLoading } from "../../loading-state";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataTablePagination, pageParams } from "../../data-table-pagination";
+import { JobFilters } from "../../job-filters";
+import { type JobFilterSearchParams, jobFilterParams } from "../../job-filter-params";
 
 type WhatsappJob = {
   id: string;
@@ -19,18 +21,21 @@ type WhatsappJob = {
   registration: { email: string; lead: { name: string | null; phone: string | null } | null } | null;
 };
 
+const whatsappSteps = [...whatsappAutomations, ...whatsappAudioSteps];
 const STATUS_TONES: Record<string, string> = { sent: "done", failed: "failed", pending: "open", processing: "open" };
 
-async function Whatsapp({ searchParams }: { searchParams: Promise<{ page?: string; perPage?: string }> }) {
+async function Whatsapp({ searchParams }: { searchParams: Promise<JobFilterSearchParams> }) {
   "use cache: private";
   cacheLife({ stale: 60 });
-  const { page, perPage, from, to } = pageParams(await searchParams);
+  const params = await searchParams;
+  const { page, perPage, from, to } = pageParams(params);
+  const filters = jobFilterParams(params, whatsappSteps.map((step) => step.key));
   const { db } = await requireAdmin();
   const [settings, templates, audit, recent, ...counts] = await Promise.all([
     db.from("whatsapp_settings").select("enabled,template_id,revision,updated_at").single(),
     db.rpc("read_whatsapp_automation_catalog"),
     db.from("admin_audit").select("id,details,created_at,actor_email").order("created_at", { ascending: false }).limit(10),
-    db.from("followup_jobs").select("id,step,status,last_error,scheduled_at,payload,registration:webinar_registrations(email,lead:leads(name,phone)),followup_steps!inner(channel)", { count: "exact" }).eq("followup_steps.channel", "whatsapp").order("scheduled_at", { ascending: false }).order("id").range(from, to).overrideTypes<WhatsappJob[], { merge: false }>(),
+    db.from("followup_jobs").select("id,step,status,last_error,scheduled_at,payload,registration:webinar_registrations(email,lead:leads(name,phone)),followup_steps!inner(channel)", { count: "exact" }).eq("followup_steps.channel", "whatsapp").match({ ...(filters.status && { status: filters.status }), ...(filters.step && { step: filters.step }) }).order("scheduled_at", { ascending: filters.order === "asc" }).order("id").range(from, to).overrideTypes<WhatsappJob[], { merge: false }>(),
     ...["pending", "processing", "sent", "failed", "suppressed"].map((status) => db.from("followup_jobs").select("id,followup_steps!inner(channel)", { count: "exact", head: true }).eq("followup_steps.channel", "whatsapp").eq("status", status)),
   ]);
   if ([settings, templates, audit, recent, ...counts].some((r) => r.error) || !settings.data) throw new Error("No se pudo consultar WhatsApp.");
@@ -38,6 +43,7 @@ async function Whatsapp({ searchParams }: { searchParams: Promise<{ page?: strin
 
   return <div className="admin-page admin-whatsapp">
     <div className="admin-page-heading"><div><h1>WhatsApp</h1><p className="admin-muted">Mensajes fijos y envíos automáticos del webinar y las llamadas.</p></div><div><WhatsappTemplateToolbar metaManagerUrl={metaManagerUrl} /></div></div>
+    <JobFilters pathname="/admin/whatsapp" perPage={perPage} {...filters} steps={whatsappSteps} />
     <div className="data-table">
       <Table aria-label="Actividad de los mensajes de WhatsApp">
         <TableHeader><TableRow>
@@ -60,10 +66,10 @@ async function Whatsapp({ searchParams }: { searchParams: Promise<{ page?: strin
             <TableCell><Badge variant="outline" className="data-table-status" data-tone={STATUS_TONES[job.status] ?? "idle"}>{whatsappJobStatus(job.status, job.last_error)}</Badge></TableCell>
             <TableCell className="col-hide-lg"><span className="data-table-sub data-table-detail" title={job.last_error ?? undefined}>{job.last_error ?? "Sin incidencias"}</span></TableCell>
           </TableRow>;
-        }) : <TableRow><TableCell colSpan={6} className="data-table-empty">Todavía no hay mensajes programados.</TableCell></TableRow>}</TableBody>
+        }) : <TableRow><TableCell colSpan={6} className="data-table-empty">{Object.keys(filters.query).length ? "No hay mensajes con estos filtros." : "Todavía no hay mensajes programados."}</TableCell></TableRow>}</TableBody>
       </Table>
     </div>
-    <DataTablePagination page={page} perPage={perPage} total={recent.count ?? 0} pathname="/admin/whatsapp" />
+    <DataTablePagination page={page} perPage={perPage} total={recent.count ?? 0} pathname="/admin/whatsapp" query={filters.query} />
     <div className="admin-whatsapp-details">
       <details className="admin-whatsapp-disclosure">
         <summary>Estado de los envíos<span>{counts[3].count ? `${counts[3].count} fallidos` : settings.data.enabled ? "Habilitados" : "Pausados"}</span></summary>
@@ -79,4 +85,4 @@ async function Whatsapp({ searchParams }: { searchParams: Promise<{ page?: strin
     </div>
   </div>;
 }
-export default function Page({ searchParams }: { searchParams: Promise<{ page?: string; perPage?: string }> }) { return <Suspense fallback={<AdminLoading />}><Whatsapp searchParams={searchParams} /></Suspense>; }
+export default function Page({ searchParams }: { searchParams: Promise<JobFilterSearchParams> }) { return <Suspense fallback={<AdminLoading />}><Whatsapp searchParams={searchParams} /></Suspense>; }
