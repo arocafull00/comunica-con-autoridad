@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
-import { CalendarClock, ChartNoAxesCombined, Filter, Megaphone, UsersRound, MessageCircle, UserRound } from "lucide-react";
+import { CalendarClock, ChartNoAxesCombined, Filter, Mail, Megaphone, UsersRound, MessageCircle, UserRound } from "lucide-react";
 
 const links = [
   { href: "/admin", label: "Resumen", icon: ChartNoAxesCombined },
@@ -12,6 +12,7 @@ const links = [
   { href: "/admin/contacts", label: "Contactos", icon: UsersRound },
   { href: "/admin/calls", label: "Llamadas", icon: CalendarClock },
   { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { href: "/admin/emails", label: "Emails", icon: Mail },
   { href: "/admin/account", label: "Mi cuenta", icon: UserRound },
 ];
 
