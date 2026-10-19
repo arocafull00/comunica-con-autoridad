@@ -1,0 +1,200 @@
+[
+  {
+    "name": "15_minutos_antes",
+    "language": "en",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "En 15 minutos empezamos. Nos vemos ahora. 😁"
+      }
+    ]
+  },
+  {
+    "name": "no_reservan_1dia_despues",
+    "language": "es",
+    "category": "MARKETING",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Una de las cosas que más veo es gente que sabe perfectamente qué quiere decir, pero no consigue que su mensaje tenga el peso que debería. \n\nSi quieres que analicemos dónde te está pasando a ti, puedes reservar aquí 👇🏻"
+      },
+      {
+        "type": "BUTTONS",
+        "buttons": [
+          {
+            "type": "URL",
+            "text": "Reservar Sesión Gratuita",
+            "url": "https://cal.com/ignacio-roa-chicharro-r7vym8/sesion-gratuita-comunicacion"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "recordatorio_24hantes",
+    "language": "en",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "*Mañana tenemos nuestra sesión 🙌🏻*\n\nReserva unos 45 minutos y, si puedes, entra desde un sitio tranquilo.\n\nLa idea es que salgamos de la llamada con bastante claridad sobre qué deberías trabajar y cómo hacerlo.\n\nPara reservar ese espacio exclusivamente para ti, necesito que confirmes tu asistencia respondiendo *“CONFIRMO”* a este mensaje.\nSi no recibimos confirmación, liberaremos automáticamente la plaza."
+      }
+    ]
+  },
+  {
+    "name": "recordatorio_reunion_2h",
+    "language": "es",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "*Tu reunión reservada empieza en un par de horas 👌*\n\nRecuerda que, si no has *CONFIRMADO tu asistencia* con antelación por este chat, no se realizará la reunión.\n\nTe dejo aquí el enlace de Google Meet para que lo tengas localizado:\n\n{{1}}\n\nTe esperamos!",
+        "example": {
+          "body_text": [
+            [
+              "https://meet.google.com/abc-defg-hij"
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "reserva_confirmar_asistencia",
+    "language": "es",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "¡Hola de nuevo, {{1}}!\n\n✅ Tu sesión ya está reservada. Solo necesitamos que confirmes tu asistencia pulsando el botón de abajo.\n\nEnlace de la reunión >> {{2}}\n\n⚠️ Importante: Trabajamos con plazas limitadas para las sesiones individuales. Si no recibimos tu confirmación, podremos liberar ese horario para otra persona.",
+        "example": {
+          "body_text": [
+            [
+              "María",
+              "https://meet.google.com/abc-defg-hij"
+            ]
+          ]
+        }
+      },
+      {
+        "type": "BUTTONS",
+        "buttons": [
+          {
+            "type": "QUICK_REPLY",
+            "text": "CONFIRMAR"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "reserva_menos_24hantes",
+    "language": "en",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "HEADER",
+        "format": "IMAGE",
+        "example": {
+          "header_handle": [
+            "https://scontent.whatsapp.net/v/t61.29466-34/647414179_1088335810644612_2434396446110208528_n.png?ccb=1-7&_nc_sid=8b1bef&_nc_ohc=yoqbPe1zpu0Q7kNvwHa97fP&_nc_oc=Ado24DrNAbnz4p3BFv3TRzrnm67ckUnEIi1IfrQ-rhqWcL5JiD7DWNzslisSwKGvvxuT-iI7iJDd7-PMigQxkqAN&_nc_zt=3&_nc_ht=scontent.whatsapp.net&edm=AH51TzQEAAAA&_nc_gid=BIXX6AxyUBykRRsjFYXEkg&_nc_tpa=Q5bMBQJdoOm9n8by3YOyj8_OsmXtOyZxZN-G72ZU_5a-i41y2assndxKeLThbJr_14VBSus8Yr_CEaZRYQ&oh=01_Q5Aa5wE9bZUIWG5WTPt9-V53tyXFRg5AeZnJtkG9uyQq_3SXPA&oe=6AFDBFC6"
+          ]
+        }
+      },
+      {
+        "type": "BODY",
+        "text": "¡Hola! Vi que reservaste tu sesión 🙌🏻\n\nTe cuento lo que haremos: veremos tu caso, qué quieres mejorar y si tiene sentido que trabajemos juntos.\n\nReserva unos 45 minutos y entra desde un sitio tranquilo.\n\n*Para mantener la sesión, respóndeme “CONFIRMO”. Si no recibimos confirmación, liberaremos la plaza.*\n\n¡Nos vemos pronto!"
+      }
+    ]
+  },
+  {
+    "name": "reserva_recibida_ok",
+    "language": "es",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "¡Buenas, {{1}}!\nSoy el asistente virtual de Comunica con Autoridad. Hemos recibido correctamente tu solicitud para la sesión:\n\n🗓️ Fecha: {{2}}\n⏰ Hora: {{3}}\n💻 Videollamada: {{4}}\n\nPulsa OK para confirmar que has recibido la información. Después recibirás un audio grabado por Ignacio en el que te explica cómo será el proceso.",
+        "example": {
+          "body_text": [
+            [
+              "María",
+              "lunes, 20 de octubre",
+              "16:00 (Europe/Madrid)",
+              "https://meet.google.com/abc-defg-hij"
+            ]
+          ]
+        }
+      },
+      {
+        "type": "BUTTONS",
+        "buttons": [
+          {
+            "type": "QUICK_REPLY",
+            "text": "OK"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "seguimiento_no_reserva_3dia",
+    "language": "en",
+    "category": "MARKETING",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "*Viendo que de momento no te interesa dar el siguiente paso, te dejo este último mensaje por aquí 🙌🏻*\n\nSi más adelante decides que quieres trabajar seriamente tu comunicación e influencia personal, puedes consultarnos en cualquier momento.\n\nUn abrazo!"
+      }
+    ]
+  },
+  {
+    "name": "seguimiento_webinar_1h",
+    "language": "es",
+    "category": "MARKETING",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "*Gracias por apuntarte a la clase, {{1}}! ¿Pudiste verla entera? 👀*\n\nAntes de dejarlo ahí, dime una cosa: ¿qué es lo que más estás buscando mejorar ahora mismo en tu comunicación?",
+        "example": {
+          "body_text": [
+            [
+              "Nacho"
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "whatsapp_confirmacion_reserva",
+    "language": "es",
+    "category": "UTILITY",
+    "parameter_format": "POSITIONAL",
+    "components": [
+      {
+        "type": "HEADER",
+        "format": "IMAGE",
+        "example": {
+          "header_handle": [
+            "https://scontent.whatsapp.net/v/t61.29466-34/658495959_1805166457299068_1987825858520789926_n.png?ccb=1-7&_nc_sid=8b1bef&_nc_ohc=wKnobUjtBkgQ7kNvwFK_K96&_nc_oc=AdoK3wiOpiAl8YDGokEwAQrKpBwquLadKIpEpz07Fzryc6ESdpBzWxHr7DoE7NQrbIVgAsNptObPZgfZWZ6-UYNL&_nc_zt=3&_nc_ht=scontent.whatsapp.net&edm=AH51TzQEAAAA&_nc_gid=BIXX6AxyUBykRRsjFYXEkg&_nc_tpa=Q5bMBQKZ1YJD6Pvv235vlWU3HAHjkb8OQnXHEow6_3SRXKLMs3TtJKxrfimbTka4K9XhsJTXyDa7xtvmYQ&oh=01_Q5Aa5wFnNVsG10C1T6zpT8oC-4SCSyDq9kbtTn--Rv4m2bmIrw&oe=6AFD986E"
+          ]
+        }
+      },
+      {
+        "type": "BODY",
+        "text": "¡Hola! Vi que reservaste tu sesión 🙌🏻\nLa idea de la llamada es:\n\n- Entender bien tu caso y qué quieres mejorar.\n- Detectar tus principales puntos de mejora.\n- Valorar si realmente tiene sentido que trabajemos juntos.\n- Si encaja, explicarte cómo trabajamos y cuál sería el siguiente paso.\n\nSi vemos que podemos ayudarte de verdad, te explicaré cómo lo enfocaríamos contigo.\n\nTengo ganas de conocerte y analizar tu caso. Seguro que podemos sacar bastante en claro 😄"
+      }
+    ]
+  }
+]
