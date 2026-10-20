@@ -8,6 +8,7 @@ import { DailyChart } from "../charts";
 import { DateRangeFilter } from "../date-range-filter";
 import { AdminLoading } from "../loading-state";
 import { MetricComparison } from "../metric-comparison";
+import { AnimatedNumber } from "../animated-number";
 import { conversionRate } from "@/lib/admin/comparison";
 
 const format = (value: number) => new Intl.NumberFormat("es-ES").format(value);
@@ -15,12 +16,12 @@ const format = (value: number) => new Intl.NumberFormat("es-ES").format(value);
 function Metric({ label, current, previous, days, rate = false }: {
   label: string; current: number | null; previous: number | null; days: number; rate?: boolean;
 }) {
-  const value = current === null ? "—" : rate
+  const spoken = current === null ? "No disponible" : rate
     ? `${new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(current)} %`
     : format(current);
   return <>
     <dt>{label}</dt>
-    <dd className={current === null ? "admin-metric-unavailable" : undefined} aria-label={current === null ? "No disponible" : undefined}>{value}</dd>
+    <dd className={current === null ? "admin-metric-unavailable" : undefined} aria-label={spoken}>{current === null ? "—" : <AnimatedNumber value={current} digits={rate ? 1 : 0} suffix={rate ? " %" : ""} />}</dd>
     <dd className="admin-metric-comparison"><MetricComparison label={label} current={current} previous={previous} days={days} rate={rate} /></dd>
   </>;
 }

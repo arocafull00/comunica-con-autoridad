@@ -29,7 +29,9 @@
 .admin-account-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .admin-root .admin-logout { width: 100%; justify-content: flex-start; color: var(--admin-muted); font-size: 14px; padding-inline: 12px; }
 .admin-root .admin-logout:hover { color: var(--admin-ink); }
-.admin-workspace { min-width: 0; }
+.admin-workspace { min-width: 0; position: relative; isolation: isolate; }
+.admin-workspace::before { content: ""; position: fixed; inset: -25%; z-index: -1; pointer-events: none; background: radial-gradient(32% 28% at 28% 30%, rgb(239 179 102 / .16), transparent 70%), radial-gradient(30% 34% at 72% 68%, rgb(196 112 64 / .13), transparent 70%), radial-gradient(26% 24% at 64% 22%, rgb(122 96 160 / .09), transparent 70%); animation: admin-drift 48s ease-in-out infinite alternate; will-change: transform; }
+@keyframes admin-drift { 0% { transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1); } 50% { transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.08); } 100% { transform: translate3d(-2%, 4%, 0) rotate(-6deg) scale(1.03); } }
 .admin-content { max-width: 1600px; margin: auto; padding: 28px 32px; min-width: 0; }
 .admin-content:focus { outline: none; }
 .admin-skip { position: fixed; top: 12px; left: 12px; transform: translateY(-200%); z-index: 10; padding: 12px 20px; background: var(--admin-raised); }
@@ -141,7 +143,7 @@
   .admin-filters [data-slot=button] { width: 100%; }
   .admin-list:not(.admin-campaigns) li { flex-direction: column; }
 }
-@media (prefers-reduced-motion:reduce) { .admin-root :is(button,a,input,select) { transition: none; } }
+@media (prefers-reduced-motion:reduce) { .admin-root :is(button,a,input,select) { transition: none; } .admin-workspace::before { animation: none; } }
 
 .admin-root {
   --background: var(--admin-bg); --foreground: var(--admin-ink);
