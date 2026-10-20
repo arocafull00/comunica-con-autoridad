@@ -6,6 +6,7 @@ import { dateRange } from "@/lib/admin/validation";
 import { FUNNEL_STEPS, type FunnelEvent } from "@/lib/funnel";
 import { DateRangeFilter } from "../../date-range-filter";
 import { AdminLoading } from "../../loading-state";
+import { AnimatedNumber } from "../../animated-number";
 
 const format = (value: number) => new Intl.NumberFormat("es-ES").format(value);
 const percent = (value: number, base: number) => base > 0 ? `${new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 }).format(value / base * 100)} %` : "—";
@@ -17,7 +18,7 @@ function FunnelCards({ funnel }: { funnel: Partial<Record<FunnelEvent, number>> 
     const previous = i > 0 ? funnel[FUNNEL_STEPS[i - 1].event as FunnelEvent] ?? 0 : null;
     return <li key={step.event} className="admin-funnel-card">
       <div className="admin-funnel-card-heading"><span>{i + 1}</span><strong>{step.label}</strong></div>
-      <p className="admin-funnel-card-count"><strong>{format(count)}</strong> sesiones</p>
+      <p className="admin-funnel-card-count"><strong><span aria-hidden="true"><AnimatedNumber value={count} /></span><span className="sr-only">{format(count)}</span></strong> sesiones</p>
       <dl className="admin-funnel-card-rates">
         <div><dt>De las visitas</dt><dd>{percent(count, visits)}</dd></div>
         <div><dt>Del paso anterior</dt><dd>{previous !== null ? percent(count, previous) : "—"}</dd></div>
