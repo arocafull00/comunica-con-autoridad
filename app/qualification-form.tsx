@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { GOALS, SITUATIONS } from "@/lib/leads/masterclass";
+import type { BookingContact } from "@/lib/leads/booking-validation";
 import type { LeadFieldErrors, LeadResponse } from "@/lib/leads/contracts";
-import { trackFunnel, type FunnelEvent } from "@/lib/funnel";
 
 type ChoiceField = "situation" | "goal";
 type AnswerField = "profession" | ChoiceField;
@@ -14,29 +14,21 @@ const CHOICES: { field: ChoiceField; question: string; hint: string; options: re
 const STEP_FIELDS: AnswerField[] = ["profession", ...CHOICES.map(choice => choice.field)];
 const TOTAL_STEPS = STEP_FIELDS.length;
 
-function saveProgress(accessToken: string, step: number, answers: Record<string, string>) {
-  trackFunnel(`question_${step + 1}` as FunnelEvent);
-  const draft = Object.fromEntries(Object.entries(answers).filter(([, value]) => value.trim()));
-  void fetch("/api/leads/progress", {
-    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ step: step + 1, answers: draft }), keepalive: true,
-  }).catch(() => {});
-}
-
-// Questions after the contact step. Name, email, mobile and consents are already saved.
-export function QualificationForm({ accessToken, onSuccess, onExpired }: {
-  accessToken: string; onSuccess: (bookingUrl?: string) => void; onExpired: () => void;
+export function QualificationForm({ contact, onSuccess, onReset }: {
+  contact: BookingContact;
+  onSuccess: (bookingUrl: string) => void;
+  onReset: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const inFlight = useRef(false);
+  const submissionId = useRef("");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({ profession: "", situation: "", goal: "" });
   const [errors, setErrors] = useState<LeadFieldErrors>({});
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   useEffect(() => { formRef.current?.querySelector<HTMLElement>(".form-step.active input")?.focus({ preventScroll: true }); }, [step]);
-  useEffect(() => { saveProgress(accessToken, 0, {}); }, [accessToken]);
-  function goTo(next: number) { setStep(next); setErrors({}); setMessage(""); saveProgress(accessToken, next, answers); }
+  function goTo(next: number) { setStep(next); setErrors({}); setMessage(""); }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
@@ -48,23 +40,22 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
     if (calendar) calendar.opener = null;
     let calendarOpened = false;
     try {
+      submissionId.current ||= crypto.randomUUID();
       const response = await fetch("/api/leads/qualification", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify(answers), signal: AbortSignal.timeout(25_000),
+        method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": submissionId.current },
+        body: JSON.stringify({ ...contact, ...answers }), signal: AbortSignal.timeout(25_000),
       });
       const result: LeadResponse = await response.json();
       if (response.ok && result.ok && result.bookingUrl) {
-        if (calendar && !calendar.closed) {
-          calendar.location.replace(result.bookingUrl);
-          calendar.focus();
-          calendarOpened = true;
-        }
-        trackFunnel("form_completed");
-        trackFunnel("calendar_open");
         onSuccess(result.bookingUrl);
-      }
-      else if (response.status === 401) onExpired();
-      else {
+        if (calendar && !calendar.closed) {
+          try {
+            calendar.location.replace(result.bookingUrl);
+            calendarOpened = true;
+            calendar.focus();
+          } catch { /* The calendar link remains available on the page. */ }
+        }
+      } else {
         setMessage(result.message || "No hemos podido guardar tus respuestas. Vuelve a intentarlo.");
         setErrors(result.fieldErrors ?? {});
         const index = STEP_FIELDS.indexOf(Object.keys(result.fieldErrors ?? {})[0] as AnswerField);
@@ -109,5 +100,6 @@ export function QualificationForm({ accessToken, onSuccess, onExpired }: {
       </fieldset>
       <p className="form-message" role="alert">{message}</p>
     </form>
+    <button className="another-registration-btn" type="button" disabled={pending} onClick={onReset}>Realizar otra inscripción</button>
   </div>;
 }

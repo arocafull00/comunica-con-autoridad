@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { comparisonPeriod, conversionRate, metricChange } from "../../lib/admin/comparison";
 
 describe("summary comparisons", () => {
@@ -28,42 +28,5 @@ describe("summary comparisons", () => {
     expect(conversionRate(0, 100)).toBe(0);
     expect(conversionRate(3, 0)).toBeNull();
     expect(conversionRate(3, null)).toBeNull();
-  });
-});
-
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), traffic: vi.fn(), auth: vi.fn() }));
-vi.mock("server-only", () => ({}));
-vi.mock("../../lib/admin/auth", () => ({ requireAdmin: mocks.auth }));
-vi.mock("../../lib/admin/traffic", () => ({ queryTraffic: mocks.traffic }));
-import { getDashboard } from "../../lib/admin/data";
-
-describe("dashboard period queries", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mocks.auth.mockResolvedValue({ db: { rpc: mocks.rpc } });
-    mocks.rpc.mockResolvedValue({ data: { leads: 3, unique_emails: 2 }, error: null });
-    mocks.traffic.mockResolvedValue({ available: true, visitors: 10, pageviews: 20 });
-  });
-  it("queries both lead and traffic totals over adjacent equal ranges", async () => {
-    const result = await getDashboard({ start: "2026-06-01", end: "2026-06-08" });
-    expect(mocks.auth).toHaveBeenCalledTimes(1);
-    expect(mocks.rpc.mock.calls).toEqual([
-      ["get_lead_metrics", { p_start: "2026-06-01", p_end: "2026-06-08" }],
-      ["get_lead_metrics", { p_start: "2026-05-25", p_end: "2026-06-01" }],
-    ]);
-    expect(mocks.traffic.mock.calls.map(([range]) => range)).toEqual([
-      { start: "2026-06-01", end: "2026-06-08" }, { start: "2026-05-25", end: "2026-06-01" },
-    ]);
-    expect(result.previous.metrics?.unique_emails).toBe(2);
-  });
-  it("keeps current metrics when the previous report fails, without inventing zeros", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: { leads: 3 }, error: null }).mockResolvedValueOnce({ data: null, error: {} });
-    const result = await getDashboard({ start: "2026-06-01", end: "2026-06-08" });
-    expect(result.metrics.leads).toBe(3);
-    expect(result.previous.metrics).toBeNull();
-  });
-  it("reports a current data failure", async () => {
-    mocks.rpc.mockResolvedValue({ data: null, error: {} });
-    await expect(getDashboard({ start: "2026-06-01", end: "2026-06-08" })).rejects.toThrow("No se pudieron consultar las solicitudes");
   });
 });

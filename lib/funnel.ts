@@ -17,18 +17,3 @@ export const FUNNEL_STEPS = [
 export type FunnelEvent = "visit" | "video_play" | "video_25" | "video_50" | "video_75" | "video_complete" | "booking_open"
   | "contact_saved" | `question_${1 | 2 | 3 | 4 | 5 | 6 | 7}` | "form_completed" | "calendar_open";
 export const FUNNEL_EVENTS = FUNNEL_STEPS.map(step => step.event as FunnelEvent);
-
-let sessionId = "";
-const sent = new Set<FunnelEvent>();
-
-export function trackFunnel(event: FunnelEvent) {
-  if (sent.has(event)) return;
-  sent.add(event);
-  try {
-    sessionId ||= crypto.randomUUID();
-    void fetch("/api/funnel", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, event }), keepalive: true,
-    }).catch(() => {});
-  } catch {}
-}

@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { GOALS, SITUATIONS } from "../../lib/leads/masterclass";
 
-// Opens "Agendar llamada" and fills the contact step, leaving both consents as the caller sets them.
+// Opens "Agendar llamada" and fills the contact step.
 export async function fillMasterclass(page: Page, email = "adrian@example.com") {
   await page.getByRole("button", { name: "Agendar llamada" }).click();
   await page.getByLabel("Nombre", { exact: true }).fill("Adrián");

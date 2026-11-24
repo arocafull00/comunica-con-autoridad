@@ -20,14 +20,18 @@ export const accessSchema = z.object({
   utmCampaign: leadSchema.shape.utmCampaign,
 }).strict();
 
-// "Agendar llamada": name, email and mobile with two independent, optional consents.
-export const contactSchema = z.object({
+const bookingContactFields = {
   name: leadSchema.shape.name,
   email: leadSchema.shape.email,
   phone: leadSchema.shape.phone,
+  website: leadSchema.shape.website,
+};
+
+// "Agendar llamada": name, email and mobile with two independent, optional consents.
+export const contactSchema = z.object({
+  ...bookingContactFields,
   communicationsConsent: leadSchema.shape.communicationsConsent,
   whatsappConsent: z.boolean().default(false),
-  website: leadSchema.shape.website,
   utmSource: leadSchema.shape.utmSource,
   utmMedium: leadSchema.shape.utmMedium,
   utmCampaign: leadSchema.shape.utmCampaign,
@@ -62,6 +66,13 @@ export const profileQualificationSchema = z.object({
   goal: z.enum(GOALS, { error: "Selecciona qué te gustaría mejorar" }),
 }).strict();
 
+export const bookingContactSchema = z.strictObject(bookingContactFields).superRefine(requireMobile);
+export const bookingSubmissionSchema = z.strictObject({
+  ...bookingContactFields,
+  ...profileQualificationSchema.shape,
+}).superRefine(requireMobile);
+
+export type BookingContact = z.infer<typeof bookingContactSchema>;
 export type AccessContact = z.infer<typeof accessSchema>;
 export type Contact = z.infer<typeof contactSchema>;
 export type Qualification = z.infer<typeof qualificationSchema>;

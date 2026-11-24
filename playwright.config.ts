@@ -9,6 +9,6 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: "pnpm exec next start --port 3100", url: "http://127.0.0.1:3100", reuseExistingServer: false, timeout: 60000,
+    command: "node scripts/start-local-test-server.mjs", url: "http://127.0.0.1:3100", reuseExistingServer: false, timeout: 60000,
   },
 });
