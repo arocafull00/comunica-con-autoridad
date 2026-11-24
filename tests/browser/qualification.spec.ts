@@ -13,7 +13,7 @@ async function continueWithContact(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Continuar" }).click();
 }
 
-test("sends the full form through the real API to Sheets before opening Cal.com", async ({ page, request }) => {
+test("sends the full form through the real API to Sheets before navigating to Cal.com", async ({ page, request, context }) => {
   await continueWithContact(page);
   await expect(page.getByText("Pregunta 1 de 3", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "¿A qué te dedicas?" })).toBeVisible();
@@ -24,11 +24,11 @@ test("sends the full form through the real API to Sheets before opening Cal.com"
   await page.getByRole("radio", { name: SITUATIONS[2], exact: true }).check();
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "¿Qué te gustaría mejorar principalmente?" })).toBeVisible();
+  await expect(page.locator('head link[rel="preconnect"][href="https://cal.com"]')).toHaveCount(1);
   for (const option of GOALS) await expect(page.getByRole("radio", { name: option, exact: true })).toBeVisible();
   await page.getByRole("radio", { name: GOALS[0], exact: true }).check();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const saved = page.waitForResponse("**/api/leads/qualification");
-  const calendarPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
   const response = await saved;
   expect(response.ok()).toBe(true);
@@ -38,12 +38,9 @@ test("sends the full form through the real API to Sheets before opening Cal.com"
     submission_id: id, email: "adrian@example.com", nombre: "Adrián", telefono: "+34612345678",
     a_que_te_dedicas: "Dirección", situacion_actual: SITUATIONS[2], que_quiere_mejorar: GOALS[0],
   }));
-  const calendar = await calendarPromise;
-  await expect(calendar).toHaveURL(CAL_BOOKING_URL);
-  await expect(page).toHaveURL(/\/$/);
-  expect(await calendar.evaluate(() => window.opener)).toBeNull();
-  await calendar.close();
-  await page.goto("/");
+  await expect(page).toHaveURL(CAL_BOOKING_URL);
+  expect(context.pages()).toEqual([page]);
+  await page.goBack();
   await expect(page.getByRole("link", { name: "Agendar consultoría gratuita" })).toHaveAttribute("href", CAL_BOOKING_URL);
   await page.getByRole("button", { name: "Realizar otra inscripción" }).click();
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
@@ -75,10 +72,10 @@ test("requires each answer, keeps selections when going back, and retries failed
   expect(ids).toHaveLength(0);
   await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
   await expect(page.getByText("No hemos podido confirmar el guardado.", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
   await expect.poll(() => page.context().pages().length).toBe(1);
-  const calendarPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
-  await expect(await calendarPromise).toHaveURL(CAL_BOOKING_URL);
+  await expect(page).toHaveURL(CAL_BOOKING_URL);
   expect(ids).toHaveLength(2);
   expect(ids[0]).toBe(ids[1]);
 });
@@ -102,15 +99,25 @@ test("keeps the calendar link for a previously completed registration", async ({
   expect(await page.evaluate(() => localStorage.getItem("webinar_access_token_v1"))).toBeNull();
 });
 
-test("keeps the saved calendar link when the browser blocks automatic tab opening", async ({ page }) => {
-  await page.addInitScript(() => { window.open = () => null; });
-  await page.route("**/api/leads/qualification", route => route.fulfill({ json: { ok: true, bookingUrl: CAL_BOOKING_URL } }));
+test("stays on the form while Sheets is pending and navigates without a popup", async ({ page, context }) => {
+  let confirmSave!: () => void;
+  const savePending = new Promise<void>(resolve => { confirmSave = resolve; });
+  await page.route("**/api/leads/qualification", async route => {
+    await savePending;
+    await route.fulfill({ json: { ok: true, bookingUrl: CAL_BOOKING_URL } });
+  });
   await continueWithContact(page);
-  await fillQualification(page);
-  const link = page.getByRole("link", { name: "Agendar consultoría gratuita" });
-  await expect(link).toHaveAttribute("href", CAL_BOOKING_URL);
-  await expect(link).toHaveAttribute("target", "_blank");
-  expect(page.context().pages()).toHaveLength(1);
+  await fillQualification(page, false);
+  await page.getByRole("button", { name: "Reservar llamada", exact: true }).click();
+  try {
+    await expect(page.getByRole("button", { name: /guardando/i })).toBeDisabled();
+    await expect(page).toHaveURL(/\/$/);
+    expect(context.pages()).toEqual([page]);
+  } finally {
+    confirmSave();
+  }
+  await expect(page).toHaveURL(CAL_BOOKING_URL);
+  expect(context.pages()).toEqual([page]);
 });
 
 test("the published app exposes only the Sheets submission route", async ({ request }) => {

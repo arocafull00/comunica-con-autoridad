@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GOALS, SITUATIONS } from "@/lib/leads/masterclass";
+import { preconnect } from "react-dom";
+import { CAL_BOOKING_URL, GOALS, SITUATIONS } from "@/lib/leads/masterclass";
 import type { BookingContact } from "@/lib/leads/booking-validation";
 import type { LeadFieldErrors, LeadResponse } from "@/lib/leads/contracts";
 
@@ -13,6 +14,7 @@ const CHOICES: { field: ChoiceField; question: string; hint: string; options: re
 ];
 const STEP_FIELDS: AnswerField[] = ["profession", ...CHOICES.map(choice => choice.field)];
 const TOTAL_STEPS = STEP_FIELDS.length;
+const CAL_ORIGIN = new URL(CAL_BOOKING_URL).origin;
 
 export function QualificationForm({ contact, onSuccess, onReset }: {
   contact: BookingContact;
@@ -28,7 +30,10 @@ export function QualificationForm({ contact, onSuccess, onReset }: {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   useEffect(() => { formRef.current?.querySelector<HTMLElement>(".form-step.active input")?.focus({ preventScroll: true }); }, [step]);
-  function goTo(next: number) { setStep(next); setErrors({}); setMessage(""); }
+  function goTo(next: number) {
+    if (next === TOTAL_STEPS - 1) preconnect(CAL_ORIGIN);
+    setStep(next); setErrors({}); setMessage("");
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
@@ -36,9 +41,6 @@ export function QualificationForm({ contact, onSuccess, onReset }: {
     if (!answers[field].trim()) { setErrors({ [field]: "Completa esta pregunta para continuar." }); return; }
     if (step < TOTAL_STEPS - 1) { goTo(step + 1); return; }
     inFlight.current = true; setPending(true); setMessage(""); setErrors({});
-    const calendar = window.open("about:blank", "_blank");
-    if (calendar) calendar.opener = null;
-    let calendarOpened = false;
     try {
       submissionId.current ||= crypto.randomUUID();
       const response = await fetch("/api/leads/qualification", {
@@ -48,13 +50,6 @@ export function QualificationForm({ contact, onSuccess, onReset }: {
       const result: LeadResponse = await response.json();
       if (response.ok && result.ok && result.bookingUrl) {
         onSuccess(result.bookingUrl);
-        if (calendar && !calendar.closed) {
-          try {
-            calendar.location.replace(result.bookingUrl);
-            calendarOpened = true;
-            calendar.focus();
-          } catch { /* The calendar link remains available on the page. */ }
-        }
       } else {
         setMessage(result.message || "No hemos podido guardar tus respuestas. Vuelve a intentarlo.");
         setErrors(result.fieldErrors ?? {});
@@ -63,7 +58,6 @@ export function QualificationForm({ contact, onSuccess, onReset }: {
       }
     } catch { setMessage("No hemos podido confirmar el guardado. Tus respuestas siguen aquí; vuelve a intentarlo."); }
     finally {
-      if (!calendarOpened) calendar?.close();
       inFlight.current = false; setPending(false);
     }
   }

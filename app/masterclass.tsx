@@ -76,6 +76,13 @@ export function Masterclass() {
     scrollToBooking();
   }
 
+  function openCalendar(url: string) {
+    writeFlag(BOOKING_KEY);
+    setContact(null);
+    setBookingUrl(url);
+    window.location.assign(url);
+  }
+
   function startAnotherRegistration() {
     clearFlag(BOOKING_KEY);
     setContact(null);
@@ -114,14 +121,10 @@ export function Masterclass() {
         <div className="wrap"><div className="after-card" id="booking-area" ref={bookingArea}>
           {bookingUrl ? null : <h2>¿Quieres que analicemos tu caso?</h2>}
           <p>Reserva una sesión gratuita.</p>
-          {bookingUrl ? <a className="cta cta-lg" href={bookingUrl} target="_blank" rel="noopener noreferrer">Agendar consultoría gratuita →</a> : null}
+          {bookingUrl ? <a className="cta cta-lg" href={bookingUrl} rel="noreferrer">Agendar consultoría gratuita →</a> : null}
           <div>
             {bookingUrl ? null : contact
-              ? <QualificationForm contact={contact} onReset={startAnotherRegistration} onSuccess={url => {
-                setContact(null);
-                setBookingUrl(url);
-                writeFlag(BOOKING_KEY);
-              }} />
+              ? <QualificationForm contact={contact} onReset={startAnotherRegistration} onSuccess={openCalendar} />
               : contactOpen ? <ContactForm onContinue={continueWithContact} />
               : <button className="cta" id="open-booking" type="button" onClick={() => setContactOpen(true)}>Agendar llamada →</button>}
           </div>
